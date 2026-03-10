@@ -1,0 +1,4 @@
+interface:
+  display_name: "UI Review Spec"
+  short_description: "Review screens and write implementer-ready UI specs"
+  default_prompt: "Use $ui-review-spec to inspect this screen and produce an implementer-ready design spec."

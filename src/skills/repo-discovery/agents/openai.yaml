@@ -1,0 +1,4 @@
+interface:
+  display_name: "Repo Discovery"
+  short_description: "Find relevant docs, patterns, and source-of-truth files"
+  default_prompt: "Use $repo-discovery to map the relevant docs, patterns, and source files for this task."

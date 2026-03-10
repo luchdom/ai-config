@@ -1,0 +1,4 @@
+interface:
+  display_name: "Task Audit Breakdown"
+  short_description: "Audit plans and split them into implementable tasks"
+  default_prompt: "Use $task-audit-breakdown to audit this plan and produce execution-ready tasks."
