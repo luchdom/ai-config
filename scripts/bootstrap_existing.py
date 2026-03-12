@@ -68,8 +68,12 @@ def write_skill_sources() -> None:
 def write_project_templates() -> None:
     codex_dir = SRC_TEMPLATES / "codex"
     claude_dir = SRC_TEMPLATES / "claude"
+    copilot_dir = SRC_TEMPLATES / "copilot" / ".github"
+    cursor_dir = SRC_TEMPLATES / "cursor"
     codex_dir.mkdir(parents=True, exist_ok=True)
     claude_dir.mkdir(parents=True, exist_ok=True)
+    copilot_dir.mkdir(parents=True, exist_ok=True)
+    cursor_dir.mkdir(parents=True, exist_ok=True)
 
     (codex_dir / "AGENTS.md").write_text(
         "# Project AI Instructions\n\n"
@@ -89,6 +93,24 @@ def write_project_templates() -> None:
         encoding="utf-8",
     )
 
+    (copilot_dir / "copilot-instructions.md").write_text(
+        "# Project AI Instructions\n\n"
+        "- Keep project-specific rules here.\n"
+        "- Keep reusable workflows in the shared ai-config skills.\n"
+        "- Read this repo's docs, architecture notes, and established patterns before coding.\n"
+        "- Prefer existing components, abstractions, and tests over new ones.\n",
+        encoding="utf-8",
+    )
+
+    (cursor_dir / "AGENTS.md").write_text(
+        "# Project AI Instructions\n\n"
+        "- Keep project-specific rules here.\n"
+        "- Keep reusable workflows in the shared ai-config skills and generated Cursor rules.\n"
+        "- Read this repo's docs, architecture notes, and established patterns before coding.\n"
+        "- Prefer existing components, abstractions, and tests over new ones.\n",
+        encoding="utf-8",
+    )
+
 
 def main() -> None:
     write_agent_sources()
@@ -99,4 +121,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

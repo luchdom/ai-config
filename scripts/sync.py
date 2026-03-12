@@ -47,6 +47,13 @@ def sync_claude() -> None:
     sync_skill_dirs(DIST / "claude" / "skills", claude_home / "skills")
 
 
+def sync_copilot() -> None:
+    copilot_home = Path.home() / ".copilot"
+    for agent_file in sorted((DIST / "copilot" / "agents").glob("*.agent.md")):
+        sync_file(agent_file, copilot_home / "agents" / agent_file.name)
+    sync_skill_dirs(DIST / "copilot" / "skills", copilot_home / "skills")
+
+
 def sync_project_templates(project: Path, tools: set[str], force: bool) -> None:
     project.mkdir(parents=True, exist_ok=True)
 
@@ -64,10 +71,54 @@ def sync_project_templates(project: Path, tools: set[str], force: bool) -> None:
         else:
             print(f"Skipped existing {target}")
 
+    if "copilot" in tools:
+        target = project / ".github" / "copilot-instructions.md"
+        if force or not target.exists():
+            sync_file(DIST / "project-templates" / "copilot" / ".github" / "copilot-instructions.md", target)
+        else:
+            print(f"Skipped existing {target}")
+
+        agents_root = project / ".github" / "agents"
+        for agent_file in sorted((DIST / "copilot" / "agents").glob("*.agent.md")):
+            target = agents_root / agent_file.name
+            if force or not target.exists():
+                sync_file(agent_file, target)
+            else:
+                print(f"Skipped existing {target}")
+
+        skills_root = project / ".github" / "skills"
+        for skill_dir in sorted((DIST / "copilot" / "skills").iterdir()):
+            if not skill_dir.is_dir():
+                continue
+            target = skills_root / skill_dir.name
+            if target.exists():
+                if force:
+                    shutil.rmtree(target)
+                else:
+                    print(f"Skipped existing {target}")
+                    continue
+            shutil.copytree(skill_dir, target)
+            print(f"Synced skill {skill_dir.name} -> {target}")
+
+    if "cursor" in tools:
+        target = project / "AGENTS.md"
+        if force or not target.exists():
+            sync_file(DIST / "project-templates" / "cursor" / "AGENTS.md", target)
+        else:
+            print(f"Skipped existing {target}")
+
+        rules_root = project / ".cursor" / "rules"
+        for rule_file in sorted((DIST / "cursor" / "rules").glob("*.mdc")):
+            target = rules_root / rule_file.name
+            if force or not target.exists():
+                sync_file(rule_file, target)
+            else:
+                print(f"Skipped existing {target}")
+
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Install generated Codex and Claude agents, skills, and project templates.")
-    parser.add_argument("--tool", choices=["codex", "claude", "all"], default="all")
+    parser = argparse.ArgumentParser(description="Install generated Codex, Claude, Copilot, and Cursor adapters, skills, and project templates.")
+    parser.add_argument("--tool", choices=["codex", "claude", "copilot", "cursor", "all"], default="all")
     parser.add_argument("--project", action="append", default=[], help="Project root to receive local instruction files.")
     parser.add_argument("--no-build", action="store_true", help="Skip rebuilding dist before sync.")
     parser.add_argument("--force", action="store_true", help="Overwrite existing project-local instruction files.")
@@ -76,12 +127,14 @@ def main() -> None:
     if not args.no_build:
         run_build()
 
-    tools = {"codex", "claude"} if args.tool == "all" else {args.tool}
+    tools = {"codex", "claude", "copilot", "cursor"} if args.tool == "all" else {args.tool}
 
     if "codex" in tools:
         sync_codex()
     if "claude" in tools:
         sync_claude()
+    if "copilot" in tools:
+        sync_copilot()
 
     for project in args.project:
         sync_project_templates(Path(project), tools, args.force)
@@ -89,4 +142,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

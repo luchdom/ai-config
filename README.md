@@ -1,20 +1,20 @@
 # ai-config
 
-Central AI configuration repo for Codex and Claude Code.
+Central AI configuration repo for Codex, Claude Code, GitHub Copilot CLI, and Cursor.
 
 ## Goals
 
 - Keep skills as the reusable cross-tool unit.
 - Keep agent prompts versioned in one place.
 - Generate tool-specific adapters instead of hand-maintaining multiple copies.
-- Sync agents, skills, and small project-local instruction files into Codex and Claude environments.
+- Sync agents, skills, and small project-local instruction files into Codex, Claude, Copilot CLI, and Cursor workflows.
 
 ## Layout
 
 - `src/agents/`: canonical agent definitions in Markdown with simple frontmatter
 - `src/skills/`: canonical skills copied as reusable cross-tool units
 - `src/project-templates/`: small project-local instruction file templates
-- `scripts/build.py`: generate Codex and Claude adapters into `dist/`
+- `scripts/build.py`: generate Codex, Claude, Copilot, and Cursor adapters into `dist/`
 - `scripts/sync.py`: install generated outputs into user homes and optional project roots
 - `scripts/bootstrap_existing.py`: import the current global Codex agents and skills as the starting source set
 
@@ -37,11 +37,14 @@ The build script generates:
 
 - `dist/codex/agents/*.toml`
 - `dist/claude/agents/*.md`
+- `dist/copilot/agents/*.agent.md`
+- `dist/cursor/rules/*.mdc`
 
 Skills are copied into:
 
 - `dist/codex/skills/*`
 - `dist/claude/skills/*`
+- `dist/copilot/skills/*`
 
 ## Usage
 
@@ -57,7 +60,7 @@ Generate adapters:
 python .\scripts\build.py
 ```
 
-Install for Codex and Claude:
+Install global outputs for Codex, Claude, Copilot, and project-capable Cursor adapters:
 
 ```powershell
 python .\scripts\sync.py --tool all
@@ -67,6 +70,13 @@ Install the small project-local instruction files into a repo:
 
 ```powershell
 python .\scripts\sync.py --tool all --project C:\dev\luchdom\identity
+```
+
+Install only Copilot or Cursor adapters:
+
+```powershell
+python .\scripts\sync.py --tool copilot
+python .\scripts\sync.py --tool cursor --project C:\dev\luchdom\identity
 ```
 
 ## If an AI agent is asked to install this repo
@@ -83,6 +93,8 @@ If a specific tool is requested:
 ```powershell
 python .\scripts\sync.py --tool codex
 python .\scripts\sync.py --tool claude
+python .\scripts\sync.py --tool copilot
+python .\scripts\sync.py --tool cursor --project C:\path\to\repo
 ```
 
 If project-local instruction files are also needed:
@@ -97,6 +109,8 @@ Guidance:
 - Treat `src/` as the source of truth and `dist/` as generated output.
 - Do not overwrite existing project-local `AGENTS.md` or `CLAUDE.md` unless explicitly asked or `--force` is intended.
 - Verify the installed files after sync.
+- Copilot supports global user-level agents and skills via `~/.copilot`.
+- Cursor support in this repo is project-level: generated `AGENTS.md` and `.cursor/rules/*.mdc`.
 
 ## Notes
 
