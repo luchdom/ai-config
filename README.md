@@ -69,8 +69,37 @@ Install the small project-local instruction files into a repo:
 python .\scripts\sync.py --tool all --project C:\dev\luchdom\identity
 ```
 
+## If an AI agent is asked to install this repo
+
+Preferred flow:
+
+```powershell
+python .\scripts\build.py
+python .\scripts\sync.py --tool all
+```
+
+If a specific tool is requested:
+
+```powershell
+python .\scripts\sync.py --tool codex
+python .\scripts\sync.py --tool claude
+```
+
+If project-local instruction files are also needed:
+
+```powershell
+python .\scripts\sync.py --tool all --project C:\path\to\repo
+```
+
+Guidance:
+
+- Prefer the repo scripts over manual copying.
+- Treat `src/` as the source of truth and `dist/` as generated output.
+- Do not overwrite existing project-local `AGENTS.md` or `CLAUDE.md` unless explicitly asked or `--force` is intended.
+- Verify the installed files after sync.
+
 ## Notes
 
 - `sync.py` only manages the generated agents and skills from this repo. It does not touch unrelated items such as Codex system skills.
 - Project-local templates are intentionally small. Put shared workflows in skills and keep repo-specific rules in the project files.
-
+- For recommended external skills, MCPs, and supporting CLIs, see [docs/external-tools.md](C:/dev/luchdom/ai-config/docs/external-tools.md).
