@@ -35,6 +35,8 @@ def parse_frontmatter(text: str) -> tuple[dict[str, str], str]:
 
 def render_codex_toml(meta: dict[str, str], body: str) -> str:
     return (
+        f'name = {json.dumps(meta["name"])}\n'
+        f'description = {json.dumps(meta["description"])}\n'
         f'model = {json.dumps(meta["codex_model"])}\n'
         f'model_reasoning_effort = {json.dumps(meta["codex_model_reasoning_effort"])}\n'
         f'sandbox_mode = {json.dumps(meta["codex_sandbox_mode"])}\n\n'

@@ -40,6 +40,8 @@ The build script generates:
 - `dist/copilot/agents/*.agent.md`
 - `dist/cursor/rules/*.mdc`
 
+Codex agent TOMLs include top-level `name` and `description` fields in addition to model and instruction settings.
+
 Skills are copied into:
 
 - `dist/codex/skills/*`
