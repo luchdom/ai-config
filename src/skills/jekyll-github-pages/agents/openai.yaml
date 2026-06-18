@@ -1,0 +1,4 @@
+interface:
+  display_name: "Jekyll GitHub Pages"
+  short_description: "Build and maintain Jekyll Pages sites"
+  default_prompt: "Use $jekyll-github-pages to create or update this Jekyll site for GitHub Pages."
