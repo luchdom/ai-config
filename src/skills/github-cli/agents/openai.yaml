@@ -1,0 +1,3 @@
+display_name: "GitHub CLI"
+short_description: "Use gh safely for GitHub lookups, PRs, checks, and issues."
+default_prompt: "Use GitHub CLI to inspect the current GitHub context."
