@@ -15,7 +15,15 @@ Turn a UI review into an implementer-ready design spec. Inspect the current expe
 4. Fall back to screenshots or provided images only when interactive inspection is not possible, and state the limitation.
 5. Find existing repo components and patterns before proposing changes.
 6. Check MUI and shadcn capabilities before suggesting a new component.
-7. Write a concrete design spec in `/docs-ai/DESIGN-<slug>-YYYY-MM-DD.md`.
+7. Write a concrete design spec in `/docs-ai/<NNN>-<slug>-<YYYY-MM-DD>/<YYYY-MM-DD>-<slug>-design.md`.
+
+## Artifact Folder Rules
+
+- Reuse the current workflow artifact folder for design output.
+- Folder format: `/docs-ai/<NNN>-<slug>-<YYYY-MM-DD>/`
+- Choose `<NNN>` by scanning folders under `/docs-ai/` and `/docs-ai/history/`, then using the next highest three-digit number when no workflow folder exists yet.
+- If multiple active folders could match the current work, ask which one to use instead of creating a duplicate.
+- New workflow artifacts must use the folder format. Older flat `/docs-ai/*` artifacts may be read as legacy fallback only.
 
 ## Recommendation Rules
 

@@ -10,10 +10,10 @@ Build only the context needed for the current task. Find the governing docs, the
 ## Discovery Workflow
 
 1. Read `AGENTS.md` first.
-2. Identify the task area: frontend, backend, shared, infrastructure, or mixed.
+2. Identify the task area: frontend, backend, service, shared, infrastructure, or mixed.
 3. Read the smallest relevant subset of `/docs`, `README`, and nearby feature docs.
 4. Find the closest existing implementation pattern in code.
-5. Find the tests nearest to that pattern.
+5. Find the tests nearest to that pattern, especially the suites that match the affected boundary.
 6. Return a concise summary with exact source paths and open questions.
 
 ## Discovery Rules

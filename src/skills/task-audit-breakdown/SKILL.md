@@ -10,11 +10,18 @@ Turn a plan into execution-ready tasks. Audit completeness first, then split the
 ## Audit Workflow
 
 1. Read the user requirement.
-2. Read the plan in `/docs-ai`.
-3. Read the design spec in `/docs-ai` when UI work exists.
+2. Read the plan in the current `/docs-ai/<NNN>-<slug>-<YYYY-MM-DD>/` workflow artifact folder.
+3. Read the design spec in the same workflow artifact folder when UI work exists.
 4. Read the smallest relevant subset of `AGENTS.md` and `/docs`.
-5. Check for missing risks, tests, rollout steps, dependencies, and unclear assumptions.
-6. Write `/docs-ai/TASKS-<slug>-YYYY-MM-DD.md`.
+5. Check for missing risks, tests, rollout steps, dependencies, unclear assumptions, and the selected test strategy for the affected boundaries.
+6. Write `/docs-ai/<NNN>-<slug>-<YYYY-MM-DD>/<YYYY-MM-DD>-<slug>-tasks.md`.
+
+## Artifact Folder Rules
+
+- Reuse the same workflow artifact folder for related plan, clarification, design, task, audit, and AI workflow notes.
+- Choose `<NNN>` by scanning folders under `/docs-ai/` and `/docs-ai/history/`, then using the next highest three-digit number when no workflow folder exists yet.
+- If multiple active folders could match the current work, ask which one to use instead of creating a duplicate.
+- New workflow artifacts must use the folder format. Older flat `/docs-ai/*` artifacts may be read as legacy fallback only.
 
 ## Task Rules
 
@@ -22,6 +29,7 @@ Turn a plan into execution-ready tasks. Audit completeness first, then split the
 - Give each task a concrete goal.
 - Name likely files or modules when they can be inferred.
 - Include acceptance criteria and test notes.
+- Preserve the selected test strategy instead of silently re-deciding it.
 - Call out dependencies explicitly.
 - Split work so separate implementers can pick it up without constant coordination.
 

@@ -1,6 +1,6 @@
 # Task Template
 
-Use this outline for `/docs-ai/TASKS-<slug>-YYYY-MM-DD.md`:
+Use this outline for `/docs-ai/<NNN>-<slug>-<YYYY-MM-DD>/<YYYY-MM-DD>-<slug>-tasks.md`:
 
 ## Audit notes
 
