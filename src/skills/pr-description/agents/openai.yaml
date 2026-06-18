@@ -1,0 +1,3 @@
+display_name: "PR Description"
+short_description: "Draft concise PR titles and reviewer-ready descriptions."
+default_prompt: "Draft a PR title and description for the current change."
