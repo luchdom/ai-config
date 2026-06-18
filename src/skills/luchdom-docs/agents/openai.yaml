@@ -1,0 +1,4 @@
+interface:
+  display_name: "Luchdom Docs"
+  short_description: "Keep workflow, setup, and harness docs aligned with code"
+  default_prompt: "Use $luchdom-docs to update the source-of-truth docs for this change and resolve doc drift."
