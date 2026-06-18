@@ -28,6 +28,68 @@ python .\scripts\sync.py --tool all --project C:\path\to\repo
 
 ## Recommended External Installs
 
+### .NET SDK 10
+
+Link:
+- [Install .NET on Windows](https://learn.microsoft.com/en-us/dotnet/core/install/windows)
+
+Recommended for:
+- Repos that target `net10.0`, including current Luchdom backend scaffolds.
+
+Official install example from Microsoft Learn:
+
+```powershell
+winget install Microsoft.DotNet.SDK.10
+```
+
+Verify:
+
+```powershell
+dotnet --list-sdks
+```
+
+### GitHub CLI
+
+Links:
+- [GitHub CLI README](https://github.com/cli/cli)
+- [GitHub CLI manual](https://cli.github.com/manual/index)
+
+Recommended for:
+- local PR workflows
+- manual repo inspection
+- auth verification outside MCP
+
+Repo workflow:
+- Use `$github-cli` for safe read-first GitHub CLI workflows.
+- Use `$pr-description` before drafting or updating PR titles and bodies.
+
+After install, authenticate with:
+
+```powershell
+gh auth login
+gh auth status
+```
+
+### AWS CLI
+
+Link:
+- [Installing or updating the latest AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
+
+Recommended for:
+- repos that eventually provision or inspect AWS resources outside the editor
+
+Official Windows MSI command from the AWS docs:
+
+```powershell
+msiexec.exe /i https://awscli.amazonaws.com/AWSCLIV2.msi
+```
+
+Verify:
+
+```powershell
+aws --version
+```
+
 ### Playwright CLI + Skills
 
 Link:
@@ -158,6 +220,102 @@ npx -y firecrawl-cli@latest login --browser
 npx -y firecrawl-cli@latest view-config
 ```
 
+### PostHog CLI + Skills
+
+Links:
+- [PostHog CLI package](https://www.npmjs.com/package/@posthog/cli)
+- [PostHog CLI source map upload docs](https://posthog.com/docs/error-tracking/upload-source-maps/cli)
+- [PostHog skills store docs](https://posthog.com/docs/prompt-management/skills-store)
+- [PostHog AI plugin](https://github.com/PostHog/ai-plugin)
+
+Recommended for:
+- PostHog setup, analytics inspection, source map workflows, and product-instrumentation work where CLI + skill usage is preferred over MCP.
+
+Preferred local install:
+
+```powershell
+npm install -g @posthog/cli
+posthog-cli login
+posthog-cli --help
+```
+
+PostHog's CLI docs also provide a native installer:
+
+```powershell
+powershell -ExecutionPolicy Bypass -c "irm https://download.posthog.com/cli | iex"
+posthog-cli login
+posthog-cli --help
+```
+
+Notes:
+- Prefer local skills plus `posthog-cli` commands for coding-agent workflows.
+- Use the PostHog MCP server or PostHog AI plugin only when you explicitly want remote PostHog product tools or the PostHog-hosted skills store.
+- The PostHog skills store is a centralized, versioned store for Agent Skills-style `SKILL.md` bodies plus optional bundled files.
+- Its remote workflow depends on PostHog Prompt Management and the PostHog MCP tools such as `skill-list`, `skill-get`, `skill-file-get`, `skill-create`, and `skill-update`.
+- If you choose to use the official PostHog AI plugin, it ships a `skills-store` bridge skill plus additional PostHog task skills.
+
+Optional Codex plugin install from the PostHog AI plugin README:
+
+```powershell
+codex plugin marketplace add PostHog/ai-plugin
+codex
+# Then run /plugins, select PostHog, and install.
+/plugins
+```
+
+Self-hosted PostHog note:
+
+```powershell
+$env:POSTHOG_MCP_URL = "https://mcp.your-posthog-instance.com/mcp"
+```
+
+### Stripe AI Skills
+
+Links:
+- [Stripe AI repo skills](https://github.com/stripe/ai/tree/main/skills)
+- [Build on Stripe with AI](https://docs.stripe.com/building-with-ai)
+
+Recommended for:
+- Stripe integration design, review, upgrade, and best-practice checks.
+- Payment, billing, Connect, webhook, sandbox, and Stripe API version work.
+
+Current upstream skills in the GitHub `skills/` directory:
+
+- `stripe-best-practices`
+- `stripe-directory`
+- `stripe-projects`
+- `upgrade-stripe`
+
+Official project-local skill install from Stripe docs:
+
+```powershell
+npx skills add https://docs.stripe.com
+```
+
+Official Codex plugin install from Stripe docs:
+
+```powershell
+codex plugin add stripe@openai-curated
+```
+
+Official Claude Code plugin install from Stripe docs:
+
+```powershell
+claude plugin install stripe@claude-plugins-official
+```
+
+Stripe sandbox bootstrap from Stripe docs:
+
+```powershell
+stripe sandbox create
+```
+
+Notes:
+- Run the skill or plugin install from the project folder that needs Stripe guidance.
+- Manually added skills do not auto-update; pull or reinstall updates when Stripe changes the catalog.
+- `stripe sandbox create` provisions an anonymous, claimable sandbox with API keys and does not require an account up front.
+- Prefer official Stripe docs, hosted skills, and plugins over copying stale local skill snapshots.
+
 ### OpenAI Curated Linear Skill
 
 Link:
@@ -200,6 +358,40 @@ or:
 codex --enable rmcp_client
 ```
 
+### Linear MCP
+
+Link:
+- [Linear MCP server docs](https://linear.app/docs/mcp)
+
+Recommended for:
+- issue intake and status updates in repos that use Linear as the autonomous work queue
+
+Official Codex setup from the Linear docs:
+
+```powershell
+codex mcp add linear --url https://mcp.linear.app/mcp
+codex mcp login linear
+```
+
+The Linear docs also note that some Codex versions require the remote MCP feature to be enabled in `~/.codex/config.toml`.
+
+### Slack Approval Integration
+
+Links:
+- [Slack app quickstart](https://docs.slack.dev/quickstart/)
+- [Slack incoming webhooks](https://docs.slack.dev/messaging/sending-messages-using-incoming-webhooks/)
+
+Recommended for:
+- approval requests from autonomous coding runs
+- high-risk or cost-bearing decision notifications
+
+Recommended policy:
+
+- start with a small Slack app, not an undocumented side channel
+- post approval requests to a dedicated channel such as `#codex-approvals`
+- persist every Slack approval back into repo or issue artifacts
+- do not treat Slack as the source of truth
+
 ## Reference Catalogs
 
 Use these as discovery sources for reusable skills and patterns:
@@ -234,5 +426,11 @@ $skill-installer install https://github.com/openai/skills/tree/main/skills/.expe
 - [Dammyjay93/interface-design](https://github.com/Dammyjay93/interface-design)
 - [blader/napkin](https://github.com/blader/napkin)
 - [Firecrawl CLI docs](https://docs.firecrawl.dev/sdks/cli)
+- [PostHog CLI package](https://www.npmjs.com/package/@posthog/cli)
+- [PostHog CLI source map upload docs](https://posthog.com/docs/error-tracking/upload-source-maps/cli)
+- [PostHog skills store docs](https://posthog.com/docs/prompt-management/skills-store)
+- [PostHog AI plugin](https://github.com/PostHog/ai-plugin)
+- [stripe/ai skills](https://github.com/stripe/ai/tree/main/skills)
+- [Build on Stripe with AI](https://docs.stripe.com/building-with-ai)
 - [anthropics/skills](https://github.com/anthropics/skills/tree/main/skills)
 - [openai/skills](https://github.com/openai/skills)
