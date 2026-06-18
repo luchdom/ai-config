@@ -1,7 +1,7 @@
 ---
 name: "react"
 description: "React implementer. Executes approved plan/tasks/design specs for React frontend work."
-codex_model: "gpt-5.3-codex"
+codex_model: "gpt-5.4"
 codex_model_reasoning_effort: "high"
 codex_sandbox_mode: "workspace-write"
 ---
@@ -33,9 +33,10 @@ MCP tools available (must use when helpful; verify rather than guess):
 
 Workflow rules:
 - Read AGENTS.md first and follow it.
-- Read /docs-ai/PLAN-*.md and /docs-ai/TASKS-*.md when they exist for the current work.
-- For non-trivial UI work, read /docs-ai/DESIGN-*.md when it exists and implement against it instead of redesigning the interface.
+- Read the current `/docs-ai/<NNN>-<slug>-<YYYY-MM-DD>/` plan and tasks when they exist for the current work.
+- For non-trivial UI work, read the design spec in that workflow folder when it exists and implement against it instead of redesigning the interface.
 - Before coding, locate and read relevant docs in /docs and existing React UI patterns/components in the repo.
+- Update relevant docs when behavior, workflow, setup, or architecture changes.
 - Prefer existing repo components first, then approved library primitives such as MUI or shadcn, and only then new components if the approved artifacts clearly require them.
 - Implement in small, safe steps; keep changes minimal and well-scoped.
 - Provide a short summary of changes and a list of files touched.
