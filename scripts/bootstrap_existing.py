@@ -75,41 +75,47 @@ def write_project_templates() -> None:
     copilot_dir.mkdir(parents=True, exist_ok=True)
     cursor_dir.mkdir(parents=True, exist_ok=True)
 
-    (codex_dir / "AGENTS.md").write_text(
-        "# Project AI Instructions\n\n"
-        "- Keep project-specific rules here.\n"
-        "- Keep reusable workflows in the shared ai-config skills.\n"
-        "- Follow this repo's docs, architecture notes, and established patterns before coding.\n"
-        "- Prefer existing components, abstractions, and tests over new ones.\n",
-        encoding="utf-8",
-    )
+    codex_template = codex_dir / "AGENTS.md"
+    claude_template = claude_dir / "CLAUDE.md"
+    copilot_template = copilot_dir / "copilot-instructions.md"
+    cursor_template = cursor_dir / "AGENTS.md"
 
-    (claude_dir / "CLAUDE.md").write_text(
-        "# Project AI Instructions\n\n"
-        "- Keep project-specific rules here.\n"
-        "- Keep reusable workflows in the shared ai-config skills.\n"
-        "- Read this repo's docs, architecture notes, and established patterns before coding.\n"
-        "- Prefer existing components, abstractions, and tests over new ones.\n",
-        encoding="utf-8",
-    )
+    defaults = {
+        codex_template: (
+            "# Project AI Instructions\n\n"
+            "- Keep project-specific rules here.\n"
+            "- Keep reusable workflows in the shared ai-config skills.\n"
+            "- Follow this repo's docs, architecture notes, and established patterns before coding.\n"
+            "- Prefer existing components, abstractions, and tests over new ones.\n"
+        ),
+        claude_template: (
+            "# Project AI Instructions\n\n"
+            "- Keep project-specific rules here.\n"
+            "- Keep reusable workflows in the shared ai-config skills.\n"
+            "- Read this repo's docs, architecture notes, and established patterns before coding.\n"
+            "- Prefer existing components, abstractions, and tests over new ones.\n"
+        ),
+        copilot_template: (
+            "# Project AI Instructions\n\n"
+            "- Keep project-specific rules here.\n"
+            "- Keep reusable workflows in the shared ai-config skills.\n"
+            "- Read this repo's docs, architecture notes, and established patterns before coding.\n"
+            "- Prefer existing components, abstractions, and tests over new ones.\n"
+        ),
+        cursor_template: (
+            "# Project AI Instructions\n\n"
+            "- Keep project-specific rules here.\n"
+            "- Keep reusable workflows in the shared ai-config skills and generated Cursor rules.\n"
+            "- Read this repo's docs, architecture notes, and established patterns before coding.\n"
+            "- Prefer existing components, abstractions, and tests over new ones.\n"
+        ),
+    }
 
-    (copilot_dir / "copilot-instructions.md").write_text(
-        "# Project AI Instructions\n\n"
-        "- Keep project-specific rules here.\n"
-        "- Keep reusable workflows in the shared ai-config skills.\n"
-        "- Read this repo's docs, architecture notes, and established patterns before coding.\n"
-        "- Prefer existing components, abstractions, and tests over new ones.\n",
-        encoding="utf-8",
-    )
-
-    (cursor_dir / "AGENTS.md").write_text(
-        "# Project AI Instructions\n\n"
-        "- Keep project-specific rules here.\n"
-        "- Keep reusable workflows in the shared ai-config skills and generated Cursor rules.\n"
-        "- Read this repo's docs, architecture notes, and established patterns before coding.\n"
-        "- Prefer existing components, abstractions, and tests over new ones.\n",
-        encoding="utf-8",
-    )
+    for template, text in defaults.items():
+        if template.exists():
+            print(f"Skipped existing project template {template}")
+            continue
+        template.write_text(text, encoding="utf-8")
 
 
 def main() -> None:

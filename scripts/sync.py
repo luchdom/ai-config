@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import shutil
 import subprocess
 import sys
@@ -19,6 +20,20 @@ def sync_file(src: Path, dest: Path) -> None:
     dest.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(src, dest)
     print(f"Copied {src} -> {dest}")
+
+
+def resolve_docs_root() -> str:
+    override = os.environ.get("LUCHDOM_AI_CONFIG_DOCS")
+    if override:
+        return Path(override).expanduser().resolve().as_posix()
+    return (ROOT / "docs").resolve().as_posix()
+
+
+def render_project_template(src: Path, dest: Path) -> None:
+    rendered = src.read_text(encoding="utf-8").replace("{{LUCHDOM_AI_CONFIG_DOCS}}", resolve_docs_root())
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_text(rendered, encoding="utf-8")
+    print(f"Rendered {src} -> {dest}")
 
 
 def sync_skill_dirs(src_root: Path, dest_root: Path) -> None:
@@ -60,21 +75,21 @@ def sync_project_templates(project: Path, tools: set[str], force: bool) -> None:
     if "codex" in tools:
         target = project / "AGENTS.md"
         if force or not target.exists():
-            sync_file(DIST / "project-templates" / "codex" / "AGENTS.md", target)
+            render_project_template(DIST / "project-templates" / "codex" / "AGENTS.md", target)
         else:
             print(f"Skipped existing {target}")
 
     if "claude" in tools:
         target = project / "CLAUDE.md"
         if force or not target.exists():
-            sync_file(DIST / "project-templates" / "claude" / "CLAUDE.md", target)
+            render_project_template(DIST / "project-templates" / "claude" / "CLAUDE.md", target)
         else:
             print(f"Skipped existing {target}")
 
     if "copilot" in tools:
         target = project / ".github" / "copilot-instructions.md"
         if force or not target.exists():
-            sync_file(DIST / "project-templates" / "copilot" / ".github" / "copilot-instructions.md", target)
+            render_project_template(DIST / "project-templates" / "copilot" / ".github" / "copilot-instructions.md", target)
         else:
             print(f"Skipped existing {target}")
 
@@ -103,7 +118,7 @@ def sync_project_templates(project: Path, tools: set[str], force: bool) -> None:
     if "cursor" in tools:
         target = project / "AGENTS.md"
         if force or not target.exists():
-            sync_file(DIST / "project-templates" / "cursor" / "AGENTS.md", target)
+            render_project_template(DIST / "project-templates" / "cursor" / "AGENTS.md", target)
         else:
             print(f"Skipped existing {target}")
 
