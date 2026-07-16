@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -10,6 +11,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DIST = ROOT / "dist"
+MARKER_START = "<!-- AI-CONFIG-LUCHDOM:START -->"
+MARKER_END = "<!-- AI-CONFIG-LUCHDOM:END -->"
 
 
 def run_build() -> None:
@@ -29,11 +32,62 @@ def resolve_docs_root() -> str:
     return (ROOT / "docs").resolve().as_posix()
 
 
-def render_project_template(src: Path, dest: Path) -> None:
-    rendered = src.read_text(encoding="utf-8").replace("{{LUCHDOM_AI_CONFIG_DOCS}}", resolve_docs_root())
+def render_template_text(src: Path) -> str:
+    with open(src, "r", encoding="utf-8", newline="") as file:
+        return file.read().replace("{{LUCHDOM_AI_CONFIG_DOCS}}", resolve_docs_root())
+
+
+def consume_newline(text: str, position: int) -> int:
+    if text[position:position + 2] == "\r\n":
+        return position + 2
+    if text[position:position + 1] == "\n":
+        return position + 1
+    return position
+
+
+def write_or_splice_template(src: Path, dest: Path, force: bool) -> str:
+    """Render a new managed file or refresh only its marker-owned content."""
+    rendered = render_template_text(src)
     dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_text(rendered, encoding="utf-8")
-    print(f"Rendered {src} -> {dest}")
+
+    if not dest.exists():
+        with open(dest, "w", encoding="utf-8", newline="") as file:
+            file.write(rendered)
+        print(f"Rendered {dest} (new)")
+        return "new"
+
+    if force:
+        with open(dest, "w", encoding="utf-8", newline="") as file:
+            file.write(rendered)
+        print(f"Overwrote {dest} (--force; now marker-managed)")
+        return "overwrote"
+
+    with open(dest, "r", encoding="utf-8", newline="") as file:
+        existing = file.read()
+
+    start_positions = [match.start() for match in re.finditer(re.escape(MARKER_START), existing)]
+    end_positions = [match.start() for match in re.finditer(re.escape(MARKER_END), existing)]
+    if not start_positions and not end_positions:
+        print(f"Skipped existing {dest} (no markers; re-run with --force to adopt)")
+        return "skipped"
+    if not start_positions or not end_positions:
+        print(f"Warning: malformed markers in {dest} (start/end mismatch), skipped")
+        return "warning"
+
+    first_start = min(start_positions)
+    last_end = max(end_positions)
+    if first_start >= last_end:
+        print(f"Warning: malformed markers in {dest} (markers out of order), skipped")
+        return "warning"
+    if len(start_positions) > 1 or len(end_positions) > 1:
+        print(f"Warning: multiple marker pairs found in {dest}, using outermost")
+
+    prefix = existing[:first_start]
+    suffix = existing[consume_newline(existing, last_end + len(MARKER_END)):]
+    with open(dest, "w", encoding="utf-8", newline="") as file:
+        file.write(prefix + rendered + suffix)
+    print(f"Spliced {dest} (preserved external content)")
+    return "spliced"
 
 
 def sync_skill_dirs(src_root: Path, dest_root: Path) -> None:
@@ -74,24 +128,15 @@ def sync_project_templates(project: Path, tools: set[str], force: bool) -> None:
 
     if "codex" in tools:
         target = project / "AGENTS.md"
-        if force or not target.exists():
-            render_project_template(DIST / "project-templates" / "codex" / "AGENTS.md", target)
-        else:
-            print(f"Skipped existing {target}")
+        write_or_splice_template(DIST / "project-templates" / "codex" / "AGENTS.md", target, force)
 
     if "claude" in tools:
         target = project / "CLAUDE.md"
-        if force or not target.exists():
-            render_project_template(DIST / "project-templates" / "claude" / "CLAUDE.md", target)
-        else:
-            print(f"Skipped existing {target}")
+        write_or_splice_template(DIST / "project-templates" / "claude" / "CLAUDE.md", target, force)
 
     if "copilot" in tools:
         target = project / ".github" / "copilot-instructions.md"
-        if force or not target.exists():
-            render_project_template(DIST / "project-templates" / "copilot" / ".github" / "copilot-instructions.md", target)
-        else:
-            print(f"Skipped existing {target}")
+        write_or_splice_template(DIST / "project-templates" / "copilot" / ".github" / "copilot-instructions.md", target, force)
 
         agents_root = project / ".github" / "agents"
         for agent_file in sorted((DIST / "copilot" / "agents").glob("*.agent.md")):
@@ -117,10 +162,7 @@ def sync_project_templates(project: Path, tools: set[str], force: bool) -> None:
 
     if "cursor" in tools:
         target = project / "AGENTS.md"
-        if force or not target.exists():
-            render_project_template(DIST / "project-templates" / "cursor" / "AGENTS.md", target)
-        else:
-            print(f"Skipped existing {target}")
+        write_or_splice_template(DIST / "project-templates" / "cursor" / "AGENTS.md", target, force)
 
         rules_root = project / ".cursor" / "rules"
         for rule_file in sorted((DIST / "cursor" / "rules").glob("*.mdc")):
@@ -136,7 +178,7 @@ def main() -> None:
     parser.add_argument("--tool", choices=["codex", "claude", "copilot", "cursor", "all"], default="all")
     parser.add_argument("--project", action="append", default=[], help="Project root to receive local instruction files.")
     parser.add_argument("--no-build", action="store_true", help="Skip rebuilding dist before sync.")
-    parser.add_argument("--force", action="store_true", help="Overwrite existing project-local instruction files.")
+    parser.add_argument("--force", action="store_true", help="Hard-overwrite project instruction files and adopt unmarked legacy files.")
     args = parser.parse_args()
 
     if not args.no_build:

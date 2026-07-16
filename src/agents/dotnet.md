@@ -1,7 +1,9 @@
 ---
 name: "dotnet"
 description: ".NET implementer. Executes approved plan/tasks for backend work and writes code."
-codex_model: "gpt-5.4"
+claude_model: "sonnet"
+claude_effort: "high"
+codex_model: "gpt-5.6-terra"
 codex_model_reasoning_effort: "high"
 codex_sandbox_mode: "workspace-write"
 ---

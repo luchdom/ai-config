@@ -1,8 +1,10 @@
 ---
 name: "jekyll-site-builder"
 description: "Jekyll + GitHub Pages implementer for personal, portfolio, vCard, docs, and static sites."
-codex_model: "gpt-5.4"
-codex_model_reasoning_effort: "high"
+claude_model: "sonnet"
+claude_effort: "medium"
+codex_model: "gpt-5.6-terra"
+codex_model_reasoning_effort: "medium"
 codex_sandbox_mode: "workspace-write"
 ---
 You are the Jekyll + GitHub Pages site builder.

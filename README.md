@@ -16,6 +16,7 @@ Central AI configuration repo for Codex, Claude Code, GitHub Copilot CLI, and Cu
 - `src/project-templates/`: project-local instruction templates rendered during sync
 - `scripts/build.py`: generate Codex, Claude, Copilot, and Cursor adapters into `dist/`
 - `scripts/sync.py`: install generated outputs into user homes and optional project roots
+- `scripts/test_sync_markers.py`: verify marker-managed project-template syncing
 - `scripts/bootstrap_existing.py`: import the current global Codex agents and skills as the starting source set
 
 ## Canonical Agent Format
@@ -29,9 +30,17 @@ description: "Short agent description"
 codex_model: "gpt-5.4"
 codex_model_reasoning_effort: "high"
 codex_sandbox_mode: "workspace-write"
+claude_model: "sonnet" # optional; defaults to inherit when omitted
 ---
 Full instruction body here.
 ```
+
+## Agent Model Profile
+
+- `planner` and `auditor` use GPT-5.6 at `high` reasoning plus Claude Opus at `high` effort. Reserve `xhigh` for explicitly deep or high-risk work.
+- `feature-driver` uses GPT-5.6 at `medium` reasoning; `product-designer` uses GPT-5.6 Terra at `high`. Both use Claude Sonnet at `high` effort.
+- `tasker`, implementers, Jekyll work, and `qa` use GPT-5.6 Terra to balance reasoning quality and cost. QA defaults to medium reasoning and should be elevated only when the verification risk warrants it.
+- Claude uses Sonnet for tasking, implementation, Jekyll work, and QA; the model/effort fields are explicit in every canonical agent source.
 
 The build script generates:
 
@@ -118,7 +127,8 @@ Guidance:
 
 - Prefer the repo scripts over manual copying.
 - Treat `src/` as the source of truth and `dist/` as generated output.
-- Do not overwrite existing project-local `AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, `.github/agents`, `.github/skills`, or `.cursor/rules` unless explicitly asked or `--force` is intended.
+- Project-local `AGENTS.md`, `CLAUDE.md`, and `.github/copilot-instructions.md` are marker-managed. Normal sync refreshes the generated block and preserves external content outside it; `--force` adopts an unmarked legacy file or hard-resets a managed file.
+- Generated agents, skills, and Cursor rules are still skipped unless explicitly forced.
 - Verify the installed files after sync.
 - Copilot supports global user-level agents and skills via `~/.copilot`.
 - Cursor support in this repo is project-level: generated `AGENTS.md` and `.cursor/rules/*.mdc`.
@@ -126,5 +136,6 @@ Guidance:
 ## Notes
 
 - `sync.py` only manages the generated agents and skills from this repo. It does not touch unrelated items such as Codex system skills.
-- Project-local templates route downstream agents through the shared docs-ai workflow: plan, clarify, task, audit, then implement after explicit user approval.
+- Project-local templates route downstream agents through the shared docs-ai workflow: plan, clarify, task, independent audit, implement after explicit user approval, then QA verification.
+- RTK and CodeGraph are optional external tools; see [external-tools.md](C:/dev/luchdom/ai-config/docs/external-tools.md) for setup and use their generated additions outside the managed template markers.
 - For recommended external skills, MCPs, and supporting CLIs, see [docs/external-tools.md](C:/dev/luchdom/ai-config/docs/external-tools.md).

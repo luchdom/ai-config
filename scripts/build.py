@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import shutil
 from pathlib import Path
 
@@ -9,6 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
 DIST = ROOT / "dist"
+SKILL_REF_PATTERN = re.compile(r"\$([a-z0-9][a-z0-9-]*)")
 
 
 def parse_frontmatter(text: str) -> tuple[dict[str, str], str]:
@@ -47,13 +49,18 @@ def render_codex_toml(meta: dict[str, str], body: str) -> str:
 
 
 def render_claude_agent(meta: dict[str, str], body: str) -> str:
-    return (
-        "---\n"
-        f'name: {json.dumps(meta["name"])}\n'
-        f'description: {json.dumps(meta["description"])}\n'
-        "---\n\n"
-        f"{body.rstrip()}\n"
-    )
+    lines = [
+        "---",
+        f'name: {json.dumps(meta["name"])}',
+        f'description: {json.dumps(meta["description"])}',
+        f'model: {json.dumps(meta.get("claude_model", "inherit"))}',
+    ]
+    if meta.get("claude_effort"):
+        lines.append(f'effort: {json.dumps(meta["claude_effort"])}')
+    if meta.get("claude_disallowed_tools"):
+        lines.append(f'disallowedTools: {json.dumps(meta["claude_disallowed_tools"])}')
+    lines.append("---")
+    return "\n".join(lines) + "\n\n" + body.rstrip() + "\n"
 
 
 def render_copilot_agent(meta: dict[str, str], body: str) -> str:
@@ -77,7 +84,41 @@ def render_cursor_rule(meta: dict[str, str], body: str) -> str:
     )
 
 
+def validate_project_template_skills() -> None:
+    available_skills = {path.name for path in (SRC / "skills").iterdir() if path.is_dir()}
+    errors: list[str] = []
+
+    for template_path in sorted((SRC / "project-templates").rglob("*")):
+        if not template_path.is_file():
+            continue
+        for skill_id in sorted(set(SKILL_REF_PATTERN.findall(template_path.read_text(encoding="utf-8")))):
+            if skill_id not in available_skills:
+                errors.append(f"{template_path}: references unknown skill id ${skill_id}.")
+
+    if errors:
+        raise ValueError("Project template skill validation failed:\n" + "\n".join(errors))
+
+
+def validate_agent_fields() -> None:
+    required = ("name", "description", "codex_model", "codex_model_reasoning_effort", "codex_sandbox_mode")
+    errors: list[str] = []
+
+    for agent_path in sorted((SRC / "agents").glob("*.md")):
+        meta, _ = parse_frontmatter(agent_path.read_text(encoding="utf-8"))
+        missing = [field for field in required if not meta.get(field)]
+        if missing:
+            errors.append(f"{agent_path.name}: missing required frontmatter {', '.join(missing)}.")
+        if meta.get("claude_effort") and not meta.get("claude_model"):
+            errors.append(f"{agent_path.name}: claude_effort requires claude_model.")
+
+    if errors:
+        raise ValueError("Agent frontmatter validation failed:\n" + "\n".join(errors))
+
+
 def rebuild_dist() -> None:
+    validate_project_template_skills()
+    validate_agent_fields()
+
     if DIST.exists():
         shutil.rmtree(DIST)
 

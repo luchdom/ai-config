@@ -70,6 +70,53 @@ gh auth login
 gh auth status
 ```
 
+### RTK
+
+Links:
+- [RTK repository](https://github.com/rtk-ai/rtk)
+- [RTK releases](https://github.com/rtk-ai/rtk/releases)
+
+Recommended for:
+- reducing noisy command output before it reaches an agent context
+
+Windows setup:
+
+- Download `rtk-x86_64-pc-windows-msvc.zip` from the releases page.
+- Put `rtk.exe` on `PATH`, such as `%USERPROFILE%\.local\bin`.
+- Use it from PowerShell, Command Prompt, or Windows Terminal; do not launch the executable directly.
+
+Enable RTK for a supported agent only after reviewing its telemetry behavior:
+
+```powershell
+rtk init -g --codex
+rtk --version
+rtk gain
+```
+
+Restart the agent after initialization. Native Windows supports RTK filtering, though automatic hook rewriting is more limited than WSL.
+
+### CodeGraph
+
+Links:
+- [CodeGraph repository](https://github.com/colbymchenry/codegraph)
+
+Recommended for:
+- indexed codebase exploration in larger repositories where symbol search, call paths, or impact analysis reduce repeated file searches
+
+Official setup:
+
+```powershell
+npx @colbymchenry/codegraph
+codegraph init
+codegraph install --print-config codex
+```
+
+Notes:
+
+- `codegraph init` creates the local `.codegraph/` index; do not commit it.
+- Use CodeGraph only for supported, indexed files. Fall back to `rg` and direct reads when indexing is unavailable or incomplete.
+- CodeGraph may append its own configuration to instruction files. This repo's marker-managed project templates preserve content outside their managed marker block during normal sync.
+
 ### AWS CLI
 
 Link:

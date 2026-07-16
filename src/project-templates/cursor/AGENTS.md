@@ -1,6 +1,7 @@
+<!-- AI-CONFIG-LUCHDOM:START -->
 # Project AI Instructions
 
-Use this file as the repo-local bootstrap and router into the target repo's docs, generated Cursor rules, and any shared doctrine configured for the machine or team.
+Use this file as the repo-local bootstrap and router into the target repo's docs and any shared doctrine configured for the machine or team.
 
 Long-form doctrine should live in repo-local docs or in the canonical docs path referenced by this file. Skill `references/` are portable summaries, not the source of truth.
 
@@ -55,6 +56,7 @@ Long-form doctrine should live in repo-local docs or in the canonical docs path 
 - Use GitHub MCP or `$github-cli` for PRs, issues, remote code references, checks, or repository context that local checkout inspection does not provide cleanly.
 - Use MUI MCP only when the repo already uses MUI and current component, theming, or accessibility guidance is needed.
 - Use Playwright CLI as the default browser and UI workflow when it is available and interactive verification is needed. Treat Playwright MCP as optional and only use it when it is separately installed and specifically helpful.
+- Use CodeGraph MCP for indexed codebase exploration only when it is available and the repo has a `.codegraph/` directory. Fall back to `rg` and direct file reads when it is unavailable or the file type is not indexed.
 
 ## Agents And Skills
 
@@ -62,15 +64,17 @@ Long-form doctrine should live in repo-local docs or in the canonical docs path 
 - Use `$pr-description` when drafting or reviewing a PR title or description.
 - Use `$github-cli` when the task needs GitHub CLI setup, auth checks, PR or issue inspection, check logs, or explicitly approved GitHub mutations.
 - Use `$jekyll-github-pages` when creating, customizing, debugging, or deploying Jekyll sites for GitHub Pages.
-- Backend and service flow: `planner` -> `tasker` -> `dotnet`.
+- Backend and service flow: `planner` -> `tasker` -> `auditor` -> `dotnet` -> `qa`.
 - Frontend flow: `feature-driver`, `product-designer`, `nextjs-mui`, and `react`.
-- Jekyll/GitHub Pages flow: `planner` or `feature-driver` -> `product-designer` when visual direction changes materially -> `tasker` when decomposition is useful -> `jekyll-site-builder`.
-- Repo-managed shared skills: `$repo-discovery`, `$pr-description`, `$github-cli`, `$jekyll-github-pages`, `$task-audit-breakdown`, `$multi-agent-delivery`, `$ui-review-spec`, `$luchdom-docs`.
+- Jekyll/GitHub Pages flow: `planner` or `feature-driver` -> `product-designer` when visual direction changes materially -> `tasker` -> `auditor` -> `jekyll-site-builder` -> `qa`.
+- Repo-managed shared skills: `$repo-discovery`, `$pr-description`, `$github-cli`, `$jekyll-github-pages`, `$task-audit-breakdown`, `$multi-agent-delivery`, `$ui-review-spec`, `$qa-verification`, `$luchdom-docs`.
 - Optional machine-local skills may also exist, but they are not guaranteed across developers or machines. Do not assume optional skills are available unless the environment exposes them.
 
 ## Mandatory Workflow
 
 When the user asks for a non-trivial feature, behavior change, endpoint, refactor with functional impact, or any request larger than a trivial edit, use this workflow and do not start implementation until the user explicitly chooses `Implement`.
+
+When named-agent delegation is available, delegate each applicable phase to its named owner. Otherwise, the active assistant follows that agent's rules inline.
 
 ### Workflow artifact folder
 
@@ -110,8 +114,8 @@ After writing the tasks file, ask:
 
 ### 4. Audit
 
-- Validate the request, plan, clarification decisions, and tasks for consistency.
-- Call out mismatches, gaps, weak sections, and recommended adjustments.
+- Delegate to `auditor` for an independent, read-only pre-implementation review of the requirement, plan, tasks, and design spec when applicable.
+- Call out mismatches, gaps, weak sections, and recommended adjustments by severity.
 - Write the audit under `docs-ai/<NNN>-<short-feature-name>-<YYYY-MM-DD>/<YYYY-MM-DD>-<short-feature-name>-audit.md`.
 
 After auditing, ask:
@@ -121,7 +125,9 @@ After auditing, ask:
 ### 5. Implement
 
 - Start coding only after the user explicitly says `Implement`.
-- After implementation, ask: `Do you want me to move this workflow folder to docs-ai/history?`
+- Delegate post-implementation verification to `qa`. It discovers and runs the repo's build, tests, lint, and type checks; verifies acceptance criteria; and writes `<YYYY-MM-DD>-<slug>-qa.md`.
+- `qa` reports defects and routes fixes to an implementer rather than fixing them in place.
+- After QA, ask: `Do you want me to move this workflow folder to docs-ai/history?`
 
 ## Required Planning Format
 
@@ -138,3 +144,4 @@ Every plan must include:
 9. Rollout Plan
 10. Risks & Mitigations
 11. Open Questions
+<!-- AI-CONFIG-LUCHDOM:END -->

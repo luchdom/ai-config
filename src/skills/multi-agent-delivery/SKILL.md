@@ -11,9 +11,10 @@ Use this skill to route work through the right agents in the right order. It doe
 
 1. `planner` owns understanding, research, clarifying questions, and the first plan.
 2. `product-designer` owns UX/UI review and the design spec when a screen, flow, or user-facing behavior changes materially.
-3. `tasker` owns plan audit and task breakdown after plan and design inputs are stable enough.
-4. `dotnet`, `nextjs-mui`, `react`, and `jekyll-site-builder` implement only after the artifacts are concrete enough.
-5. `product-designer` or `tasker` can perform a final review when the change needs it.
+3. `tasker` owns task breakdown after plan and design inputs are stable enough.
+4. `auditor` independently validates the requirement, plan, and tasks before implementation; it produces no tasks and does not change code.
+5. `dotnet`, `nextjs-mui`, `react`, and `jekyll-site-builder` implement only after the artifacts are concrete enough.
+6. `qa` verifies implemented work against acceptance criteria and writes the QA report.
 
 ## Routing Rules
 
@@ -24,6 +25,8 @@ Use this skill to route work through the right agents in the right order. It doe
 - Route Jekyll and GitHub Pages site work through `$jekyll-github-pages` and `jekyll-site-builder`; include `product-designer` first when visual direction changes materially.
 - Allow backend-only and service-only changes to skip `product-designer`.
 - Allow tiny, low-risk fixes to skip `tasker` only when the scope is obvious and no coordination is needed.
+- Allow tiny, low-risk fixes to skip `auditor` only when the scope is obvious; record that choice in the workflow artifact when one exists.
+- Route defects found by `qa` back to the relevant implementer instead of fixing them in place.
 
 ## Required Artifacts
 
@@ -32,6 +35,7 @@ Use this skill to route work through the right agents in the right order. It doe
 - Design spec when needed: `/docs-ai/<NNN>-<slug>-<YYYY-MM-DD>/<YYYY-MM-DD>-<slug>-design.md`
 - Task list when needed: `/docs-ai/<NNN>-<slug>-<YYYY-MM-DD>/<YYYY-MM-DD>-<slug>-tasks.md`
 - Audit when needed: `/docs-ai/<NNN>-<slug>-<YYYY-MM-DD>/<YYYY-MM-DD>-<slug>-audit.md`
+- QA report when implementation happened: `/docs-ai/<NNN>-<slug>-<YYYY-MM-DD>/<YYYY-MM-DD>-<slug>-qa.md`
 - Choose `<NNN>` by scanning folders under `/docs-ai/` and `/docs-ai/history/`, then using the next highest three-digit number.
 - Keep related plan, clarification, design, task, audit, and AI workflow notes in the same folder.
 - New workflow artifacts must use this folder format. Older flat `/docs-ai/*` artifacts may be read as legacy fallback only.
