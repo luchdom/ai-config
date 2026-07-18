@@ -422,23 +422,6 @@ codex mcp login linear
 
 The Linear docs also note that some Codex versions require the remote MCP feature to be enabled in `~/.codex/config.toml`.
 
-### Slack Approval Integration
-
-Links:
-- [Slack app quickstart](https://docs.slack.dev/quickstart/)
-- [Slack incoming webhooks](https://docs.slack.dev/messaging/sending-messages-using-incoming-webhooks/)
-
-Recommended for:
-- approval requests from autonomous coding runs
-- high-risk or cost-bearing decision notifications
-
-Recommended policy:
-
-- start with a small Slack app, not an undocumented side channel
-- post approval requests to a dedicated channel such as `#codex-approvals`
-- persist every Slack approval back into repo or issue artifacts
-- do not treat Slack as the source of truth
-
 ## Reference Catalogs
 
 Use these as discovery sources for reusable skills and patterns:

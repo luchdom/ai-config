@@ -1,63 +1,19 @@
 ---
 name: luchdom-docs
-description: Keep Luchdom repo docs aligned with code, workflow, setup, and AI harness changes. Use when a change touches architecture, delivery workflow, setup steps, tooling, planning artifacts, or operational assumptions.
+description: Apply Luchdom repository-specific documentation ownership when architecture, workflow, setup, tooling, validation, tracking, or operations change. Use with docs-as-code to update the nearest durable source without duplicating the canonical shared delivery protocol.
 ---
 
 # Luchdom Docs
 
-Treat documentation maintenance as part of delivery, not as optional polish.
+Apply `$docs-as-code` with the Luchdom documentation ownership map.
 
-## When To Use
+1. Read repository `AGENTS.md`, `README.md`, and the smallest relevant curated docs set.
+2. Inspect the implemented change and approved artifacts from the exact registered `docs-ai/<work-key>-<slug>/` folder. Accept an explicitly supplied numbered-and-dated folder or flat artifact only as historical read fallback and never rewrite it.
+3. Use [doc-targets.md](./references/doc-targets.md) to select the existing source of truth.
+4. Update that source and remove contradictions instead of adding another explanation.
+5. Link the canonical `$goal-to-delivery` protocol when shared workflow behavior must be referenced; keep only repository-specific commands, domain rules, definitions of done, and stricter constraints locally.
+6. Run the available local docs/drift checks and report exact pages, checks, and gaps.
 
-Use this skill when:
+Do not put reusable guidance only in `docs-ai/`; that tree is per-work evidence. Do not add full workflow records to curated navigation. Prefer concise task-oriented how-tos with prerequisites, steps, verification, rollback, and troubleshooting.
 
-- code changes affect setup or runtime expectations
-- workflow rules change in `AGENTS.md`
-- harness behavior changes
-- validation commands or CI behavior change
-- Linear intake policy changes
-- tool installation or MCP setup changes
-- docs and code appear to disagree
-
-## Workflow
-
-1. Read `AGENTS.md` first.
-2. Read the smallest relevant set of docs under `docs/`, plus `README.md`.
-3. Inspect the changed files or the planned change.
-4. Update the nearest docs in the same change.
-5. Prefer updating the source-of-truth doc instead of adding duplicate explanations.
-6. When multiple docs overlap, make them consistent and remove contradictions.
-7. Run any available doc-drift checks before finishing.
-
-## Common Targets
-
-Typical docs to consider:
-
-- `README.md`
-- `AGENTS.md`
-- `docs/HARNESS.md`
-- `docs/WORKFLOW.md`
-- `docs/DECISIONS.md`
-- `docs/QUALITY.md`
-- `docs/LOCAL-DEVELOPMENT.md`
-- `docs/LINEAR.md`
-- `docs/AI-TOOLING.md`
-- module-specific docs when present
-
-## Rules
-
-- Do not leave workflow docs stale after changing the workflow.
-- Do not leave setup docs stale after changing required tools or commands.
-- Do not create new docs when an existing doc is the clearer source of truth.
-- Prefer concise updates over sprawling duplicative prose.
-- If a contradiction cannot be safely resolved, surface it explicitly.
-
-## Deliverable
-
-Leave behind:
-
-- updated source-of-truth docs
-- consistent cross-links when needed
-- a brief note of what changed and which docs were touched
-
-Read [references/doc-targets.md](./references/doc-targets.md) for the preferred doc ownership map.
+If documentation and implementation disagree and the correct source cannot be proven, report the conflict and fail the docs stage rather than choosing silently.

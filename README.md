@@ -1,70 +1,101 @@
 # ai-config
 
-Central AI configuration repo for Codex, Claude Code, GitHub Copilot CLI, and Cursor.
+Central AI configuration for Codex, Claude Code, GitHub Copilot CLI, and Cursor.
 
-## Goals
+## Purpose
 
-- Keep skills as the reusable cross-tool unit.
-- Keep agent prompts versioned in one place.
-- Generate tool-specific adapters instead of hand-maintaining multiple copies.
-- Sync agents, skills, and project-local workflow instruction files into Codex, Claude, Copilot CLI, and Cursor workflows.
+- Keep reusable workflow policy and specialist skills in one canonical `src/` tree.
+- Reuse one agent set across autonomous, semi-autonomous, and manual delivery.
+- Generate tool-specific adapters instead of maintaining divergent copies.
+- Sync shared agents, skills, and small project-local routing instructions.
+- Keep delivery evidence local and repository-specific guidance close to the code it governs.
+
+## Three delivery entries
+
+These are the only user-facing workflow entries:
+
+- `$goal-to-delivery <goal-or-selected-issue>` delivers one user-selected goal semi-autonomously. It defaults to local work and tested `working-tree` output, never selects backlog work, and stops at the declared boundary.
+- `$spec-driven-delivery <stage> <goal-or-selector>` performs exactly one requested stage and returns control. It is the default for non-trivial work when no entry was explicitly chosen.
+- `$linear-delivery-loop <adapter-prepared-iteration>` applies autonomous policy to one capability prepared by deterministic adapter code. It does not accept a raw goal or implement queue selection in model instructions.
+
+`feature-driver` remains only as a deprecated one-migration-cycle alias to `$goal-to-delivery`; it never routes autonomous work.
+
+The entries reuse the same planner, optional product designer, tasker, independent auditor, implementers, code reviewer, runtime QA verifier, and documentation skills. Their difference is advancement and authority policy, not separate agent stacks.
+
+## Canonical protocol
+
+The sole cross-tool delivery protocol lives in [`src/skills/goal-to-delivery/references/`](src/skills/goal-to-delivery/references/):
+
+- delivery stages and role ownership;
+- artifact identity/layout and historical fallback;
+- clarification policy;
+- distinct quality gates;
+- completion/publication boundaries;
+- the work-descriptor schema.
+
+Other workflow skills and project templates link to these files instead of copying the protocol. Repository `AGENTS.md` files and curated docs continue to own repository-specific commands, domain rules, definitions of done, and stricter safety requirements.
+
+Precedence is user/system requirements and repository-specific stricter safety, then the explicitly invoked entry policy, then the canonical shared contract. An unresolved conflict fails closed before implementation or external mutation.
+
+## Work artifacts
+
+New work is initialized by the deterministic helper into:
+
+```text
+docs-ai/<work-key>-<slug>/
+  workflow.json
+  <date>-<slug>-plan.md
+  ...dated delivery evidence...
+```
+
+Work resumes only through an exact registered selector. Older numbered-and-dated workflow folders and flat `docs-ai/*` files remain readable historical evidence; current producers never rewrite or migrate them.
+
+Per-work evidence belongs in `docs-ai/`. Reusable how-tos, concepts, references, ADRs, runbooks, and troubleshooting belong in the repository's curated docs tree and may link to the shared protocol.
+
+The base helper binds `repositoryKey` to the normalized repository's state home; legacy unbound state requires attended reconciliation. Workflow-managed Handoff requires an exact repeated `--expected-path` scope, preserves the registry as authority, writes redacted hash-bound evidence, and transfers no reservation. See the canonical [artifact contract](src/skills/goal-to-delivery/references/artifact-contract.md) for the complete boundary and its distinction from native Codex **Hand off**.
 
 ## Layout
 
-- `src/agents/`: canonical agent definitions in Markdown with simple frontmatter
-- `src/skills/`: canonical skills copied as reusable cross-tool units
-- `src/project-templates/`: project-local instruction templates rendered during sync
-- `scripts/build.py`: generate Codex, Claude, Copilot, and Cursor adapters into `dist/`
-- `scripts/sync.py`: install generated outputs into user homes and optional project roots
-- `scripts/test_sync_markers.py`: verify marker-managed project-template syncing
-- `scripts/bootstrap_existing.py`: import the current global Codex agents and skills as the starting source set
+- `src/agents/`: canonical specialist agent definitions
+- `src/skills/`: canonical reusable skills and references
+- `src/project-templates/`: small project-local routing templates
+- `scripts/build.py`: generate tool adapters into `dist/`
+- `scripts/sync.py`: install generated output into user homes and optional project roots
+- `scripts/validate.py`: authoritative aggregate local validation
+- `dist/`: generated projections; never edit directly
 
-## Canonical Agent Format
+Agent frontmatter defines tool-specific model and sandbox metadata. The build generates Codex TOML agents, Claude and Copilot Markdown agents, Cursor rules, copied skills, and rendered project templates.
 
-Each file in `src/agents/` uses this shape:
+Each canonical agent uses YAML-like frontmatter:
 
 ```md
 ---
 name: "planner"
 description: "Short agent description"
-codex_model: "gpt-5.4"
+codex_model: "gpt-5.6"
 codex_model_reasoning_effort: "high"
 codex_sandbox_mode: "workspace-write"
-claude_model: "sonnet" # optional; defaults to inherit when omitted
+claude_model: "opus"
+claude_effort: "high"
 ---
-Full instruction body here.
 ```
 
-## Agent Model Profile
+Planner, auditor, and code-reviewer use the deeper review profile. Product design, tasking, implementation, and QA use the repository's balanced profiles declared in their canonical files.
 
-- `planner` and `auditor` use GPT-5.6 at `high` reasoning plus Claude Opus at `high` effort. Reserve `xhigh` for explicitly deep or high-risk work.
-- `feature-driver` uses GPT-5.6 at `medium` reasoning; `product-designer` uses GPT-5.6 Terra at `high`. Both use Claude Sonnet at `high` effort.
-- `tasker`, implementers, Jekyll work, and `qa` use GPT-5.6 Terra to balance reasoning quality and cost. QA defaults to medium reasoning and should be elevated only when the verification risk warrants it.
-- Claude uses Sonnet for tasking, implementation, Jekyll work, and QA; the model/effort fields are explicit in every canonical agent source.
+Generated output includes:
 
-The build script generates:
-
-- `dist/codex/agents/*.toml`
-- `dist/claude/agents/*.md`
-- `dist/copilot/agents/*.agent.md`
+- `dist/codex/agents/*.toml` and `dist/codex/skills/*`
+- `dist/claude/agents/*.md` and `dist/claude/skills/*`
+- `dist/copilot/agents/*.agent.md` and `dist/copilot/skills/*`
 - `dist/cursor/rules/*.mdc`
+- tool-specific project templates under `dist/project-templates/`
 
-Codex agent TOMLs include top-level `name` and `description` fields in addition to model and instruction settings.
+## Local workflow
 
-Skills are copied into:
-
-- `dist/codex/skills/*`
-- `dist/claude/skills/*`
-- `dist/copilot/skills/*`
-
-Project templates render `{{LUCHDOM_AI_CONFIG_DOCS}}` at sync time so downstream `AGENTS.md`, `CLAUDE.md`, Copilot instructions, and Cursor instructions can point to the canonical docs path on the syncing machine. Set `LUCHDOM_AI_CONFIG_DOCS` to override the default `docs/` path.
-
-## Usage
-
-Bootstrap from the current global Codex setup:
+Validate all canonical sources and generated behavior:
 
 ```powershell
-python .\scripts\bootstrap_existing.py
+python .\scripts\validate.py
 ```
 
 Generate adapters:
@@ -73,42 +104,25 @@ Generate adapters:
 python .\scripts\build.py
 ```
 
-Install global outputs for Codex, Claude, Copilot, and project-capable Cursor adapters:
+Bootstrap canonical sources from an existing global setup only when intentionally importing it:
+
+```powershell
+python .\scripts\bootstrap_existing.py
+```
+
+Install global outputs:
 
 ```powershell
 python .\scripts\sync.py --tool all
 ```
 
-Install the small project-local instruction files into a repo:
+Install project-local instruction files as well:
 
 ```powershell
-python .\scripts\sync.py --tool all --project C:\dev\luchdom\identity
+python .\scripts\sync.py --tool all --project C:\path\to\repo
 ```
 
-Override the rendered docs path when syncing into a project:
-
-```powershell
-$env:LUCHDOM_AI_CONFIG_DOCS = 'D:\shared\ai-config\docs'
-python .\scripts\sync.py --tool all --project C:\dev\luchdom\identity
-```
-
-Install only Copilot or Cursor adapters:
-
-```powershell
-python .\scripts\sync.py --tool copilot
-python .\scripts\sync.py --tool cursor --project C:\dev\luchdom\identity
-```
-
-## If an AI agent is asked to install this repo
-
-Preferred flow:
-
-```powershell
-python .\scripts\build.py
-python .\scripts\sync.py --tool all
-```
-
-If a specific tool is requested:
+Limit installation to one tool when needed:
 
 ```powershell
 python .\scripts\sync.py --tool codex
@@ -117,25 +131,13 @@ python .\scripts\sync.py --tool copilot
 python .\scripts\sync.py --tool cursor --project C:\path\to\repo
 ```
 
-If project-local instruction files are also needed:
+Set `LUCHDOM_AI_CONFIG_DOCS` before sync to override the shared curated-docs path rendered into project templates.
 
-```powershell
-python .\scripts\sync.py --tool all --project C:\path\to\repo
-```
+Normal sync refreshes only marker-managed content in existing `AGENTS.md`, `CLAUDE.md`, and `.github/copilot-instructions.md`, preserving content outside the markers. Existing unmarked files remain untouched unless `--force` explicitly adopts them. Generated agents, skills, and Cursor rules remain skip-unless-`--force` where the sync contract says so.
 
-Guidance:
+## Maintenance rules
 
-- Prefer the repo scripts over manual copying.
-- Treat `src/` as the source of truth and `dist/` as generated output.
-- Project-local `AGENTS.md`, `CLAUDE.md`, and `.github/copilot-instructions.md` are marker-managed. Normal sync refreshes the generated block and preserves external content outside it; `--force` adopts an unmarked legacy file or hard-resets a managed file.
-- Generated agents, skills, and Cursor rules are still skipped unless explicitly forced.
-- Verify the installed files after sync.
-- Copilot supports global user-level agents and skills via `~/.copilot`.
-- Cursor support in this repo is project-level: generated `AGENTS.md` and `.cursor/rules/*.mdc`.
-
-## Notes
-
-- `sync.py` only manages the generated agents and skills from this repo. It does not touch unrelated items such as Codex system skills.
-- Project-local templates route downstream agents through the shared docs-ai workflow: plan, clarify, task, independent audit, implement after explicit user approval, then QA verification.
-- RTK and CodeGraph are optional external tools; see [external-tools.md](C:/dev/luchdom/ai-config/docs/external-tools.md) for setup and use their generated additions outside the managed template markers.
-- For recommended external skills, MCPs, and supporting CLIs, see [docs/external-tools.md](C:/dev/luchdom/ai-config/docs/external-tools.md).
+- Change `src/`, regenerate `dist/`, and validate; do not edit generated output.
+- Keep project templates concise routers, not copies of the canonical delivery protocol.
+- Use [`docs/external-tools.md`](docs/external-tools.md) for optional external tooling setup.
+- Preserve unrelated user changes and historical `docs-ai` evidence.

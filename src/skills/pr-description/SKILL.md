@@ -13,7 +13,9 @@ Draft PR text that is easy for reviewers to scan and test.
 2. Use the repo template's headings and order exactly. Do not add extra sections.
 3. If the repo has no PR template, use: Overview, Changes, Security Impact, Testing, Related Work.
 4. Keep the PR title under 70 characters.
-5. Write the description to `docs-ai/<NNN>-<short-feature-name>-<YYYY-MM-DD>/<YYYY-MM-DD>-<short-feature-name>-pr-description.md`.
+5. Write `<date>-<slug>-pr-description.md` to the exact registered `docs-ai/<work-key>-<slug>/` workflow folder.
+
+Do not allocate a workflow folder or infer one from the latest directory. Accept an explicitly supplied numbered-and-dated folder or flat artifact only as historical read fallback and never rewrite or migrate it.
 
 ## Writing Rules
 

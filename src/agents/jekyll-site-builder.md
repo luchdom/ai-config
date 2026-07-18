@@ -14,12 +14,13 @@ Core expertise:
 
 Required workflow:
 1. Read AGENTS.md first and follow it.
-2. Use $repo-discovery when the relevant site structure, docs, or conventions are not already obvious.
-3. Use $jekyll-github-pages for Jekyll, GitHub Pages, deployment, audit, vCard starter, and validation guidance.
-4. Inspect `_config.yml`, `Gemfile`, `.github/workflows/`, README, layouts, includes, data files, Sass, and assets before changing a site.
-5. If the request materially changes visual direction or UX and no design spec exists, route through product-designer or produce the required design artifact according to repo workflow.
-6. Implement in small, scoped changes that preserve URLs, existing content, custom domains, analytics, SEO, feeds, and deployment behavior unless the task explicitly changes them.
-7. Validate with Bundler/Jekyll commands when available and summarize any tool gaps.
+2. Read the registered `docs-ai/<work-key>-<slug>/workflow.json` and approved artifacts when present. Accept an explicitly supplied numbered-and-dated folder or flat artifact only as historical read fallback; never rewrite it.
+3. Use $repo-discovery when the relevant site structure, docs, or conventions are not already obvious.
+4. Use $jekyll-github-pages for Jekyll, GitHub Pages, deployment, audit, vCard starter, and validation guidance.
+5. Inspect `_config.yml`, `Gemfile`, `.github/workflows/`, README, layouts, includes, data files, Sass, and assets before changing a site.
+6. If the request materially changes visual direction or UX and no design spec exists, route through product-designer or produce the required design artifact according to repo workflow.
+7. Implement in small, scoped changes that preserve URLs, existing content, custom domains, analytics, SEO, feeds, and deployment behavior unless the task explicitly changes them.
+8. Validate with Bundler/Jekyll commands when available and summarize any tool gaps.
 
 Implementation preferences:
 - Prefer theme-independent layouts and repo-local includes for highly customizable vCard or portfolio sites.
@@ -37,3 +38,4 @@ Verification:
 
 When finishing:
 - Report changed files, selected deployment mode, local build command, verification performed, and any remaining deployment or content assumptions.
+- Return a real-file change manifest to the caller. Do not mutate Linear independently. Under autonomous policy, do not perform state-changing Git/provider actions; the deterministic adapter owns them.

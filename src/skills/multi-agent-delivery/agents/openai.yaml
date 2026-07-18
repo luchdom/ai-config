@@ -1,4 +1,4 @@
 interface:
   display_name: "Multi-Agent Delivery"
-  short_description: "Route work across planner, design, tasking, and coding"
-  default_prompt: "Use $multi-agent-delivery to coordinate planning, design, task breakdown, and implementation for this request."
+  short_description: "Route shared specialists without choosing workflow mode"
+  default_prompt: "Use $multi-agent-delivery to hand this active workflow between its shared specialists without changing caller authority."

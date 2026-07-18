@@ -1,147 +1,50 @@
 <!-- AI-CONFIG-LUCHDOM:START -->
 # Project AI Instructions
 
-Use this file as the repo-local bootstrap and router into the target repo's docs and any shared doctrine configured for the machine or team.
+Use this file as the repository-specific router for shared delivery skills.
 
-Long-form doctrine should live in repo-local docs or in the canonical docs path referenced by this file. Skill `references/` are portable summaries, not the source of truth.
+## Sources and precedence
 
-## Canonical Docs
+- The sole canonical cross-tool delivery protocol is the installed `$goal-to-delivery` reference set: `delivery-stages.md`, `artifact-contract.md`, `clarification-policy.md`, `quality-gates.md`, `completion-boundaries.md`, and `work-descriptor.schema.json`. Its source is `ai-config/src/skills/goal-to-delivery/references/`; installed files are generated projections.
+- This repository's `AGENTS.md` and curated docs own project-specific commands, domain rules, definitions of done, and stricter safety constraints. Do not copy the shared protocol into repository docs.
+- Additional curated docs path: `{{LUCHDOM_AI_CONFIG_DOCS}}`.
+- Precedence is user/system requirements and repository-specific stricter safety, then the explicitly invoked entry policy, then the canonical shared contract. A weaker rule cannot override a stronger one; unresolved conflict fails closed before implementation or external mutation.
 
-- Canonical docs path: `{{LUCHDOM_AI_CONFIG_DOCS}}`
-- This path is rendered by `scripts/sync.py --project <path>` from `LUCHDOM_AI_CONFIG_DOCS` when it is set, otherwise from this repo's local `docs/` folder.
-- Read the repo's local `AGENTS.md` and the docs it references first.
-- Read the smallest relevant subset of docs for the task at hand instead of scanning everything.
-- Repo-local docs win when they define a more specific rule for the target project.
-- When repo-local guidance is silent, use the canonical docs path referenced by this file.
+## Three explicit workflow entries
 
-## Project Type Detection
+There are exactly three delivery entries:
 
-- Start with the repo's local `AGENTS.md`, README, solution files, manifests, and nearest docs before choosing a workflow path.
-- Backend or service work usually shows solution or project files, service hosts, API entry points, persistence boundaries, or repo docs that define service behavior.
-- Frontend work usually shows `package.json`, framework config, React app structure, or repo docs focused on UI flows, components, and browser behavior.
-- Jekyll/GitHub Pages work usually shows `_config.yml`, `Gemfile`, `_layouts`, `_includes`, `_data`, `_sass`, `assets`, `.github/workflows/`, or Pages deployment docs.
-- Mixed or unclear repos should follow repo-local docs and nearest patterns first. If the boundary is still ambiguous after inspection, stop and clarify.
-- Repo-local docs and explicit project guidance override these heuristics.
+- `$goal-to-delivery <goal-or-selected-issue>`: semi-autonomous delivery of one user-selected goal. It never selects queue work, defaults to local source and the `working-tree` boundary, and cannot self-elevate to autonomous mode.
+- `$spec-driven-delivery <stage> <goal-or-selector>`: manual delivery. It performs exactly the requested stage, never auto-advances, and requires separate explicit Implement, QA, Commit, PR, and Merge actions.
+- `$linear-delivery-loop <adapter-prepared-iteration>`: the only autonomous entry. It requires one schema-valid capability from the deterministic adapter and never accepts a raw goal or performs queue selection in model policy.
 
-## Preferred Behavior
+For non-trivial work without an explicit entry, default to `$spec-driven-delivery`. Never infer a workflow from a label, branch, prior chat, or artifact folder.
 
-- If requirements are unclear or docs conflict, stop and clarify instead of guessing.
-- Keep AI-written docs concise. Short, simple, high-signal writing is required because overly long text is less likely to be read.
-- Prefer existing components, abstractions, and tests over inventing new patterns.
-- Update relevant docs when behavior, workflow, setup, or architecture changes.
+## Work identity and artifacts
 
-## Pull Request Descriptions
+- Initialize or resume work through the deterministic helper bundled with `$goal-to-delivery`; agents do not invent workflow IDs, work keys, paths, or authority.
+- New work uses `docs-ai/<work-key>-<slug>/workflow.json` plus dated artifact filenames such as `<date>-<slug>-plan.md`.
+- Resume only by exact registered workflow ID, exact artifact path, or unique external ID in a compatible physical worktree.
+- Existing numbered-and-dated folders and flat `docs-ai/*` files are historical read fallback only. Never rename, rewrite, renumber, or add synthetic descriptors to them.
+- Per-work evidence belongs in `docs-ai/`; durable how-tos, concepts, references, ADRs, runbooks, and troubleshooting belong in curated repository docs.
+- Follow the canonical artifact contract for workflow-managed Handoff: repository authority remains registry-bound, expected paths must equal the observed Git-changed scope, and the base transfer carries no reservation. Native Codex **Hand off** grants no workflow authority.
 
-- Use `$pr-description` when drafting or reviewing a PR title or description.
-- Always inspect and follow the repo's PR template at `.github/pull_request_template.md` first. Match its section headings and order exactly, and do not invent extra sections.
-- If the repo has no PR template, use this fallback section order: Overview, Changes, Security Impact, Testing, Related Work.
-- Keep the PR title under 70 characters; put detail in the body, not the title.
-- Keep the body simple and concise: short bullet points, no long prose, and no restating the diff line by line. Lead with what changed and why.
-- Omit internal narration, including audits, stash experiments, plan history, task history, and `docs-ai/` workflow artifacts.
-- The Testing section must include concrete `Testing in environment` steps a reviewer or tester can follow in Dev when manual validation is relevant.
-- Note pre-existing or unrelated test failures explicitly, but in one line.
-- Write PR descriptions to `docs-ai/<NNN>-<short-feature-name>-<YYYY-MM-DD>/<YYYY-MM-DD>-<short-feature-name>-pr-description.md`.
+## Shared specialists and quality
 
-## Git Safety
+- Reuse one shared specialist set for all three entries. The caller entry controls advancement and authority.
+- Keep the independent plan auditor, exact-diff code reviewer, runtime QA verifier, and documentation stage distinct. None substitutes for another, and reviewers/QA report rather than fix production code.
+- Use `$repo-discovery` for repo context, `$multi-agent-delivery` for specialist handoffs, `$task-audit-breakdown` for task/audit checklists, `$qa-verification` for behavior verification, and `$docs-as-code` for durable documentation.
+- Repository-owned local commands and real acceptance behavior are authoritative. Map every acceptance criterion to observed evidence and report anything unverified.
 
-- Read-only Git inspection is allowed: `git status`, `git diff`, `git log`, `git show`, and branch inspection.
-- Drafting commit messages or PR descriptions is allowed.
-- Do not stage files, create or switch branches, commit, push, create PRs, merge PRs, or rewrite Git history unless the user explicitly approves that exact Git action in the current conversation.
-- Before any approved Git action, summarize the intended files and action, and preserve unrelated user changes.
+## Authority and Git safety
 
-## MCP And Tool Routing
+- Read-only repository inspection is allowed unless local guidance is stricter.
+- Manual `Implement` and the default semi-autonomous boundary authorize scoped edits and local validation, not branch/stage/commit/push/PR/merge actions.
+- Semi-autonomous publication requires an explicit completion boundary or later grant. Manual publication requires each named action.
+- Autonomous external and Git mutation belongs only to deterministic adapter code while its prepared capability is valid; specialists return structured proposals and real-file manifests.
+- Before any attended state-changing Git/provider action, summarize the exact action and file scope and preserve unrelated user work.
 
-- Prefer local repo inspection first, then use the smallest external tool needed to remove uncertainty.
-- Use Context7 MCP for current framework or library docs and API details when repo docs are not enough.
-- Use GitHub MCP or `$github-cli` for PRs, issues, remote code references, checks, or repository context that local checkout inspection does not provide cleanly.
-- Use MUI MCP only when the repo already uses MUI and current component, theming, or accessibility guidance is needed.
-- Use Playwright CLI as the default browser and UI workflow when it is available and interactive verification is needed. Treat Playwright MCP as optional and only use it when it is separately installed and specifically helpful.
-- Use CodeGraph MCP for indexed codebase exploration only when it is available and the repo has a `.codegraph/` directory. Fall back to `rg` and direct file reads when it is unavailable or the file type is not indexed.
+## Pull request text
 
-## Agents And Skills
-
-- Use `$repo-discovery` when the relevant docs, modules, or conventions are not already obvious.
-- Use `$pr-description` when drafting or reviewing a PR title or description.
-- Use `$github-cli` when the task needs GitHub CLI setup, auth checks, PR or issue inspection, check logs, or explicitly approved GitHub mutations.
-- Use `$jekyll-github-pages` when creating, customizing, debugging, or deploying Jekyll sites for GitHub Pages.
-- Backend and service flow: `planner` -> `tasker` -> `auditor` -> `dotnet` -> `qa`.
-- Frontend flow: `feature-driver`, `product-designer`, `nextjs-mui`, and `react`.
-- Jekyll/GitHub Pages flow: `planner` or `feature-driver` -> `product-designer` when visual direction changes materially -> `tasker` -> `auditor` -> `jekyll-site-builder` -> `qa`.
-- Repo-managed shared skills: `$repo-discovery`, `$pr-description`, `$github-cli`, `$jekyll-github-pages`, `$task-audit-breakdown`, `$multi-agent-delivery`, `$ui-review-spec`, `$qa-verification`, `$luchdom-docs`.
-- Optional machine-local skills may also exist, but they are not guaranteed across developers or machines. Do not assume optional skills are available unless the environment exposes them.
-
-## Mandatory Workflow
-
-When the user asks for a non-trivial feature, behavior change, endpoint, refactor with functional impact, or any request larger than a trivial edit, use this workflow and do not start implementation until the user explicitly chooses `Implement`.
-
-When named-agent delegation is available, delegate each applicable phase to its named owner. Otherwise, the active assistant follows that agent's rules inline.
-
-### Workflow artifact folder
-
-- Create or reuse one workflow folder for all related AI artifacts.
-- Folder format: `docs-ai/<NNN>-<short-feature-name>-<YYYY-MM-DD>/`
-- Choose `<NNN>` by scanning folders under `docs-ai/` and `docs-ai/history/`, then using the next highest three-digit number.
-- If multiple active folders could match the current work, ask which one to use instead of creating a duplicate.
-- Keep every related plan, clarification update, task breakdown, audit, design spec, and AI workflow note in that folder.
-- New workflow artifacts must use the folder format. Older flat `docs-ai/*` artifacts may be read as legacy fallback only.
-
-### 1. Plan first
-
-- Create a detailed plan in the workflow artifact folder.
-- Filename format: `docs-ai/<NNN>-<short-feature-name>-<YYYY-MM-DD>/<YYYY-MM-DD>-<short-feature-name>-plan.md`
-- Use the required planning format below.
-
-After writing the plan, summarize it briefly and ask:
-
-`Do you want to Clarify (resolve open questions) or Task it out (produce executable task breakdown)?`
-
-### 2. Clarify
-
-- Ask one question at a time.
-- Offer 2-5 clear options.
-- Update the plan file after each answer.
-- Continue until no blocking gaps remain.
-
-### 3. Task it out
-
-- Create an executable task breakdown in the workflow artifact folder.
-- Filename format: `docs-ai/<NNN>-<short-feature-name>-<YYYY-MM-DD>/<YYYY-MM-DD>-<short-feature-name>-tasks.md`
-- Include ordered steps, files to touch, acceptance criteria, tests, and rollout/risk notes when relevant.
-
-After writing the tasks file, ask:
-
-`Do you want to Audit or Implement?`
-
-### 4. Audit
-
-- Delegate to `auditor` for an independent, read-only pre-implementation review of the requirement, plan, tasks, and design spec when applicable.
-- Call out mismatches, gaps, weak sections, and recommended adjustments by severity.
-- Write the audit under `docs-ai/<NNN>-<short-feature-name>-<YYYY-MM-DD>/<YYYY-MM-DD>-<short-feature-name>-audit.md`.
-
-After auditing, ask:
-
-`Proceed to Implement or go back to Clarify/Task it out to address findings?`
-
-### 5. Implement
-
-- Start coding only after the user explicitly says `Implement`.
-- Delegate post-implementation verification to `qa`. It discovers and runs the repo's build, tests, lint, and type checks; verifies acceptance criteria; and writes `<YYYY-MM-DD>-<slug>-qa.md`.
-- `qa` reports defects and routes fixes to an implementer rather than fixing them in place.
-- After QA, ask: `Do you want me to move this workflow folder to docs-ai/history?`
-
-## Required Planning Format
-
-Every plan must include:
-
-1. Overview
-2. Assumptions & Constraints
-3. Architecture / Approach
-4. API / Contracts
-5. Data Model & Storage
-6. Implementation Steps
-7. Testing Strategy
-8. Observability / Debuggability
-9. Rollout Plan
-10. Risks & Mitigations
-11. Open Questions
+Use `$pr-description`. Follow `.github/pull_request_template.md` exactly when present; otherwise use Overview, Changes, Security Impact, Testing, Related Work. Keep the title under 70 characters and store draft text in the registered workflow folder as `<date>-<slug>-pr-description.md`.
 <!-- AI-CONFIG-LUCHDOM:END -->
