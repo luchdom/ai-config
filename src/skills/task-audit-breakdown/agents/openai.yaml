@@ -1,4 +1,4 @@
 interface:
   display_name: "Task Audit Breakdown"
-  short_description: "Audit plans and split them into implementable tasks"
-  default_prompt: "Use $task-audit-breakdown to audit this plan and produce execution-ready tasks."
+  short_description: "Keep tasking and independent audit roles separate"
+  default_prompt: "Use $task-audit-breakdown as tasker to produce execution-ready tasks without claiming independent audit sign-off."

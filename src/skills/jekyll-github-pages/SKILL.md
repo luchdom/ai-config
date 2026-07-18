@@ -9,7 +9,7 @@ Build and maintain Jekyll sites that deploy cleanly to GitHub Pages. Prefer repo
 
 ## Default Workflow
 
-1. Read `AGENTS.md`, README, `_config.yml`, `Gemfile`, `.github/workflows/`, and the nearest site docs before changing a site.
+1. Read `AGENTS.md`, the active registered `docs-ai/<work-key>-<slug>/` artifacts when present, README, `_config.yml`, `Gemfile`, `.github/workflows/`, and the nearest site docs before changing a site. Use explicitly supplied numbered-and-dated or flat workflow artifacts only as historical read fallback and never rewrite them.
 2. Identify the deployment mode:
    - Native GitHub Pages build from a branch/source folder.
    - GitHub Actions build that uploads a Pages artifact.

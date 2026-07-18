@@ -1,0 +1,4 @@
+interface:
+  display_name: "Docs as Code"
+  short_description: "Maintain durable searchable repository documentation"
+  default_prompt: "Use $docs-as-code to update the durable documentation for this change."

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import shutil
@@ -11,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
 DIST = ROOT / "dist"
 SKILL_REF_PATTERN = re.compile(r"\$([a-z0-9][a-z0-9-]*)")
+MANIFEST_VERSION = 1
 
 
 def parse_frontmatter(text: str) -> tuple[dict[str, str], str]:
@@ -115,6 +117,41 @@ def validate_agent_fields() -> None:
         raise ValueError("Agent frontmatter validation failed:\n" + "\n".join(errors))
 
 
+def file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as file:
+        for block in iter(lambda: file.read(65536), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def write_projection_manifest(projections: dict[Path, list[Path]]) -> None:
+    """Record exactly which canonical source produced each generated file."""
+    entries: list[dict[str, object]] = []
+    for source in sorted(projections, key=lambda path: path.as_posix()):
+        outputs = sorted(projections[source], key=lambda path: path.as_posix())
+        entries.append(
+            {
+                "source": source.relative_to(ROOT).as_posix(),
+                "sourceSha256": file_sha256(source),
+                "projections": [
+                    {
+                        "path": output.relative_to(ROOT).as_posix(),
+                        "sha256": file_sha256(output),
+                    }
+                    for output in outputs
+                ],
+            }
+        )
+    manifest = {
+        "schemaVersion": MANIFEST_VERSION,
+        "canonicalRoot": "src",
+        "generatedRoot": "dist",
+        "entries": entries,
+    }
+    (DIST / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+
+
 def rebuild_dist() -> None:
     validate_project_template_skills()
     validate_agent_fields()
@@ -134,35 +171,63 @@ def rebuild_dist() -> None:
     (DIST / "project-templates" / "copilot" / ".github").mkdir(parents=True, exist_ok=True)
     (DIST / "project-templates" / "cursor").mkdir(parents=True, exist_ok=True)
 
+    projections: dict[Path, list[Path]] = {}
+
     for agent_path in sorted((SRC / "agents").glob("*.md")):
         meta, body = parse_frontmatter(agent_path.read_text(encoding="utf-8"))
         codex_text = render_codex_toml(meta, body)
         claude_text = render_claude_agent(meta, body)
         copilot_text = render_copilot_agent(meta, body)
         cursor_text = render_cursor_rule(meta, body)
-        (DIST / "codex" / "agents" / f"{agent_path.stem}.toml").write_text(codex_text, encoding="utf-8")
-        (DIST / "claude" / "agents" / f"{agent_path.stem}.md").write_text(claude_text, encoding="utf-8")
-        (DIST / "copilot" / "agents" / f"{agent_path.stem}.agent.md").write_text(copilot_text, encoding="utf-8")
-        (DIST / "cursor" / "rules" / f"{agent_path.stem}.mdc").write_text(cursor_text, encoding="utf-8")
+        outputs = [
+            DIST / "codex" / "agents" / f"{agent_path.stem}.toml",
+            DIST / "claude" / "agents" / f"{agent_path.stem}.md",
+            DIST / "copilot" / "agents" / f"{agent_path.stem}.agent.md",
+            DIST / "cursor" / "rules" / f"{agent_path.stem}.mdc",
+        ]
+        for output, content in zip(outputs, (codex_text, claude_text, copilot_text, cursor_text), strict=True):
+            output.write_text(content, encoding="utf-8")
+        projections[agent_path] = outputs
 
     for skill_dir in sorted((SRC / "skills").iterdir()):
         if skill_dir.is_dir():
-            shutil.copytree(skill_dir, DIST / "codex" / "skills" / skill_dir.name)
-            shutil.copytree(skill_dir, DIST / "claude" / "skills" / skill_dir.name)
-            shutil.copytree(skill_dir, DIST / "copilot" / "skills" / skill_dir.name)
+            destinations = [
+                DIST / "codex" / "skills" / skill_dir.name,
+                DIST / "claude" / "skills" / skill_dir.name,
+                DIST / "copilot" / "skills" / skill_dir.name,
+            ]
+            for destination in destinations:
+                shutil.copytree(skill_dir, destination, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+            for source in sorted(
+                path
+                for path in skill_dir.rglob("*")
+                if path.is_file() and "__pycache__" not in path.parts and path.suffix != ".pyc"
+            ):
+                relative = source.relative_to(skill_dir)
+                projections[source] = [destination / relative for destination in destinations]
 
     codex_template = SRC / "project-templates" / "codex" / "AGENTS.md"
     claude_template = SRC / "project-templates" / "claude" / "CLAUDE.md"
     copilot_template = SRC / "project-templates" / "copilot" / ".github" / "copilot-instructions.md"
     cursor_template = SRC / "project-templates" / "cursor" / "AGENTS.md"
     if codex_template.exists():
-        shutil.copy2(codex_template, DIST / "project-templates" / "codex" / "AGENTS.md")
+        output = DIST / "project-templates" / "codex" / "AGENTS.md"
+        shutil.copy2(codex_template, output)
+        projections[codex_template] = [output]
     if claude_template.exists():
-        shutil.copy2(claude_template, DIST / "project-templates" / "claude" / "CLAUDE.md")
+        output = DIST / "project-templates" / "claude" / "CLAUDE.md"
+        shutil.copy2(claude_template, output)
+        projections[claude_template] = [output]
     if copilot_template.exists():
-        shutil.copy2(copilot_template, DIST / "project-templates" / "copilot" / ".github" / "copilot-instructions.md")
+        output = DIST / "project-templates" / "copilot" / ".github" / "copilot-instructions.md"
+        shutil.copy2(copilot_template, output)
+        projections[copilot_template] = [output]
     if cursor_template.exists():
-        shutil.copy2(cursor_template, DIST / "project-templates" / "cursor" / "AGENTS.md")
+        output = DIST / "project-templates" / "cursor" / "AGENTS.md"
+        shutil.copy2(cursor_template, output)
+        projections[cursor_template] = [output]
+
+    write_projection_manifest(projections)
 
 
 def main() -> None:

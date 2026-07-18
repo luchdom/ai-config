@@ -1,22 +1,22 @@
 # Design Spec Template
 
-Use this outline for `/docs-ai/<NNN>-<slug>-<YYYY-MM-DD>/<YYYY-MM-DD>-<slug>-design.md`:
+Write `<date>-<slug>-design.md` in the exact registered `docs-ai/<work-key>-<slug>/` folder:
 
 ## Context and user goal
 
-## Current UX/UI issues found
+## Current UX/UI evidence and issues
 
-## Recommended changes
+## Recommended behavior
 
 ## Component mapping
 
 ## Layout, spacing, sizing, and responsive behavior
 
-## Color, typography, and visual hierarchy guidance
+## Color, typography, and visual hierarchy
 
 ## Interaction and state behavior
 
-## Accessibility notes
+## Accessibility
 
 ## Acceptance criteria
 

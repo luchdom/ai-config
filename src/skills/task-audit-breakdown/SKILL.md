@@ -1,43 +1,26 @@
 ---
 name: task-audit-breakdown
-description: Audit implementation plans against requirements, docs, and design specs, then split the work into concrete execution tasks. Use when Codex needs to validate a plan, check for missing risks, tests, rollout steps, or design dependencies, and generate independent tasks for implementers.
+description: "Support two separate roles over a delivery specification: help tasker turn a plan into concrete tasks with a light completeness check, or give the independent auditor a rigorous checklist. Use without combining task authorship and audit sign-off in one pass."
 ---
 
 # Task Audit Breakdown
 
-Turn a plan into execution-ready tasks. Audit completeness first, then split the work so implementers can move with minimal coordination.
+Keep task decomposition and independent audit separate. The calling role determines which operation is allowed.
 
-## Audit Workflow
+Read the user requirement, repository instructions, relevant docs, registered plan, and required design from `docs-ai/<work-key>-<slug>/`. Use the canonical artifact/stage/quality contracts under `../goal-to-delivery/references/`. Recognize an explicitly selected historical numbered-and-dated folder or flat artifact as read fallback only; never rewrite it.
 
-1. Read the user requirement.
-2. Read the plan in the current `/docs-ai/<NNN>-<slug>-<YYYY-MM-DD>/` workflow artifact folder.
-3. Read the design spec in the same workflow artifact folder when UI work exists.
-4. Read the smallest relevant subset of `AGENTS.md` and `/docs`.
-5. Check for missing risks, tests, rollout steps, dependencies, unclear assumptions, and the selected test strategy for the affected boundaries.
-6. Write `/docs-ai/<NNN>-<slug>-<YYYY-MM-DD>/<YYYY-MM-DD>-<slug>-tasks.md`.
+## Tasker operation
 
-## Artifact Folder Rules
+1. Perform a light completeness check for obviously missing decisions, risks, tests, rollout/rollback, docs impact, dependencies, and design inputs.
+2. Surface gaps under `Audit notes`; do not claim they passed independent review.
+3. Write only the dated `*-tasks.md` in the registered workflow folder using [task-template.md](./references/task-template.md).
+4. Make each task bounded, ordered, achievable, repository-specific, and independently actionable.
 
-- Reuse the same workflow artifact folder for related plan, clarification, design, task, audit, and AI workflow notes.
-- Choose `<NNN>` by scanning folders under `/docs-ai/` and `/docs-ai/history/`, then using the next highest three-digit number when no workflow folder exists yet.
-- If multiple active folders could match the current work, ask which one to use instead of creating a duplicate.
-- New workflow artifacts must use the folder format. Older flat `/docs-ai/*` artifacts may be read as legacy fallback only.
+## Auditor operation
 
-## Task Rules
+1. Independently reread original requirements and source docs.
+2. Use [audit-checklist.md](./references/audit-checklist.md) against the complete plan/design/task package.
+3. Write only the dated `*-audit.md`; do not repair artifacts or generate tasks.
+4. Require a fresh audit artifact after corrections. Do not overwrite prior evidence.
 
-- Group tasks by area such as Backend, Frontend, and Shared or Infra.
-- Give each task a concrete goal.
-- Name likely files or modules when they can be inferred.
-- Include acceptance criteria and test notes.
-- Preserve the selected test strategy instead of silently re-deciding it.
-- Call out dependencies explicitly.
-- Split work so separate implementers can pick it up without constant coordination.
-
-## Audit Rules
-
-- Do not rewrite the product or design direction unless it is missing or contradictory.
-- Surface missing decisions before creating a misleading task list.
-- Cite exact source paths.
-- Distinguish confirmed requirements from inferred work.
-
-Read [references/audit-checklist.md](./references/audit-checklist.md) when evaluating plan completeness. Read [references/task-template.md](./references/task-template.md) when writing the final task document.
+Neither operation chooses the workflow entry, advances stages, implements code, performs code review/runtime QA, mutates tracking, or expands Git/provider authority.

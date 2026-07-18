@@ -1,53 +1,31 @@
 ---
 name: multi-agent-delivery
-description: Coordinate multi-agent software delivery across planning, clarification, UX review, task breakdown, and implementation. Use when Codex needs to route a feature or bug through planner, product-designer, tasker, and implementer agents in the correct order with explicit handoffs, required artifacts, and stop conditions.
+description: Route one already-selected delivery workflow through the shared planner, designer, tasker, auditor, implementer, code-reviewer, QA, and documentation specialists. Use for explicit specialist handoffs; never use it to choose a workflow mode, select Linear work, or expand caller authority.
 ---
 
 # Multi-Agent Delivery
 
-Use this skill to route work through the right agents in the right order. It does not replace the role agents; it enforces clean handoffs between them.
+Coordinate the shared specialist set for the entry policy that invoked you. This skill is a handoff primitive, not a fourth delivery entry.
 
-## Default Order
+## Caller contract
 
-1. `planner` owns understanding, research, clarifying questions, and the first plan.
-2. `product-designer` owns UX/UI review and the design spec when a screen, flow, or user-facing behavior changes materially.
-3. `tasker` owns task breakdown after plan and design inputs are stable enough.
-4. `auditor` independently validates the requirement, plan, and tasks before implementation; it produces no tasks and does not change code.
-5. `dotnet`, `nextjs-mui`, `react`, and `jekyll-site-builder` implement only after the artifacts are concrete enough.
-6. `qa` verifies implemented work against acceptance criteria and writes the QA report.
+Require an active `$goal-to-delivery`, `$spec-driven-delivery`, or `$linear-delivery-loop` policy plus one registered work descriptor or explicitly selected historical artifact folder. Read the canonical protocol under `../goal-to-delivery/references/`, especially `delivery-stages.md`, `artifact-contract.md`, and `quality-gates.md`.
 
-## Routing Rules
+Do not choose or change the workflow policy. Do not select queue work, infer autonomous mode from a label, auto-advance a manual caller, or expand Git/tracking/provider authority. The caller decides which applicable stages may run and when to stop.
 
-- Treat clarification as part of `planner` or `feature-driver`, not a separate agent stage.
-- Send UI work to `product-designer` before `tasker` unless the UI change is purely mechanical.
-- Do not send implementers vague work. Require a usable artifact first.
-- Route backend or service work through `planner`, `tasker`, and `dotnet` using repo-local docs and patterns.
-- Route Jekyll and GitHub Pages site work through `$jekyll-github-pages` and `jekyll-site-builder`; include `product-designer` first when visual direction changes materially.
-- Allow backend-only and service-only changes to skip `product-designer`.
-- Allow tiny, low-risk fixes to skip `tasker` only when the scope is obvious and no coordination is needed.
-- Allow tiny, low-risk fixes to skip `auditor` only when the scope is obvious; record that choice in the workflow artifact when one exists.
-- Route defects found by `qa` back to the relevant implementer instead of fixing them in place.
+## Shared handoff order
 
-## Required Artifacts
+1. `planner` discovers context, writes the plan, and owns clarification content.
+2. `product-designer` writes the design spec when user-facing behavior or visual direction changes materially.
+3. `tasker` creates execution-ready tasks.
+4. Independent `auditor` judges plan/task readiness before implementation.
+5. Matching implementer(s) produce scoped code/artifacts, tests, and a real-file manifest.
+6. `code-reviewer` inspects the exact implementation diff/head.
+7. `qa` verifies real behavior and local repository gates.
+8. `$docs-as-code`, with `$luchdom-docs` where applicable, updates durable documentation or records no impact.
 
-- Workflow folder: `/docs-ai/<NNN>-<slug>-<YYYY-MM-DD>/`
-- Plan: `/docs-ai/<NNN>-<slug>-<YYYY-MM-DD>/<YYYY-MM-DD>-<slug>-plan.md`
-- Design spec when needed: `/docs-ai/<NNN>-<slug>-<YYYY-MM-DD>/<YYYY-MM-DD>-<slug>-design.md`
-- Task list when needed: `/docs-ai/<NNN>-<slug>-<YYYY-MM-DD>/<YYYY-MM-DD>-<slug>-tasks.md`
-- Audit when needed: `/docs-ai/<NNN>-<slug>-<YYYY-MM-DD>/<YYYY-MM-DD>-<slug>-audit.md`
-- QA report when implementation happened: `/docs-ai/<NNN>-<slug>-<YYYY-MM-DD>/<YYYY-MM-DD>-<slug>-qa.md`
-- Choose `<NNN>` by scanning folders under `/docs-ai/` and `/docs-ai/history/`, then using the next highest three-digit number.
-- Keep related plan, clarification, design, task, audit, and AI workflow notes in the same folder.
-- New workflow artifacts must use this folder format. Older flat `/docs-ai/*` artifacts may be read as legacy fallback only.
+Loop a failed audit to its named artifact owner. Loop scoped review/QA defects to an implementer only when the caller still grants implementation authority and its retry policy permits it. Never let the reviewer or QA fix code in place.
 
-## Stop Conditions
+Use the exact registered `docs-ai/<work-key>-<slug>/` artifact folder. Accept older numbered-and-dated folders or flat artifacts only when explicitly selected as historical read fallback; never migrate or rewrite them.
 
-Stop and escalate when:
-
-- docs and code conflict
-- product requirements are ambiguous
-- design-system rules and requested UI conflict
-- task breakdown reveals missing architecture or design decisions
-- a plan is missing the explicit selected test strategy
-
-Read [references/handoff-order.md](./references/handoff-order.md) for the routing rules. Read [references/output-contracts.md](./references/output-contracts.md) for the minimum artifact quality bar before handing work to the next agent.
+Read [handoff-order.md](./references/handoff-order.md) for role boundaries and [output-contracts.md](./references/output-contracts.md) for handoff prerequisites.

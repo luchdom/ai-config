@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "steps": [
+    {
+      "name": "build-generated-adapters",
+      "type": "command",
+      "argv": ["{python}", "scripts/build.py"]
+    },
+    {
+      "name": "marker-managed-sync-regressions",
+      "type": "command",
+      "argv": ["{python}", "scripts/test_sync_markers.py"]
+    },
+    {
+      "name": "semantic-and-focused-contract-tests",
+      "type": "unittest-discovery",
+      "startDirectory": "tests",
+      "pattern": "test*.py"
+    }
+  ]
+}

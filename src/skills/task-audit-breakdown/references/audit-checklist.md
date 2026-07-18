@@ -1,21 +1,18 @@
-# Audit Checklist
+# Independent Audit Checklist
 
-Check whether the plan covers:
+Confirm directly from source:
 
-- scope and assumptions
-- architecture or design direction
-- data or contract changes
-- UI dependencies or design-spec dependencies
-- risks and mitigations
-- test strategy
-- rollout or migration notes
-- unresolved questions
+- one observable, achievable goal and explicit non-goals;
+- user requirements, repository instructions, and precedence conflicts;
+- current-state evidence and cited paths;
+- architecture, API/contracts, data/storage, failure/recovery, and boundary behavior;
+- material product/security/tenant/billing/cost/destructive-data decisions;
+- required design evidence and accessibility/interaction states;
+- task ordering, target repository, likely files, dependencies, and bounded ownership;
+- acceptance criteria mapped to meaningful local tests and real runtime paths;
+- distinct pre-implementation audit, exact-diff code review, runtime QA, and docs gates;
+- documentation impact, observability, rollout/rollback, migration, and residual risk;
+- completion boundary, reservation implications, and explicit publication authority;
+- current artifact layout or explicitly recorded historical read fallback.
 
-Check whether the plan conflicts with:
-
-- user requirements
-- `AGENTS.md`
-- relevant `/docs`
-- existing design spec
-
-Check whether the tasks can be split cleanly by area with minimal coordination.
+Classify findings P1/P2/P3 with exact evidence. Any P1/P2 fails the gate. Never relax a safety floor because a plan or task copied weaker language.

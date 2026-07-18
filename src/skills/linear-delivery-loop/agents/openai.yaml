@@ -1,0 +1,6 @@
+interface:
+  display_name: "Linear Delivery Loop"
+  short_description: "Run one prepared autonomous Linear iteration"
+  default_prompt: "Use $linear-delivery-loop with this adapter-prepared iteration capability."
+policy:
+  allow_implicit_invocation: false

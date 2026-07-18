@@ -1,0 +1,327 @@
+{
+  "$id": "https://luchdom.dev/schemas/ai-delivery/work-descriptor-2.0.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "x-luchdom-runtimeParity": {
+    "description": "Complete inventory of descriptor constraints that portable JSON Schema keywords cannot express consistently. Every entry is enforced by scripts.descriptor.validate_descriptor and covered by the dependency-free schema/runtime parity matrix.",
+    "constraints": [
+      {
+        "appliesWhen": {
+          "jsonPointer": "/workSource",
+          "value": "linear"
+        },
+        "description": "A provider-observed Linear work key and tracking external ID are the same canonical observation. Standard JSON Schema cannot express equality between two instance locations, so scripts.descriptor.validate_descriptor enforces this required equality.",
+        "id": "linear-work-key-equals-external-id",
+        "leftJsonPointer": "/workKey",
+        "operator": "equals",
+        "rightJsonPointer": "/tracking/externalId",
+        "runtimeValidator": "scripts.descriptor.validate_descriptor"
+      },
+      {
+        "description": "repositoryRoot is an absolute path under the current operating system's path rules.",
+        "id": "repository-root-observed-absolute-path",
+        "jsonPointer": "/repositoryRoot",
+        "operator": "os-path-is-absolute",
+        "runtimeValidator": "scripts.descriptor.validate_descriptor"
+      },
+      {
+        "description": "artifactFolder is an absolute path under the current operating system's path rules.",
+        "id": "artifact-folder-absolute-path",
+        "jsonPointer": "/artifactFolder",
+        "operator": "os-path-is-absolute",
+        "runtimeValidator": "scripts.descriptor.validate_descriptor"
+      },
+      {
+        "description": "A syntactically valid slug cannot be a case-insensitive Windows device name, including device names with extensions.",
+        "id": "slug-not-windows-reserved-device",
+        "jsonPointer": "/slug",
+        "operator": "not-windows-device-name",
+        "runtimeValidator": "scripts.descriptor.validate_descriptor"
+      },
+      {
+        "description": "No descriptor key or string value may contain secret-like assignments or bearer credentials according to the shared redaction policy.",
+        "id": "descriptor-contains-no-secret-like-material",
+        "jsonPointer": "",
+        "operator": "redaction-is-identity",
+        "runtimeValidator": "scripts.descriptor.validate_descriptor"
+      },
+      {
+        "description": "Every artifact inventory entry is a non-empty NFC-normalized repository- or artifact-relative file path using forward slashes, with no absolute path, empty/dot/traversal segment, control or Windows-invalid character, reserved device component, trailing dot/space, or case-insensitive duplicate alias.",
+        "id": "artifact-inventory-canonical-safe-relative-paths",
+        "jsonPointer": "/artifactInventory",
+        "operator": "unique-safe-relative-file-paths-windows-casefold",
+        "runtimeValidator": "scripts.descriptor.validate_descriptor"
+      },
+      {
+        "description": "Every superseded artifact entry is one non-empty NFC-normalized safe filename with no separator, dot segment, control or Windows-invalid character, reserved device name, trailing dot/space, or case-insensitive duplicate alias.",
+        "id": "superseded-artifact-names-canonical-safe-single-names",
+        "jsonPointer": "/supersededArtifactNames",
+        "operator": "unique-safe-single-names-windows-casefold",
+        "runtimeValidator": "scripts.descriptor.validate_descriptor"
+      }
+    ],
+    "runtimeValidator": "scripts.descriptor.validate_descriptor",
+    "version": "2.0"
+  },
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "workSource": {
+            "const": "local"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "tracking": {
+            "oneOf": [
+              {
+                "properties": {
+                  "externalId": {
+                    "type": "null"
+                  },
+                  "provider": {
+                    "const": "none"
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "externalId": {
+                    "pattern": "^SAAS-[1-9][0-9]*$",
+                    "type": "string"
+                  },
+                  "provider": {
+                    "const": "linear"
+                  }
+                }
+              }
+            ]
+          },
+          "workKey": {
+            "pattern": "^[0-9]{3,}$"
+          },
+          "workflow": {
+            "enum": [
+              "manual",
+              "semi-autonomous"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "workSource": {
+            "const": "linear"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "tracking": {
+            "properties": {
+              "externalId": {
+                "pattern": "^SAAS-[1-9][0-9]*$",
+                "type": "string"
+              },
+              "provider": {
+                "const": "linear"
+              }
+            }
+          },
+          "workKey": {
+            "pattern": "^SAAS-[1-9][0-9]*$"
+          }
+        }
+      }
+    }
+  ],
+  "properties": {
+    "acceptanceCriteria": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "artifactFolder": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "artifactInventory": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array",
+      "uniqueItems": true
+    },
+    "assumptionsDecisionRefs": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "completionBoundary": {
+      "enum": [
+        "artifact",
+        "working-tree",
+        "commit",
+        "pr",
+        "merge"
+      ]
+    },
+    "currentArtifactStage": {
+      "enum": [
+        "initialized",
+        "plan",
+        "clarify",
+        "design",
+        "task",
+        "audit",
+        "implement",
+        "review",
+        "qa",
+        "docs",
+        "completion"
+      ]
+    },
+    "deliverySummary": {
+      "type": "object"
+    },
+    "design": {
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "pattern": "\\S",
+          "type": "string"
+        },
+        "required": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "required",
+        "reason"
+      ],
+      "type": "object"
+    },
+    "goal": {
+      "pattern": "\\S",
+      "type": "string"
+    },
+    "nonGoals": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "physicalWorktreeFingerprint": {
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "repositoryKey": {
+      "pattern": "^[a-z0-9][a-z0-9-]{0,47}$",
+      "type": "string"
+    },
+    "repositoryRoot": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "revision": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "riskFlags": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "schemaVersion": {
+      "const": "2.0"
+    },
+    "slug": {
+      "pattern": "^[a-z0-9](?:[a-z0-9-]{0,46}[a-z0-9])?$",
+      "type": "string"
+    },
+    "supersededArtifactNames": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array",
+      "uniqueItems": true
+    },
+    "tracking": {
+      "additionalProperties": false,
+      "properties": {
+        "externalId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "provider": {
+          "enum": [
+            "linear",
+            "none"
+          ]
+        }
+      },
+      "required": [
+        "provider",
+        "externalId"
+      ],
+      "type": "object"
+    },
+    "workKey": {
+      "type": "string"
+    },
+    "workSource": {
+      "enum": [
+        "linear",
+        "local"
+      ]
+    },
+    "workflow": {
+      "enum": [
+        "autonomous",
+        "semi-autonomous",
+        "manual"
+      ]
+    },
+    "workflowId": {
+      "format": "uuid",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "revision",
+    "workflowId",
+    "workflow",
+    "workSource",
+    "workKey",
+    "slug",
+    "repositoryKey",
+    "repositoryRoot",
+    "goal",
+    "acceptanceCriteria",
+    "nonGoals",
+    "tracking",
+    "completionBoundary",
+    "physicalWorktreeFingerprint",
+    "riskFlags",
+    "artifactFolder",
+    "artifactInventory",
+    "currentArtifactStage",
+    "assumptionsDecisionRefs",
+    "design",
+    "deliverySummary",
+    "supersededArtifactNames"
+  ],
+  "title": "Luchdom AI delivery work descriptor",
+  "type": "object"
+}

@@ -42,7 +42,7 @@ Frontend requirement:
 
 Workflow rules:
 - Read AGENTS.md first and follow it.
-- Read the current `/docs-ai/<NNN>-<slug>-<YYYY-MM-DD>/` plan and tasks when they exist for the current work.
+- Read the registered `docs-ai/<work-key>-<slug>/workflow.json`, plan, tasks, audit, and design when they exist for the current work. Accept an explicitly supplied numbered-and-dated folder or flat artifact only as historical read fallback; never rename or rewrite it.
 - For non-trivial UI work, read the design spec in that workflow folder when it exists and implement against it instead of redesigning the interface.
 - Before coding, locate and read relevant docs in /docs and existing UI patterns/components in the repo.
 - Update relevant docs when behavior, workflow, setup, or architecture changes.
@@ -50,3 +50,4 @@ Workflow rules:
 - Implement in small, safe steps; keep changes minimal and well-scoped.
 - Provide a short summary of changes and a list of files touched.
 - If requirements are unclear or conflict with docs/tasks, stop and ask the planner to clarify rather than guessing.
+- Return a real-file change manifest to the caller. Do not mutate Linear independently. Under autonomous policy, do not perform state-changing Git/provider actions; the deterministic adapter owns them.

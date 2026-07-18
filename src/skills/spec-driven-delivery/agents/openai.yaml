@@ -1,0 +1,6 @@
+interface:
+  display_name: "Spec-driven Delivery"
+  short_description: "Run exactly one requested delivery stage"
+  default_prompt: "Use $spec-driven-delivery to run the Plan stage for this goal."
+policy:
+  allow_implicit_invocation: false
