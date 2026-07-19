@@ -4,6 +4,8 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from html import unescape
+from html.parser import HTMLParser
 from pathlib import Path
 from typing import Iterable
 
@@ -16,6 +18,8 @@ CANONICAL_REFERENCES = (
     "completion-boundaries.md",
     "work-descriptor.schema.json",
 )
+AUTONOMOUS_RUNTIME_REFERENCE = "autonomous-runtime-contract.md"
+AUTONOMOUS_PROMPT_BUDGET_BYTES = 8192
 ENTRY_SKILLS = ("goal-to-delivery", "spec-driven-delivery", "linear-delivery-loop")
 SUPERVISOR_SCHEMAS = (
     "project-config.schema.json",
@@ -79,8 +83,30 @@ OLD_LAYOUT_PATTERN = re.compile(
     r"docs-ai/<(?:NNN|[Nn]{3})>-<(?:short-feature-name|slug)>-<YYYY-MM-DD>",
     re.IGNORECASE,
 )
-MARKDOWN_LINK_PATTERN = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
+INLINE_MARKDOWN_LINK_PATTERN = re.compile(
+    r"!?\[[^\]]*\]\(\s*(?:<(?P<angle>[^>\r\n]+)>|(?P<plain>[^\s)]+))"
+)
+REFERENCE_DEFINITION_PATTERN = re.compile(
+    r"^[ \t]{0,3}\[(?P<label>[^\]]+)\]:[ \t]*"
+    r"(?:\r?\n[ \t]{0,3})?"
+    r"(?:<(?P<angle>[^>\r\n]+)>|(?P<plain>[^\s<>]+))",
+    re.MULTILINE,
+)
+FULL_REFERENCE_LINK_PATTERN = re.compile(r"!?\[(?P<label>[^\]]+)\]\[(?P<reference>[^\]]*)\]")
+SHORTCUT_REFERENCE_LINK_PATTERN = re.compile(r"(?<!!)\[(?P<label>[^\]]+)\](?![ \t]*(?:[\[(]|:))")
+URI_SCHEME_PATTERN = re.compile(r"^[a-z][a-z0-9+.-]*:", re.IGNORECASE)
 DOCTRINE_BLOCK_MIN_LENGTH = 120
+
+
+class _HrefCollector(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.targets: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        for name, value in attrs:
+            if name.casefold() == "href" and value is not None:
+                self.targets.append(value)
 
 
 def _read(path: Path) -> str:
@@ -139,13 +165,50 @@ def check_forbidden_operational_terms(root: Path) -> list[str]:
     return findings
 
 
+def _local_target(raw_target: str) -> str | None:
+    target = unescape(raw_target).strip()
+    if not target or target.startswith("#") or target.startswith("//"):
+        return None
+    target = target.split("#", 1)[0].split("?", 1)[0].strip()
+    if not target or URI_SCHEME_PATTERN.match(target):
+        return None
+    return target
+
+
+def _markdown_and_html_targets(text: str) -> set[str]:
+    targets: set[str] = set()
+    for match in INLINE_MARKDOWN_LINK_PATTERN.finditer(text):
+        targets.add(match.group("angle") or match.group("plain"))
+
+    definitions = {
+        re.sub(r"\s+", " ", match.group("label").strip()).casefold(): (
+            match.group("angle") or match.group("plain")
+        )
+        for match in REFERENCE_DEFINITION_PATTERN.finditer(text)
+    }
+    for match in FULL_REFERENCE_LINK_PATTERN.finditer(text):
+        label = match.group("reference") or match.group("label")
+        target = definitions.get(re.sub(r"\s+", " ", label.strip()).casefold())
+        if target:
+            targets.add(target)
+    for match in SHORTCUT_REFERENCE_LINK_PATTERN.finditer(text):
+        label = re.sub(r"\s+", " ", match.group("label").strip()).casefold()
+        target = definitions.get(label)
+        if target:
+            targets.add(target)
+
+    parser = _HrefCollector()
+    parser.feed(text)
+    targets.update(parser.targets)
+    return targets
+
+
 def _resolved_local_links(path: Path) -> set[Path]:
     resolved: set[Path] = set()
-    for raw_target in MARKDOWN_LINK_PATTERN.findall(_read(path)):
-        target = raw_target.split("#", 1)[0].strip()
-        if not target or "://" in target or target.startswith("#"):
-            continue
-        resolved.add((path.parent / target).resolve())
+    for raw_target in _markdown_and_html_targets(_read(path)):
+        target = _local_target(raw_target)
+        if target is not None:
+            resolved.add((path.parent / target).resolve())
     return resolved
 
 
@@ -207,12 +270,14 @@ def check_canonical_references(root: Path) -> list[str]:
     findings: list[str] = []
     skills_root = root / "src" / "skills"
     canonical = skills_root / "goal-to-delivery" / "references"
-    expected_paths = {canonical / name for name in CANONICAL_REFERENCES}
+    detailed_paths = {canonical / name for name in CANONICAL_REFERENCES}
+    autonomous_path = canonical / AUTONOMOUS_RUNTIME_REFERENCE
+    expected_paths = detailed_paths | {autonomous_path}
     for path in sorted(expected_paths):
         if not path.is_file():
             findings.append(f"Missing canonical delivery reference: {_relative(root, path)}")
 
-    for name in CANONICAL_REFERENCES:
+    for name in (*CANONICAL_REFERENCES, AUTONOMOUS_RUNTIME_REFERENCE):
         copies = [path for path in skills_root.rglob(name) if path.parent != canonical]
         for copy in copies:
             findings.append(
@@ -267,7 +332,8 @@ def check_canonical_references(root: Path) -> list[str]:
             findings.append(f"Missing workflow entry skill: {_relative(root, skill_path)}")
             continue
         links = _resolved_local_links(skill_path)
-        missing_links = sorted(expected_paths - links)
+        required_links = {autonomous_path} if skill_name == "linear-delivery-loop" else detailed_paths
+        missing_links = sorted(required_links - links)
         if missing_links:
             findings.append(
                 f"{_relative(root, skill_path)}: missing canonical reference links: "
@@ -279,6 +345,82 @@ def check_canonical_references(root: Path) -> list[str]:
 
     if schema_path.is_file():
         findings.extend(_schema_findings(root, schema_path))
+    return findings
+
+
+def check_autonomous_prompt_surface(root: Path) -> list[str]:
+    """Validate the complete mandatory Markdown surface for a healthy autonomous run."""
+    skill = root / "src" / "skills" / "linear-delivery-loop" / "SKILL.md"
+    contract = (
+        root
+        / "src"
+        / "skills"
+        / "goal-to-delivery"
+        / "references"
+        / AUTONOMOUS_RUNTIME_REFERENCE
+    )
+    if not skill.is_file() or not contract.is_file():
+        missing = skill if not skill.is_file() else contract
+        return [f"Missing autonomous prompt asset: {_relative(root, missing)}"]
+
+    findings: list[str] = []
+    skill_links = _resolved_local_links(skill)
+    if skill_links != {contract.resolve()}:
+        observed = ", ".join(
+            _relative(root, link) if root.resolve() in link.parents else str(link)
+            for link in sorted(skill_links)
+        ) or "none"
+        findings.append(
+            "src/skills/linear-delivery-loop/SKILL.md: healthy autonomous prompt must link directly "
+            f"only {AUTONOMOUS_RUNTIME_REFERENCE}; observed: {observed}"
+        )
+
+    contract_links = _resolved_local_links(contract)
+    if contract_links:
+        observed = ", ".join(
+            _relative(root, link) if root.resolve() in link.parents else str(link)
+            for link in sorted(contract_links)
+        )
+        findings.append(
+            f"{_relative(root, contract)}: compact contract must not add indirect local prompt references: "
+            + observed
+        )
+
+    prompt_bytes = len(skill.read_bytes()) + len(contract.read_bytes())
+    if prompt_bytes > AUTONOMOUS_PROMPT_BUDGET_BYTES:
+        findings.append(
+            "Autonomous prompt surface exceeds "
+            f"{AUTONOMOUS_PROMPT_BUDGET_BYTES} UTF-8 bytes: observed {prompt_bytes}."
+        )
+
+    findings.extend(
+        _require_fragments(
+            root,
+            contract,
+            (
+                "adapter-prepared",
+                "exactly one issue",
+                "fail closed",
+                "repository rules",
+                "planner",
+                "product designer",
+                "tasker",
+                "independent auditor",
+                "implementer",
+                "independent code reviewer",
+                "runtime QA",
+                "documentation",
+                "structured pause",
+                "material decision",
+                "adapter owns",
+                "checkpoint",
+                "external mutation",
+                "stop",
+                "merge SHA",
+            ),
+            "compact autonomous runtime contract",
+        )
+    )
     return findings
 
 
@@ -580,7 +722,6 @@ def check_supervisor_core(root: Path) -> list[str]:
     fragments = {
         "goal-to-delivery": ("Reserve", "RenewReservation", "AuthorizeMutation", "assembled"),
         "spec-driven-delivery": ("Reserve", "RenewReservation", "AuthorizeMutation", "Handoff"),
-        "linear-delivery-loop": tuple(sorted(SUPERVISOR_OPERATIONS)),
     }
     for name, required in fragments.items():
         findings.extend(
@@ -601,6 +742,7 @@ def validate_repository(root: Path) -> list[str]:
     checks = (
         check_forbidden_operational_terms,
         check_canonical_references,
+        check_autonomous_prompt_surface,
         check_entry_policies,
         check_shared_specialists_and_routing,
         check_artifact_layout,
