@@ -1,6 +1,6 @@
 ---
 name: spec-driven-delivery
-description: Perform exactly one explicitly requested delivery stage for a user-selected local goal, workflow, or issue. Use only when the user explicitly invokes `$spec-driven-delivery` with a named stage and wants manual Plan, Clarify, Design, Task, Audit, Implement, Review, QA, Docs, Commit, PR, Merge, Reserve, or Release control without automatic advancement.
+description: Perform exactly one explicitly requested delivery stage for a user-selected local goal, workflow, or issue. Use only when the user explicitly invokes `$spec-driven-delivery` with a named stage and wants manual Plan, Clarify, Design, Task, Audit, Implement, Review, QA, Docs, Commit, PR, Merge, Reserve, Renew, Status, Recover, Handoff, or Release control without automatic advancement.
 ---
 
 # Spec-driven Delivery
@@ -15,7 +15,7 @@ Require an explicit invocation:
 $spec-driven-delivery <stage> <goal|selected-issue|exact-workflow-selector>
 ```
 
-Accept `Discover`, `Plan`, `Clarify`, `Design`, `Task`, `Audit`, `Implement`, `Review`, `QA`, `Docs`, `Commit`, `PR`, `Merge`, `Post-merge`, `Reserve`, or `Release`. Reject `mode: autonomous`; labels and conversation context cannot elevate this entry.
+Accept `Discover`, `Plan`, `Clarify`, `Design`, `Task`, `Audit`, `Implement`, `Review`, `QA`, `Docs`, `Commit`, `PR`, `Merge`, `Post-merge`, `Reserve`, `Renew`, `Status`, `Recover`, `Handoff`, or `Release`. Reject `mode: autonomous`; labels and conversation context cannot elevate this entry.
 
 Read the canonical shared protocol:
 
@@ -45,7 +45,7 @@ Never infer later authority:
 
 During `Clarify`, never silently resolve material ambiguity. Ask one focused question at a time. When none remains, ask the user to confirm that the current decisions may be locked; do not advance.
 
-Planning-only work may write inside its uniquely allocated workflow folder without an editing reservation. `Implement` and any stage changing repository deliverables require the repository reservation or an explicit prior `Reserve`. Retain it until explicit `Release`, valid workflow-managed Handoff, or terminal reconciliation.
+Planning-only work may write inside its uniquely allocated workflow folder without an editing reservation. `Implement` and any stage changing repository deliverables require the deterministic repository reservation or an explicit prior `Reserve`, followed by `AuthorizeMutation` for the exact bounded write. `Renew` dispatches `RenewReservation`; `Status`, `Recover`, and `Release` use supervisor-observed state. Retain the reservation until explicit safe `Release`, assembled supervisor `Handoff`, or terminal reconciliation. Base-only Handoff is denied while any reservation is `live`, `handoff-pending`, `expired`, or `protected`, and unknown reservation state fails closed.
 
 Use the current artifact convention and retain the canonical historical-layout read fallback. Never rewrite historical evidence to make it look current.
 

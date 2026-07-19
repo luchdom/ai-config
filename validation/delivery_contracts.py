@@ -17,6 +17,35 @@ CANONICAL_REFERENCES = (
     "work-descriptor.schema.json",
 )
 ENTRY_SKILLS = ("goal-to-delivery", "spec-driven-delivery", "linear-delivery-loop")
+SUPERVISOR_SCHEMAS = (
+    "project-config.schema.json",
+    "prepared-iteration.schema.json",
+    "checkpoint.schema.json",
+    "supervisor-state.schema.json",
+    "editing-reservation.schema.json",
+    "operation-journal.schema.json",
+    "worker-result.schema.json",
+    "engine-command.schema.json",
+    "release-authorization.schema.json",
+    "handoff-authorization.schema.json",
+    "trusted-observation.schema.json",
+)
+SUPERVISOR_OPERATIONS = {
+    "Preflight",
+    "AcquireLease",
+    "RenewLease",
+    "PrepareIteration",
+    "ApplyCheckpoint",
+    "Status",
+    "Reserve",
+    "RenewReservation",
+    "AuthorizeMutation",
+    "Release",
+    "Recover",
+    "Cleanup",
+    "Handoff",
+    "ReleaseLease",
+}
 SPECIALIST_AGENTS = (
     "planner",
     "product-designer",
@@ -496,6 +525,78 @@ def check_projection_manifest(root: Path) -> list[str]:
     return findings
 
 
+def check_supervisor_core(root: Path) -> list[str]:
+    findings: list[str] = []
+    skill = root / "src" / "skills" / "linear-delivery-loop"
+    references = skill / "references"
+    scripts = skill / "scripts"
+    for name in SUPERVISOR_SCHEMAS:
+        path = references / name
+        if not path.is_file():
+            findings.append(f"Missing supervisor schema: {_relative(root, path)}")
+    command_schema = references / "engine-command.schema.json"
+    if command_schema.is_file():
+        try:
+            schema = json.loads(_read(command_schema))
+            observed = {
+                branch.get("properties", {}).get("operation", {}).get("const")
+                for branch in schema.get("oneOf", [])
+            }
+        except (json.JSONDecodeError, AttributeError):
+            observed = set()
+        if observed != SUPERVISOR_OPERATIONS:
+            findings.append(
+                "engine-command.schema.json operation inventory drift; expected "
+                + ", ".join(sorted(SUPERVISOR_OPERATIONS))
+            )
+    required_scripts = {
+        "base_runtime.py",
+        "contracts.py",
+        "store.py",
+        "operations.py",
+        "lease.py",
+        "reservations.py",
+        "worktrees.py",
+        "preflight.py",
+        "recovery.py",
+        "assembled_handoff.py",
+        "supervisor.py",
+        "cli.py",
+        "agent-worker-engine.ps1",
+    }
+    for name in sorted(required_scripts):
+        if not (scripts / name).is_file():
+            findings.append(f"Missing supervisor runtime file: src/skills/linear-delivery-loop/scripts/{name}")
+    copied_base_names = {"identity.py", "state_home.py", "mutex.py", "registry.py", "descriptor.py"}
+    for name in sorted(copied_base_names):
+        if (scripts / name).exists():
+            findings.append(f"Supervisor package copies base-owned primitive: {name}")
+    for path in sorted(scripts.glob("*")):
+        if not path.is_file() or path.suffix not in {".py", ".ps1"}:
+            continue
+        text = _read(path).casefold().replace(" ", "")
+        if "codexexec" in text or "shell=true" in text or "os.system(" in text:
+            findings.append(f"{_relative(root, path)}: contains forbidden nested/arbitrary execution")
+    fragments = {
+        "goal-to-delivery": ("Reserve", "RenewReservation", "AuthorizeMutation", "assembled"),
+        "spec-driven-delivery": ("Reserve", "RenewReservation", "AuthorizeMutation", "Handoff"),
+        "linear-delivery-loop": tuple(sorted(SUPERVISOR_OPERATIONS)),
+    }
+    for name, required in fragments.items():
+        findings.extend(
+            _require_fragments(
+                root,
+                root / "src" / "skills" / name / "SKILL.md",
+                required,
+                f"{name} supervisor integration",
+            )
+        )
+    reference = references / "supervisor-core.md"
+    if not reference.is_file():
+        findings.append("Missing durable supervisor-core technical reference")
+    return findings
+
+
 def validate_repository(root: Path) -> list[str]:
     checks = (
         check_forbidden_operational_terms,
@@ -504,6 +605,7 @@ def validate_repository(root: Path) -> list[str]:
         check_shared_specialists_and_routing,
         check_artifact_layout,
         check_guidance_alignment,
+        check_supervisor_core,
         check_projection_manifest,
     )
     findings: list[str] = []

@@ -23,6 +23,7 @@ from .path_safety import (
 from .redaction import SENSITIVE_KEY, redact_patch, redact_text, redact_value
 
 if TYPE_CHECKING:
+    from .reservation_interlock import InternalHandoffAuthorization
     from .workflow_init import WorkflowManager
 
 
@@ -351,7 +352,7 @@ def _is_at_or_below(path: Path, parent: Path) -> bool:
 
 def _validate_workflow_scope_isolation(
     *,
-    source: "WorkflowManager",
+    source_root: Path,
     registry: dict[str, Any],
     workflow_id: str,
     paths: set[str],
@@ -362,7 +363,7 @@ def _validate_workflow_scope_isolation(
             continue
         artifact = Path(other["artifactPath"])
         try:
-            relative_folder = artifact.relative_to(source.repository_root)
+            relative_folder = artifact.relative_to(source_root)
         except ValueError:
             continue
         if any(_is_at_or_below(candidate, relative_folder) for candidate in candidates):
@@ -382,32 +383,71 @@ def workflow_managed_handoff(
     workflow_id: str,
     destination_root: str | Path,
     expected_paths: list[str],
+    reservation_authorization: "InternalHandoffAuthorization | None" = None,
+    editing_source_root: str | Path | None = None,
 ) -> dict[str, Any]:
     """Transfer working files and registry binding; never transfer a live reservation."""
 
     expected_scope = validate_expected_path_scope(expected_paths)
     expected_scope_set = {path.as_posix() for path in expected_scope}
+    if editing_source_root is not None:
+        from .reservation_interlock import InternalHandoffAuthorization
+
+        if type(reservation_authorization) is not InternalHandoffAuthorization:
+            raise HandoffError(
+                "An editing-source override requires exact internal Handoff authorization"
+            )
+        source_identity = observe_repository_identity(editing_source_root)
+        if source_identity.repository_id != source.identity.repository_id:
+            raise HandoffError(
+                "Editing source belongs to another normalized Git common directory"
+            )
+    else:
+        source_identity = source.identity
+    effective_source_root = Path(source_identity.repository_root)
     destination_identity = observe_repository_identity(destination_root)
     destination = Path(destination_identity.repository_root)
     if destination_identity.repository_id != source.identity.repository_id:
         raise HandoffError("workflow-managed Handoff requires the same normalized Git common directory")
-    if destination_identity.physical_worktree_fingerprint == source.identity.physical_worktree_fingerprint:
+    if destination_identity.physical_worktree_fingerprint == source_identity.physical_worktree_fingerprint:
         raise HandoffError("Source and destination physical worktrees must be distinct")
     if _git_bytes(destination, "status", "--porcelain=v1", "-z", "--untracked-files=all"):
         raise HandoffError("Destination worktree is dirty; no workflow authority was transferred")
 
-    source_before = _git_immutability_snapshot(source.repository_root)
+    source_before = _git_immutability_snapshot(effective_source_root)
     destination_before = _git_immutability_snapshot(destination)
 
     with source.registry.mutex():
         registry_before = source._load_registry_unlocked()
         entry = source.registry._resolve_unlocked_structural(registry_before, workflow_id=workflow_id)
-        source._assert_entry_context(entry)
+        if (
+            entry["repositoryKey"] != source.repository_key
+            or entry["repositoryId"] != source.identity.repository_id
+            or entry["physicalWorktreeFingerprint"]
+            != source_identity.physical_worktree_fingerprint
+        ):
+            raise HandoffError(
+                "Workflow registry authority differs from the effective editing source"
+            )
         descriptor_source_path = Path(entry["artifactPath"]) / "workflow.json"
         descriptor_before = read_descriptor(descriptor_source_path)
         source._assert_descriptor_registry_projection(entry, descriptor_before)
         if descriptor_before["repositoryKey"] != source.repository_key:
             raise HandoffError("Workflow repositoryKey differs from source manager authority")
+
+        # This check must remain inside the base mutex.  It is the only safe
+        # serialization point for a first Reserve racing registry-only Handoff.
+        from .reservation_interlock import validate_and_consume_handoff_authorization_unlocked
+
+        validate_and_consume_handoff_authorization_unlocked(
+            source=source,
+            workflow_id=workflow_id,
+            editing_source_path=effective_source_root,
+            editing_source_fingerprint=source_identity.physical_worktree_fingerprint,
+            destination_fingerprint=destination_identity.physical_worktree_fingerprint,
+            expected_paths=[path.as_posix() for path in expected_scope],
+            authorization=reservation_authorization,
+        )
 
         # No state or destination write occurs before exact source authority is proven above.
         handoff_id = str(uuid.uuid4())
@@ -423,12 +463,19 @@ def workflow_managed_handoff(
         try:
             if _git_bytes(destination, "status", "--porcelain=v1", "-z", "--untracked-files=all"):
                 raise HandoffError("Destination became dirty before transfer; source remains authoritative")
-            changed_paths = _changed_paths(source.repository_root)
-            artifact_relative = Path(entry["artifactPath"]).relative_to(source.repository_root)
+            changed_paths = _changed_paths(effective_source_root)
+            try:
+                artifact_relative = Path(entry["artifactPath"]).relative_to(
+                    effective_source_root
+                )
+            except ValueError as exc:
+                raise HandoffError(
+                    "Registered workflow artifact is outside the effective editing source"
+                ) from exc
             descriptor_relative = artifact_relative / "workflow.json"
             observed_git_paths = {path.as_posix() for path in changed_paths}
             _validate_workflow_scope_isolation(
-                source=source,
+                source_root=effective_source_root,
                 registry=registry_before,
                 workflow_id=workflow_id,
                 paths=observed_git_paths | expected_scope_set,
@@ -447,14 +494,14 @@ def workflow_managed_handoff(
                 transfer_paths.append(descriptor_relative)
                 transfer_paths.sort(key=lambda item: item.as_posix().casefold())
             _validate_destination_baseline_compatibility(
-                source.repository_root,
+                effective_source_root,
                 destination,
                 transfer_paths,
             )
-            content_snapshot = _content_snapshot(source.repository_root, transfer_paths)
+            content_snapshot = _content_snapshot(effective_source_root, transfer_paths)
             manifest = _manifest(content_snapshot)
             raw_patch = _git_bytes(
-                source.repository_root,
+                effective_source_root,
                 "diff",
                 "--binary",
                 "--no-ext-diff",
@@ -479,7 +526,7 @@ def workflow_managed_handoff(
 
             # Re-run immediately before apply and compare current destination bytes to HEAD.
             _validate_destination_baseline_compatibility(
-                source.repository_root,
+                effective_source_root,
                 destination,
                 transfer_paths,
             )
@@ -503,12 +550,12 @@ def workflow_managed_handoff(
             validate_descriptor(descriptor_after)
 
             _validate_transfer_content(
-                source.repository_root,
+                effective_source_root,
                 destination,
                 content_snapshot,
                 expected_git_paths,
             )
-            if _git_immutability_snapshot(source.repository_root) != source_before:
+            if _git_immutability_snapshot(effective_source_root) != source_before:
                 raise HandoffError("Source Git HEAD, branch, or index changed during Handoff")
             if _git_immutability_snapshot(destination) != destination_before:
                 raise HandoffError("Destination Git HEAD, branch, or index changed during Handoff")
@@ -517,7 +564,7 @@ def workflow_managed_handoff(
                 "status": "completed",
                 "workflowId": workflow_id,
                 "handoffId": handoff_id,
-                "sourceFingerprint": source.identity.physical_worktree_fingerprint,
+                "sourceFingerprint": source_identity.physical_worktree_fingerprint,
                 "destinationFingerprint": destination_identity.physical_worktree_fingerprint,
                 "artifactPath": descriptor_after["artifactFolder"],
                 "reservationTransferred": False,
@@ -527,12 +574,12 @@ def workflow_managed_handoff(
             source.state_paths.write_json(evidence_dir / "result.json", redact_value(result))
             # This is the final check immediately before the authority pair is committed.
             _validate_transfer_content(
-                source.repository_root,
+                effective_source_root,
                 destination,
                 content_snapshot,
                 expected_git_paths,
             )
-            if _git_immutability_snapshot(source.repository_root) != source_before:
+            if _git_immutability_snapshot(effective_source_root) != source_before:
                 raise HandoffError("Source Git HEAD, branch, or index changed before authority commit")
             if _git_immutability_snapshot(destination) != destination_before:
                 raise HandoffError("Destination Git HEAD, branch, or index changed before authority commit")
@@ -551,7 +598,7 @@ def workflow_managed_handoff(
             updated_entry["handoffs"].append(
                 {
                     "handoffId": handoff_id,
-                    "sourceFingerprint": source.identity.physical_worktree_fingerprint,
+                    "sourceFingerprint": source_identity.physical_worktree_fingerprint,
                     "destinationFingerprint": destination_identity.physical_worktree_fingerprint,
                     "destinationArtifactPath": descriptor_after["artifactFolder"],
                     "evidencePath": os.fspath(evidence_dir),

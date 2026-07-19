@@ -1,0 +1,68 @@
+{
+  "adapterId": "luchdom.supervisor.read-only",
+  "adapterSha256": "{{ADAPTER_SHA256}}",
+  "adapterVersion": "1.0",
+  "checks": [
+    {
+      "argv": [
+        "rev-parse",
+        "--show-toplevel"
+      ],
+      "kind": "git",
+      "readOnly": true,
+      "status": "pass"
+    },
+    {
+      "argv": [
+        "repo",
+        "view",
+        "--json",
+        "nameWithOwner"
+      ],
+      "kind": "gh",
+      "readOnly": true,
+      "status": "pass"
+    },
+    {
+      "host": "github.com",
+      "kind": "remote",
+      "readOnly": true,
+      "redirectHosts": [],
+      "resolvedAddresses": [
+        "140.82.114.4"
+      ],
+      "status": "pass"
+    },
+    {
+      "host": "api.linear.app",
+      "kind": "linear",
+      "readOnly": true,
+      "redirectHosts": [],
+      "resolvedAddresses": [
+        "104.18.32.47"
+      ],
+      "status": "pass"
+    },
+    {
+      "host": "ntfy.sh",
+      "kind": "ntfy",
+      "readOnly": true,
+      "redirectHosts": [],
+      "resolvedAddresses": [
+        "104.21.65.87"
+      ],
+      "status": "pass"
+    },
+    {
+      "host": "127.0.0.1",
+      "kind": "loopback",
+      "port": 8765,
+      "readOnly": true,
+      "resolvedAddress": "127.0.0.1",
+      "status": "pass"
+    }
+  ],
+  "observedAtUtc": "{{OBSERVED_AT_UTC}}",
+  "requestHash": "{{REQUEST_HASH}}",
+  "schemaVersion": "1.0"
+}

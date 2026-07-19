@@ -1,0 +1,159 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://luchdom.local/schemas/linear-delivery-loop/supervisor-state-1.0.schema.json",
+  "title": "SupervisorState 1.0",
+  "description": "Authoritative revisioned local supervisor state outside every checkout.",
+  "type": "object", "additionalProperties": false,
+  "required": ["schemaVersion", "revision", "repository", "lease", "capabilities", "worktreeAllocations", "issueWorktrees", "gateWorktrees", "checkpoints", "currentWork", "recovery", "handoffPending", "clockEvidence"],
+  "properties": {
+    "schemaVersion": {"const": "1.0"},
+    "revision": {"type": "integer", "minimum": 1},
+    "repository": {
+      "type": "object", "additionalProperties": false,
+      "required": ["repositoryId", "repositoryKey", "normalizedCommonDir", "basePackageVersion", "identityVersion", "stateHomeVersion", "registryVersion", "workDescriptorVersion"],
+      "properties": {
+        "repositoryId": {"type": "string", "pattern": "^repo-[a-f0-9]{24}$"},
+        "repositoryKey": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"},
+        "normalizedCommonDir": {"type": "string", "minLength": 3, "maxLength": 1024},
+        "basePackageVersion": {"const": "1.0"}, "identityVersion": {"const": "1.0"},
+        "stateHomeVersion": {"const": "2.0"}, "registryVersion": {"const": "1.0"},
+        "workDescriptorVersion": {"const": "2.0"}
+      }
+    },
+    "lease": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["runId", "ownerId", "revision", "heartbeatNs", "expiresAtNs", "capabilityRef", "capabilitySha256", "status"],
+          "properties": {
+            "runId": {"type": "string", "format": "uuid"}, "ownerId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"},
+            "revision": {"type": "integer", "minimum": 1}, "heartbeatNs": {"type": "integer", "minimum": 0},
+            "expiresAtNs": {"type": "integer", "minimum": 1}, "capabilityRef": {"type": "string", "minLength": 3, "maxLength": 1024},
+            "capabilitySha256": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+            "status": {"enum": ["live", "expired", "revoked", "clock-discontinuity"]}
+          }
+        }
+      ]
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object", "additionalProperties": false,
+        "required": ["capabilityId", "kind", "runId", "workflowId", "issueId", "worktreePath", "physicalWorktreeFingerprint", "stateRevision", "stage", "expiresAtNs", "capabilityRef", "capabilitySha256", "status", "allowedTransitions"],
+        "properties": {
+          "capabilityId": {"type": "string", "format": "uuid"}, "kind": {"enum": ["lease", "prepared-iteration", "mutation"]},
+          "runId": {"type": "string", "format": "uuid"}, "workflowId": {"type": "string", "format": "uuid"},
+          "issueId": {"type": "string", "pattern": "^[A-Z][A-Z0-9]+-[1-9][0-9]*$"},
+          "worktreePath": {"type": "string", "minLength": 3, "maxLength": 1024},
+          "physicalWorktreeFingerprint": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+          "stateRevision": {"type": "integer", "minimum": 1},
+          "stage": {"enum": ["initialized", "plan", "clarify", "task", "audit", "implement", "review", "qa", "docs", "publication", "completion", "paused"]},
+          "expiresAtNs": {"type": "integer", "minimum": 1}, "capabilityRef": {"type": "string", "minLength": 3, "maxLength": 1024},
+          "capabilitySha256": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+          "status": {"enum": ["issued", "consumed", "revoked", "expired", "suspended"]},
+          "allowedTransitions": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9-]{0,63}$"}}
+        }
+      }
+    },
+    "worktreeAllocations": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object", "additionalProperties": false,
+        "required": ["allocationId", "kind", "subjectId", "repositoryId", "repositoryKey", "normalizedCommonDir", "worktreePath", "branch", "exactSha", "physicalWorktreeFingerprint", "handoffOperationId", "status"],
+        "properties": {
+          "allocationId": {"type": "string", "pattern": "^(?:issue:[A-Z][A-Z0-9]+-[1-9][0-9]*|gate:[A-Za-z0-9][A-Za-z0-9:-]{0,127})$"},
+          "kind": {"enum": ["issue", "gate"]},
+          "subjectId": {"type": "string", "minLength": 3, "maxLength": 128},
+          "repositoryId": {"type": "string", "pattern": "^repo-[a-f0-9]{24}$"},
+          "repositoryKey": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"},
+          "normalizedCommonDir": {"type": "string", "minLength": 3, "maxLength": 1024},
+          "worktreePath": {"type": "string", "minLength": 3, "maxLength": 1024},
+          "branch": {"oneOf": [{"type": "null"}, {"type": "string", "minLength": 3, "maxLength": 128}]},
+          "exactSha": {"type": "string", "pattern": "^[a-f0-9]{40}$"},
+          "physicalWorktreeFingerprint": {"oneOf": [{"type": "null"}, {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"}]},
+          "handoffOperationId": {"oneOf": [{"type": "null"}, {"type": "string", "format": "uuid"}]},
+          "status": {"enum": ["prepared", "completed", "transferred", "ambiguous"]}
+        }
+      }
+    },
+    "issueWorktrees": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object", "additionalProperties": false,
+        "required": ["issueId", "workflowId", "repositoryId", "repositoryKey", "normalizedCommonDir", "worktreePath", "physicalWorktreeFingerprint", "branch", "headSha", "handoffOperationId", "status"],
+        "properties": {
+          "issueId": {"type": "string", "pattern": "^[A-Z][A-Z0-9]+-[1-9][0-9]*$"},
+          "workflowId": {"oneOf": [{"type": "null"}, {"type": "string", "format": "uuid"}]},
+          "repositoryId": {"type": "string", "pattern": "^repo-[a-f0-9]{24}$"},
+          "repositoryKey": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"},
+          "normalizedCommonDir": {"type": "string", "minLength": 3, "maxLength": 1024},
+          "worktreePath": {"type": "string", "minLength": 3, "maxLength": 1024},
+          "physicalWorktreeFingerprint": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+          "branch": {"type": "string", "minLength": 1, "maxLength": 256}, "headSha": {"type": "string", "pattern": "^[a-f0-9]{40}$"},
+          "handoffOperationId": {"oneOf": [{"type": "null"}, {"type": "string", "format": "uuid"}]},
+          "status": {"enum": ["active", "missing", "retired"]}
+        }
+      }
+    },
+    "gateWorktrees": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object", "additionalProperties": false,
+        "required": ["operationId", "worktreePath", "physicalWorktreeFingerprint", "exactSha", "status", "operationStatus", "attestationStatus"],
+        "properties": {
+          "operationId": {"type": "string", "format": "uuid"},
+          "worktreePath": {"type": "string", "minLength": 3, "maxLength": 1024},
+          "physicalWorktreeFingerprint": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+          "exactSha": {"type": "string", "pattern": "^[a-f0-9]{40}$"},
+          "status": {"enum": ["active", "cleanup-pending", "cleaned", "ambiguous"]},
+          "operationStatus": {"enum": ["pending", "resolved", "failed", "ambiguous"]},
+          "attestationStatus": {"enum": ["pending", "complete", "failed"]}
+        }
+      }
+    },
+    "checkpoints": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object", "additionalProperties": false,
+        "required": ["transitionId", "checkpointId", "status", "stateRevision"],
+        "properties": {
+          "transitionId": {"type": "string", "format": "uuid"}, "checkpointId": {"type": "string", "format": "uuid"},
+          "status": {"enum": ["applied", "rejected"]}, "stateRevision": {"type": "integer", "minimum": 1}
+        }
+      }
+    },
+    "currentWork": {
+      "oneOf": [
+        {"type": "null"},
+        {"type": "object", "additionalProperties": false, "required": ["runId", "workflowId", "issueId", "stage", "worktreePath", "physicalWorktreeFingerprint"],
+         "properties": {
+           "runId": {"type": "string", "format": "uuid"}, "workflowId": {"type": "string", "format": "uuid"},
+           "issueId": {"type": "string", "pattern": "^[A-Z][A-Z0-9]+-[1-9][0-9]*$"},
+           "stage": {"enum": ["initialized", "plan", "clarify", "task", "audit", "implement", "review", "qa", "docs", "publication", "completion", "paused"]},
+           "worktreePath": {"type": "string", "minLength": 3, "maxLength": 1024},
+           "physicalWorktreeFingerprint": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"}
+         }}
+      ]
+    },
+    "recovery": {
+      "type": "object", "additionalProperties": false, "required": ["status", "reason", "updatedAtNs"],
+      "properties": {"status": {"enum": ["clean", "required", "recovering", "ambiguous"]}, "reason": {"oneOf": [{"type": "null"}, {"type": "string", "minLength": 1, "maxLength": 512}]}, "updatedAtNs": {"type": "integer", "minimum": 0}}
+    },
+    "handoffPending": {
+      "oneOf": [
+        {"type": "null"},
+        {"type": "object", "additionalProperties": false, "required": ["operationId", "reservationId", "workflowId", "status"],
+         "properties": {"operationId": {"type": "string", "format": "uuid"}, "reservationId": {"type": "string", "format": "uuid"}, "workflowId": {"type": "string", "format": "uuid"}, "status": {"enum": ["prepared", "executing", "finalizing", "ambiguous"]}}}
+      ]
+    },
+    "clockEvidence": {
+      "type": "object", "additionalProperties": false, "required": ["lastObservedNowNs", "maxForwardStepNs", "status"],
+      "properties": {"lastObservedNowNs": {"type": "integer", "minimum": 0}, "maxForwardStepNs": {"type": "integer", "minimum": 1}, "status": {"enum": ["stable", "clock-discontinuity"]}}
+    }
+  },
+  "x-luchdom-runtimeParity": {
+    "version": "1.0", "runtimeValidator": "scripts.contracts.validate_contract",
+    "constraints": [{"id": "canonical-absolute-paths"}, {"id": "repository-version-bindings"}, {"id": "no-raw-capability-or-nonce"}, {"id": "no-secret-like-material"}]
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://luchdom.local/schemas/linear-delivery-loop/checkpoint-1.0.schema.json",
+  "title": "Checkpoint 1.0",
+  "description": "Replay-safe proposal to advance one prepared workflow stage.",
+  "type": "object", "additionalProperties": false,
+  "required": ["schemaVersion", "checkpointId", "preparedIterationId", "runId", "workflowId", "issueId", "transitionId", "expectedStateRevision", "expectedPreviousStage", "nextStage", "workerResultPath", "artifactManifest", "changedPaths", "observed", "createdAt"],
+  "properties": {
+    "schemaVersion": {"const": "1.0"},
+    "checkpointId": {"type": "string", "format": "uuid"},
+    "preparedIterationId": {"type": "string", "format": "uuid"},
+    "runId": {"type": "string", "format": "uuid"},
+    "workflowId": {"type": "string", "format": "uuid"},
+    "issueId": {"type": "string", "pattern": "^[A-Z][A-Z0-9]+-[1-9][0-9]*$"},
+    "transitionId": {"type": "string", "format": "uuid"},
+    "expectedStateRevision": {"type": "integer", "minimum": 1},
+    "expectedPreviousStage": {"enum": ["initialized", "plan", "clarify", "task", "audit", "implement", "review", "qa", "docs", "publication"]},
+    "nextStage": {"enum": ["plan", "clarify", "task", "audit", "implement", "review", "qa", "docs", "publication", "completion", "paused"]},
+    "workerResultPath": {"type": "string", "minLength": 3, "maxLength": 1024},
+    "artifactManifest": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 512}},
+    "changedPaths": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 512}},
+    "observed": {
+      "type": "object", "additionalProperties": false,
+      "required": ["repositoryId", "physicalWorktreeFingerprint", "headSha"],
+      "properties": {
+        "repositoryId": {"type": "string", "pattern": "^repo-[a-f0-9]{24}$"},
+        "physicalWorktreeFingerprint": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+        "headSha": {"type": "string", "pattern": "^[a-f0-9]{40}$"}
+      }
+    },
+    "createdAt": {"type": "string", "format": "date-time"}
+  },
+  "x-luchdom-runtimeParity": {
+    "version": "1.0", "runtimeValidator": "scripts.contracts.validate_contract",
+    "constraints": [
+      {"id": "canonical-absolute-paths"}, {"id": "safe-relative-paths"},
+      {"id": "stage-transition-changes-stage"}, {"id": "no-raw-capability-or-nonce"},
+      {"id": "no-secret-like-material"}
+    ]
+  }
+}
