@@ -1,0 +1,130 @@
+{
+  "acceptanceCriteria": [
+    "A healthy autonomous iteration loads at most 8192 bytes of mandatory entry and direct-reference context.",
+    "Detailed supervisor documentation, JSON schemas, and runtime scripts remain deterministic or diagnostic assets rather than routine prompt context.",
+    "Goal and manual entries retain their detailed canonical protocol links.",
+    "Supervisor schema parity, recovery, reservation, authorization, and Handoff validation remain unchanged and passing.",
+    "Generated projections and the repository aggregate validation pass."
+  ],
+  "artifactFolder": "C:\\dev\\luchdom\\ai-config\\docs-ai\\003-reduce-autonomous-supervisor-prompt-context",
+  "artifactInventory": [
+    "workflow.json",
+    "2026-07-19-reduce-autonomous-supervisor-prompt-context-plan.md",
+    "2026-07-19-reduce-autonomous-supervisor-prompt-context-tasks.md",
+    "2026-07-19-reduce-autonomous-supervisor-prompt-context-audit.md",
+    "2026-07-19-reduce-autonomous-supervisor-prompt-context-code-review.md",
+    "2026-07-19-reduce-autonomous-supervisor-prompt-context-code-re-review.md",
+    "2026-07-19-reduce-autonomous-supervisor-prompt-context-code-re-review-2.md",
+    "2026-07-19-reduce-autonomous-supervisor-prompt-context-qa.md",
+    "2026-07-19-reduce-autonomous-supervisor-prompt-context-completion.md",
+    "2026-07-19-reduce-autonomous-supervisor-prompt-context-pr-description.md"
+  ],
+  "assumptionsDecisionRefs": [],
+  "completionBoundary": "merge",
+  "currentArtifactStage": "completion",
+  "deliverySummary": {
+    "codeReReview": {
+      "artifact": "2026-07-19-reduce-autonomous-supervisor-prompt-context-code-re-review.md",
+      "findings": {
+        "p1": 0,
+        "p2": 1,
+        "p3": 0
+      },
+      "focusedTests": "21/21 passed",
+      "verdict": "changes-requested"
+    },
+    "codeReReview2": {
+      "artifact": "2026-07-19-reduce-autonomous-supervisor-prompt-context-code-re-review-2.md",
+      "findings": {
+        "p1": 0,
+        "p2": 0,
+        "p3": 0
+      },
+      "focusedTests": "22/22 passed",
+      "verdict": "pass"
+    },
+    "codeReview": {
+      "artifact": "2026-07-19-reduce-autonomous-supervisor-prompt-context-code-review.md",
+      "findings": {
+        "p1": 0,
+        "p2": 1,
+        "p3": 0
+      },
+      "verdict": "changes-requested"
+    },
+    "completion": {
+      "artifact": "2026-07-19-reduce-autonomous-supervisor-prompt-context-completion.md",
+      "boundary": "working-tree",
+      "publicationPerformed": false,
+      "reservationRetained": true,
+      "syncPerformed": false,
+      "verdict": "pass"
+    },
+    "documentation": {
+      "durablePage": "README.md",
+      "skillValidation": "passed",
+      "verdict": "pass"
+    },
+    "implementation": {
+      "build": "passed",
+      "changedFiles": [
+        "README.md",
+        "src/skills/goal-to-delivery/references/autonomous-runtime-contract.md",
+        "src/skills/linear-delivery-loop/SKILL.md",
+        "tests/test_delivery_contracts.py",
+        "validation/delivery_contracts.py"
+      ],
+      "focusedTests": {
+        "deliveryContracts": "22/22 passed",
+        "supervisorContracts": "6/6 passed"
+      },
+      "promptSurfaceBytes": 5968,
+      "promptSurfaceLimitBytes": 8192
+    },
+    "publication": {
+      "prDescriptionArtifact": "2026-07-19-reduce-autonomous-supervisor-prompt-context-pr-description.md",
+      "requestedBoundary": "merge",
+      "status": "authorized",
+      "syncAfterMerge": true
+    },
+    "qa": {
+      "aggregate": "passed: 195/195 tests in 1311.681 seconds; 1314.463 seconds wall time",
+      "artifact": "2026-07-19-reduce-autonomous-supervisor-prompt-context-qa.md",
+      "build": "passed",
+      "focusedTests": "28/28 passed",
+      "promptSurfaceBytes": 5968,
+      "promptSurfaceLimitBytes": 8192,
+      "verdict": "pass"
+    }
+  },
+  "design": {
+    "reason": "No product UI or interaction change declared.",
+    "required": false
+  },
+  "goal": "Reduce the autonomous supervisor prompt context without weakening deterministic validation or recovery",
+  "nonGoals": [
+    "Runtime supervisor or schema behavior changes",
+    "Large-module refactoring",
+    "Commit, PR, merge, Linear, or scheduled automation mutation"
+  ],
+  "physicalWorktreeFingerprint": "sha256:ec10d90a90d5d5aa018df7cfb870f5be7e7bb9167cf06ae30af1875a79e5ac32",
+  "repositoryKey": "ai-config",
+  "repositoryRoot": "C:\\dev\\luchdom\\ai-config",
+  "revision": 13,
+  "riskFlags": [
+    "policy-omission",
+    "prompt-budget-drift",
+    "generated-projection-drift"
+  ],
+  "schemaVersion": "2.0",
+  "slug": "reduce-autonomous-supervisor-prompt-context",
+  "supersededArtifactNames": [],
+  "tracking": {
+    "externalId": null,
+    "provider": "none"
+  },
+  "workKey": "003",
+  "workSource": "local",
+  "workflow": "semi-autonomous",
+  "workflowId": "c8804502-5267-4415-85f6-5db6b86d1a34"
+}

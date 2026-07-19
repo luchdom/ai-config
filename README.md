@@ -35,6 +35,8 @@ The sole cross-tool delivery protocol lives in [`src/skills/goal-to-delivery/ref
 
 Other workflow skills and project templates link to these files instead of copying the protocol. Repository `AGENTS.md` files and curated docs continue to own repository-specific commands, domain rules, definitions of done, and stricter safety requirements.
 
+Autonomous delivery uses progressive disclosure. A healthy `$linear-delivery-loop` iteration loads only its thin entry policy and the compact canonical `autonomous-runtime-contract.md`; deterministic code validates capabilities, schemas, authority, state, and engine operations without placing those implementation assets in model context. The detailed protocol remains directly available to `$goal-to-delivery` and `$spec-driven-delivery`.
+
 Precedence is user/system requirements and repository-specific stricter safety, then the explicitly invoked entry policy, then the canonical shared contract. An unresolved conflict fails closed before implementation or external mutation.
 
 ## Work artifacts
@@ -54,7 +56,7 @@ Per-work evidence belongs in `docs-ai/`. Reusable how-tos, concepts, references,
 
 The base helper binds `repositoryKey` to the normalized repository's state home; legacy unbound state requires attended reconciliation. Workflow-managed Handoff requires an exact repeated `--expected-path` scope, preserves the registry as authority, writes redacted hash-bound evidence, and transfers no reservation. See the canonical [artifact contract](src/skills/goal-to-delivery/references/artifact-contract.md) for the complete boundary and its distinction from native Codex **Hand off**.
 
-The shared [supervisor core](src/skills/linear-delivery-loop/references/supervisor-core.md) layers machine-stable leases, repository editing reservations, mutation authorization, persistent issue/gate worktrees, permission preflight, recovery/cleanup, and reservation-aware assembled Handoff on that base. It is local and transport-free: Linear selection/updates, ntfy delivery, and GitHub publication/merge remain later adapters. Semi-autonomous and manual implementation use the same reservation namespace as autonomous work, so one workflow cannot silently edit through another workflow's active authority.
+The shared [supervisor core](src/skills/linear-delivery-loop/references/supervisor-core.md) is a diagnostic and operator reference, not mandatory healthy-run prompt context. Its deterministic runtime layers machine-stable leases, repository editing reservations, mutation authorization, persistent issue/gate worktrees, permission preflight, recovery/cleanup, and reservation-aware assembled Handoff on that base. It is local and transport-free: Linear selection/updates, ntfy delivery, and GitHub publication/merge remain later adapters. Semi-autonomous and manual implementation use the same reservation namespace as autonomous work, so one workflow cannot silently edit through another workflow's active authority.
 
 ## Layout
 
