@@ -7,6 +7,8 @@ description: Execute one unattended autonomous delivery iteration from a schema-
 
 Apply autonomous advancement policy to one adapter-prepared issue. This skill is a thin policy entry; deterministic code owns selection, WIP, authority, state, retry, external mutation, and checkpoints.
 
+The deterministic local supervisor interface is documented in [supervisor-core.md](./references/supervisor-core.md). It owns the machine-stable lease, reservation, authorization, worktree, journal, recovery, cleanup, and assembled-Handoff commands consumed by this entry and by the interactive entries.
+
 ## Invocation
 
 Require an explicit invocation with exactly one schema-valid `PreparedIteration` file/capability:
@@ -30,12 +32,14 @@ Apply stricter repository rules first and fail closed on conflict.
 
 ## Policy
 
-1. Accept only the issue and authority already prepared by the deterministic adapter after its lease, eligibility, WIP, reservation, and issue-contract checks.
+1. Accept only the issue and authority already prepared by the deterministic adapter after `Preflight`, `AcquireLease`, `Reserve`, `AuthorizeMutation`, eligibility, WIP, and issue-contract checks.
 2. Use the same planner, optional product designer, tasker, independent auditor, implementers, code reviewer, runtime QA, and documentation skills used by the other entries.
 3. Continue routine stages during the current invocation while the prepared capability remains valid.
-4. Return structured stage results, proposed external transitions, and a real-file change manifest to the adapter. Apply checkpoints only through the adapter; model output is never authority.
+4. Return structured stage results, proposed external transitions, and a real-file change manifest to the adapter. Renew through `RenewLease`/`RenewReservation`, authorize each mutation scope through `AuthorizeMutation`, and apply checkpoints only through the adapter; model output is never authority.
 5. Stop on completion, pause, external wait, retry exhaustion, non-retryable failure, capability/lease loss, interruption, or any material decision requiring a human.
 6. Never select again after the prepared issue completes or pauses, and never start a second issue in the same invocation.
+
+The exhaustive engine operation set is `Preflight`, `AcquireLease`, `RenewLease`, `PrepareIteration`, `ApplyCheckpoint`, `Status`, `Reserve`, `RenewReservation`, `AuthorizeMutation`, `Release`, `Recover`, `Cleanup`, `Handoff`, and `ReleaseLease`. Invoke it only through the bundled structured-file CLI/wrapper. Never put a capability nonce or caller-selected authoritative output path in a command.
 
 Safe assumptions may be recorded under the shared clarification policy. A material decision becomes a structured pause proposal; the deterministic adapter owns the durable Linear request and attention notification. This skill does not contain GraphQL, queue-selection, label/state mutation, notification, Git publication, merge, or provider-retry implementation.
 

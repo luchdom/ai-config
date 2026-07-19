@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://luchdom.local/schemas/linear-delivery-loop/project-config-1.0.schema.json",
+  "title": "ProjectConfig 1.0",
+  "description": "Repository-owned local supervisor configuration. Live provider adapters belong to SAAS-47/48.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "engineVersion", "baseVersions", "repositoryKey", "baseBranch", "aggregateCommand", "writableRoots", "commandPolicy", "scheduledPolicy", "networkPolicy", "environmentPolicy", "probeAdapter", "clockPolicy"],
+  "properties": {
+    "schemaVersion": {"const": "1.0"},
+    "engineVersion": {"const": "1.0"},
+    "baseVersions": {
+      "type": "object", "additionalProperties": false,
+      "required": ["basePackage", "identity", "stateHome", "registry", "workDescriptor"],
+      "properties": {
+        "basePackage": {"const": "1.0"}, "identity": {"const": "1.0"},
+        "stateHome": {"const": "2.0"}, "registry": {"const": "1.0"},
+        "workDescriptor": {"const": "2.0"}
+      }
+    },
+    "repositoryKey": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"},
+    "baseBranch": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$"},
+    "aggregateCommand": {"type": "array", "minItems": 2, "maxItems": 8, "items": {"type": "string", "minLength": 1, "maxLength": 260}},
+    "writableRoots": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 3, "maxLength": 1024}},
+    "commandPolicy": {
+      "type": "object", "additionalProperties": false,
+      "required": ["pythonExecutable", "powerShellExecutable", "gitExecutable", "ghExecutable", "workerWrapper", "allowedGitArgv", "allowedGhArgv"],
+      "properties": {
+        "pythonExecutable": {"type": "string", "minLength": 3, "maxLength": 1024},
+        "powerShellExecutable": {"type": "string", "minLength": 3, "maxLength": 1024},
+        "gitExecutable": {"type": "string", "minLength": 3, "maxLength": 1024},
+        "ghExecutable": {"type": "string", "minLength": 3, "maxLength": 1024},
+        "workerWrapper": {"type": "string", "minLength": 3, "maxLength": 1024},
+        "allowedGitArgv": {"type": "array", "uniqueItems": true, "items": {"type": "array", "minItems": 1, "maxItems": 12, "items": {"type": "string", "minLength": 1, "maxLength": 128}}},
+        "allowedGhArgv": {"type": "array", "uniqueItems": true, "items": {"type": "array", "minItems": 1, "maxItems": 12, "items": {"type": "string", "minLength": 1, "maxLength": 128}}}
+      }
+    },
+    "scheduledPolicy": {
+      "type": "object", "additionalProperties": false,
+      "required": ["sandboxMode", "networkAccess", "approvalPolicy", "profileComposition"],
+      "properties": {
+        "sandboxMode": {"const": "workspace-write"},
+        "networkAccess": {"const": true},
+        "approvalPolicy": {"const": "never"},
+        "profileComposition": {"const": "none"}
+      }
+    },
+    "networkPolicy": {
+      "type": "object", "additionalProperties": false,
+      "required": ["allowedHosts", "loopbackHost", "loopbackPorts"],
+      "properties": {
+        "allowedHosts": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[A-Za-z0-9.-]+$"}},
+        "loopbackHost": {"enum": ["127.0.0.1", "localhost", "::1"]},
+        "loopbackPorts": {"type": "array", "uniqueItems": true, "items": {"type": "integer", "minimum": 1, "maximum": 65535}}
+      }
+    },
+    "environmentPolicy": {
+      "type": "object", "additionalProperties": false,
+      "required": ["requiredVariableNames", "allowedInheritedVariableNames", "forbiddenSecretNamePatterns"],
+      "properties": {
+        "requiredVariableNames": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]{0,127}$"}},
+        "allowedInheritedVariableNames": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]{0,127}$"}},
+        "forbiddenSecretNamePatterns": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 128}}
+      }
+    },
+    "probeAdapter": {
+      "type": "object", "additionalProperties": false,
+      "required": ["adapterId", "adapterVersion", "executable", "fixedArgv"],
+      "properties": {
+        "adapterId": {"const": "luchdom.supervisor.read-only"},
+        "adapterVersion": {"const": "1.0"},
+        "executable": {"type": "string", "minLength": 3, "maxLength": 1024},
+        "fixedArgv": {"type": "array", "maxItems": 12, "items": {"type": "string", "minLength": 1, "maxLength": 260}}
+      }
+    },
+    "clockPolicy": {
+      "type": "object", "additionalProperties": false,
+      "required": ["leaseSeconds", "reservationSeconds", "maxForwardStepSeconds"],
+      "properties": {
+        "leaseSeconds": {"type": "integer", "minimum": 30, "maximum": 86400},
+        "reservationSeconds": {"type": "integer", "minimum": 30, "maximum": 604800},
+        "maxForwardStepSeconds": {"type": "integer", "minimum": 1, "maximum": 3600}
+      }
+    }
+  },
+  "x-luchdom-runtimeParity": {
+    "version": "1.0", "runtimeValidator": "scripts.contracts.validate_contract",
+    "constraints": [
+      {"id": "canonical-absolute-paths"}, {"id": "exact-base-version-bindings"},
+      {"id": "scheduled-policy-vocabulary"}, {"id": "no-secret-like-material"}
+    ]
+  }
+}

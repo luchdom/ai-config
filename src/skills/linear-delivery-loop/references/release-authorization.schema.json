@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://luchdom.local/schemas/linear-delivery-loop/release-authorization-1.0.schema.json",
+  "title": "ReleaseAuthorization 1.0",
+  "description": "Engine-owned rotating reservation-control authority. The worker never authors this record.",
+  "type": "object", "additionalProperties": false,
+  "required": ["schemaVersion", "authorizationId", "authorizationRef", "operationId", "reservationId", "workflowId", "issueId", "runId", "repositoryId", "repositoryKey", "stateHome", "physicalWorktreeFingerprint", "scope", "stateRevision", "reservationRevision", "nonceHash", "createdAt", "expiresAt", "consumedAt", "status"],
+  "properties": {
+    "schemaVersion": {"const": "1.0"}, "authorizationId": {"type": "string", "format": "uuid"},
+    "authorizationRef": {"type": "string", "minLength": 3, "maxLength": 1024}, "operationId": {"type": "string", "format": "uuid"},
+    "reservationId": {"type": "string", "format": "uuid"}, "workflowId": {"type": "string", "format": "uuid"},
+    "issueId": {"oneOf": [{"type": "null"}, {"type": "string", "pattern": "^[A-Z][A-Z0-9]+-[1-9][0-9]*$"}]},
+    "runId": {"oneOf": [{"type": "null"}, {"type": "string", "format": "uuid"}]},
+    "repositoryId": {"type": "string", "pattern": "^repo-[a-f0-9]{24}$"}, "repositoryKey": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"},
+    "stateHome": {"type": "string", "minLength": 3, "maxLength": 1024},
+    "physicalWorktreeFingerprint": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+    "scope": {"enum": ["ReservationControl"]}, "stateRevision": {"type": "integer", "minimum": 1}, "reservationRevision": {"type": "integer", "minimum": 1},
+    "nonceHash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"}, "createdAt": {"type": "string", "format": "date-time"},
+    "expiresAt": {"type": "string", "format": "date-time"}, "consumedAt": {"oneOf": [{"type": "null"}, {"type": "string", "format": "date-time"}]},
+    "status": {"enum": ["issued", "consumed", "revoked"]}
+  },
+  "x-luchdom-runtimeParity": {
+    "version": "1.0", "runtimeValidator": "scripts.contracts.validate_contract",
+    "constraints": [{"id": "canonical-absolute-paths"}, {"id": "authorization-time-order"}, {"id": "one-shot-authorization-state"}, {"id": "no-raw-capability-or-nonce"}, {"id": "no-secret-like-material"}]
+  }
+}

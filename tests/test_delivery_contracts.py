@@ -29,6 +29,7 @@ from validation.delivery_contracts import (
     check_forbidden_operational_terms,
     check_projection_manifest,
     check_shared_specialists_and_routing,
+    check_supervisor_core,
     validate_repository,
 )
 
@@ -90,6 +91,9 @@ def canonical_fixture(root: Path) -> None:
 
 
 class DeliveryContractTests(unittest.TestCase):
+    def test_repository_supervisor_core_contract_is_complete(self) -> None:
+        self.assertEqual([], check_supervisor_core(ROOT))
+
     def test_repository_satisfies_delivery_contracts(self) -> None:
         self.assertEqual([], validate_repository(ROOT))
 

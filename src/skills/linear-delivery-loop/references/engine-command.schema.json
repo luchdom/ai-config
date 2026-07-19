@@ -1,0 +1,178 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://luchdom.local/schemas/linear-delivery-loop/engine-command-1.0.schema.json",
+  "title": "EngineCommand 1.0",
+  "description": "Exhaustive public deterministic command union. Authority paths must be engine-owned state-home descendants; raw capabilities and caller-selected outputs are forbidden.",
+  "oneOf": [
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["schemaVersion", "operation", "requestId", "repositoryKey", "repositoryRoot", "stateHome", "requestedAt", "configPath"],
+      "properties": {
+        "schemaVersion": {"const": "1.0"}, "operation": {"const": "Preflight"}, "requestId": {"type": "string", "format": "uuid"},
+        "repositoryKey": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"}, "repositoryRoot": {"type": "string", "minLength": 3, "maxLength": 1024},
+        "stateHome": {"type": "string", "minLength": 3, "maxLength": 1024}, "requestedAt": {"type": "string", "format": "date-time"},
+        "configPath": {"type": "string", "minLength": 3, "maxLength": 1024}
+      }
+    },
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["schemaVersion", "operation", "requestId", "repositoryKey", "repositoryRoot", "stateHome", "requestedAt", "ownerId", "expectedStateRevision"],
+      "properties": {
+        "schemaVersion": {"const": "1.0"}, "operation": {"const": "AcquireLease"}, "requestId": {"type": "string", "format": "uuid"},
+        "repositoryKey": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"}, "repositoryRoot": {"type": "string", "minLength": 3, "maxLength": 1024},
+        "stateHome": {"type": "string", "minLength": 3, "maxLength": 1024}, "requestedAt": {"type": "string", "format": "date-time"},
+        "ownerId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"}, "expectedStateRevision": {"type": "integer", "minimum": 1}
+      }
+    },
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["schemaVersion", "operation", "requestId", "repositoryKey", "repositoryRoot", "stateHome", "requestedAt", "runId", "ownerId", "leaseCapabilityRef", "expectedStateRevision"],
+      "properties": {
+        "schemaVersion": {"const": "1.0"}, "operation": {"const": "RenewLease"}, "requestId": {"type": "string", "format": "uuid"},
+        "repositoryKey": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"}, "repositoryRoot": {"type": "string", "minLength": 3, "maxLength": 1024},
+        "stateHome": {"type": "string", "minLength": 3, "maxLength": 1024}, "requestedAt": {"type": "string", "format": "date-time"},
+        "runId": {"type": "string", "format": "uuid"}, "ownerId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"}, "leaseCapabilityRef": {"type": "string", "minLength": 3, "maxLength": 1024},
+        "expectedStateRevision": {"type": "integer", "minimum": 1}
+      }
+    },
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["schemaVersion", "operation", "requestId", "repositoryKey", "repositoryRoot", "stateHome", "requestedAt", "runId", "issueId", "workflowId", "worktreePath", "leaseCapabilityRef", "expectedStateRevision", "expectedStage"],
+      "properties": {
+        "schemaVersion": {"const": "1.0"}, "operation": {"const": "PrepareIteration"}, "requestId": {"type": "string", "format": "uuid"},
+        "repositoryKey": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"}, "repositoryRoot": {"type": "string", "minLength": 3, "maxLength": 1024},
+        "stateHome": {"type": "string", "minLength": 3, "maxLength": 1024}, "requestedAt": {"type": "string", "format": "date-time"},
+        "runId": {"type": "string", "format": "uuid"}, "issueId": {"type": "string", "pattern": "^[A-Z][A-Z0-9]+-[1-9][0-9]*$"},
+        "workflowId": {"type": "string", "format": "uuid"}, "worktreePath": {"type": "string", "minLength": 3, "maxLength": 1024}, "leaseCapabilityRef": {"type": "string", "minLength": 3, "maxLength": 1024},
+        "expectedStateRevision": {"type": "integer", "minimum": 1}, "expectedStage": {"enum": ["initialized", "plan", "clarify", "task", "audit", "implement", "review", "qa", "docs", "publication"]}
+      }
+    },
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["schemaVersion", "operation", "requestId", "repositoryKey", "repositoryRoot", "stateHome", "requestedAt", "runId", "preparedIterationRef", "workerResultPath", "transitionId", "expectedStateRevision", "expectedStage"],
+      "properties": {
+        "schemaVersion": {"const": "1.0"}, "operation": {"const": "ApplyCheckpoint"}, "requestId": {"type": "string", "format": "uuid"},
+        "repositoryKey": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"}, "repositoryRoot": {"type": "string", "minLength": 3, "maxLength": 1024},
+        "stateHome": {"type": "string", "minLength": 3, "maxLength": 1024}, "requestedAt": {"type": "string", "format": "date-time"},
+        "runId": {"type": "string", "format": "uuid"}, "preparedIterationRef": {"type": "string", "minLength": 3, "maxLength": 1024},
+        "workerResultPath": {"type": "string", "minLength": 3, "maxLength": 1024}, "transitionId": {"type": "string", "format": "uuid"},
+        "expectedStateRevision": {"type": "integer", "minimum": 1}, "expectedStage": {"enum": ["initialized", "plan", "clarify", "task", "audit", "implement", "review", "qa", "docs", "publication"]}
+      }
+    },
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["schemaVersion", "operation", "requestId", "repositoryKey", "repositoryRoot", "stateHome", "requestedAt", "workflowId"],
+      "properties": {
+        "schemaVersion": {"const": "1.0"}, "operation": {"const": "Status"}, "requestId": {"type": "string", "format": "uuid"},
+        "repositoryKey": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"}, "repositoryRoot": {"type": "string", "minLength": 3, "maxLength": 1024},
+        "stateHome": {"type": "string", "minLength": 3, "maxLength": 1024}, "requestedAt": {"type": "string", "format": "date-time"},
+        "workflowId": {"oneOf": [{"type": "null"}, {"type": "string", "format": "uuid"}]}
+      }
+    },
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["schemaVersion", "operation", "requestId", "repositoryKey", "repositoryRoot", "stateHome", "requestedAt", "workflowId", "issueId", "worktreePath", "policy", "ownerId", "runId", "autonomousCapabilityRef", "expectedStateRevision", "expectedReservationsRevision"],
+      "properties": {
+        "schemaVersion": {"const": "1.0"}, "operation": {"const": "Reserve"}, "requestId": {"type": "string", "format": "uuid"},
+        "repositoryKey": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"}, "repositoryRoot": {"type": "string", "minLength": 3, "maxLength": 1024},
+        "stateHome": {"type": "string", "minLength": 3, "maxLength": 1024}, "requestedAt": {"type": "string", "format": "date-time"},
+        "workflowId": {"type": "string", "format": "uuid"}, "issueId": {"oneOf": [{"type": "null"}, {"type": "string", "pattern": "^[A-Z][A-Z0-9]+-[1-9][0-9]*$"}]},
+        "worktreePath": {"type": "string", "minLength": 3, "maxLength": 1024}, "policy": {"enum": ["autonomous", "semi-autonomous", "manual"]},
+        "ownerId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"}, "runId": {"oneOf": [{"type": "null"}, {"type": "string", "format": "uuid"}]},
+        "autonomousCapabilityRef": {"oneOf": [{"type": "null"}, {"type": "string", "minLength": 3, "maxLength": 1024}]},
+        "expectedStateRevision": {"type": "integer", "minimum": 1}, "expectedReservationsRevision": {"type": "integer", "minimum": 1}
+      }
+    },
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["schemaVersion", "operation", "requestId", "repositoryKey", "repositoryRoot", "stateHome", "requestedAt", "reservationId", "ownerId", "runId", "reservationControlRef", "autonomousCapabilityRef", "expectedReservationRevision", "expectedStateRevision", "expectedReservationsRevision"],
+      "properties": {
+        "schemaVersion": {"const": "1.0"}, "operation": {"const": "RenewReservation"}, "requestId": {"type": "string", "format": "uuid"},
+        "repositoryKey": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"}, "repositoryRoot": {"type": "string", "minLength": 3, "maxLength": 1024},
+        "stateHome": {"type": "string", "minLength": 3, "maxLength": 1024}, "requestedAt": {"type": "string", "format": "date-time"},
+        "reservationId": {"type": "string", "format": "uuid"}, "ownerId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"},
+        "runId": {"oneOf": [{"type": "null"}, {"type": "string", "format": "uuid"}]},
+        "reservationControlRef": {"type": "string", "minLength": 3, "maxLength": 1024}, "autonomousCapabilityRef": {"oneOf": [{"type": "null"}, {"type": "string", "minLength": 3, "maxLength": 1024}]},
+        "expectedReservationRevision": {"type": "integer", "minimum": 1}, "expectedStateRevision": {"type": "integer", "minimum": 1}, "expectedReservationsRevision": {"type": "integer", "minimum": 1}
+      }
+    },
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["schemaVersion", "operation", "requestId", "repositoryKey", "repositoryRoot", "stateHome", "requestedAt", "reservationId", "workflowId", "targetOperationId", "operationScope", "reservationControlRef", "autonomousCapabilityRef", "expectedReservationRevision", "expectedStateRevision", "expectedReservationsRevision"],
+      "properties": {
+        "schemaVersion": {"const": "1.0"}, "operation": {"const": "AuthorizeMutation"}, "requestId": {"type": "string", "format": "uuid"},
+        "repositoryKey": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"}, "repositoryRoot": {"type": "string", "minLength": 3, "maxLength": 1024},
+        "stateHome": {"type": "string", "minLength": 3, "maxLength": 1024}, "requestedAt": {"type": "string", "format": "date-time"},
+        "reservationId": {"type": "string", "format": "uuid"}, "workflowId": {"type": "string", "format": "uuid"},
+        "targetOperationId": {"type": "string", "format": "uuid"},
+        "operationScope": {"type": "array", "minItems": 1, "maxItems": 128, "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 1024}},
+        "reservationControlRef": {"type": "string", "minLength": 3, "maxLength": 1024}, "autonomousCapabilityRef": {"oneOf": [{"type": "null"}, {"type": "string", "minLength": 3, "maxLength": 1024}]},
+        "expectedReservationRevision": {"type": "integer", "minimum": 1}, "expectedStateRevision": {"type": "integer", "minimum": 1}, "expectedReservationsRevision": {"type": "integer", "minimum": 1}
+      }
+    },
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["schemaVersion", "operation", "requestId", "repositoryKey", "repositoryRoot", "stateHome", "requestedAt", "reservationId", "reservationControlRef", "autonomousCapabilityRef", "trustedObservationRef", "expectedReservationRevision", "expectedStateRevision", "expectedReservationsRevision"],
+      "properties": {
+        "schemaVersion": {"const": "1.0"}, "operation": {"const": "Release"}, "requestId": {"type": "string", "format": "uuid"},
+        "repositoryKey": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"}, "repositoryRoot": {"type": "string", "minLength": 3, "maxLength": 1024},
+        "stateHome": {"type": "string", "minLength": 3, "maxLength": 1024}, "requestedAt": {"type": "string", "format": "date-time"},
+        "reservationId": {"type": "string", "format": "uuid"}, "reservationControlRef": {"type": "string", "minLength": 3, "maxLength": 1024},
+        "autonomousCapabilityRef": {"oneOf": [{"type": "null"}, {"type": "string", "minLength": 3, "maxLength": 1024}]},
+        "trustedObservationRef": {"oneOf": [{"type": "null"}, {"type": "string", "minLength": 3, "maxLength": 1024}]}, "expectedReservationRevision": {"type": "integer", "minimum": 1}, "expectedStateRevision": {"type": "integer", "minimum": 1}, "expectedReservationsRevision": {"type": "integer", "minimum": 1}
+      }
+    },
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["schemaVersion", "operation", "requestId", "repositoryKey", "repositoryRoot", "stateHome", "requestedAt", "operationId", "expectedStateRevision"],
+      "properties": {
+        "schemaVersion": {"const": "1.0"}, "operation": {"const": "Recover"}, "requestId": {"type": "string", "format": "uuid"},
+        "repositoryKey": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"}, "repositoryRoot": {"type": "string", "minLength": 3, "maxLength": 1024},
+        "stateHome": {"type": "string", "minLength": 3, "maxLength": 1024}, "requestedAt": {"type": "string", "format": "date-time"},
+        "operationId": {"oneOf": [{"type": "null"}, {"type": "string", "format": "uuid"}]}, "expectedStateRevision": {"type": "integer", "minimum": 1}
+      }
+    },
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["schemaVersion", "operation", "requestId", "repositoryKey", "repositoryRoot", "stateHome", "requestedAt", "releasedReservationId", "gateOperationId", "cleanupAuthorizationRef", "expectedReleasedReservationRevision", "expectedStateRevision", "expectedReservationsRevision"],
+      "properties": {
+        "schemaVersion": {"const": "1.0"}, "operation": {"const": "Cleanup"}, "requestId": {"type": "string", "format": "uuid"},
+        "repositoryKey": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"}, "repositoryRoot": {"type": "string", "minLength": 3, "maxLength": 1024},
+        "stateHome": {"type": "string", "minLength": 3, "maxLength": 1024}, "requestedAt": {"type": "string", "format": "date-time"},
+        "releasedReservationId": {"type": "string", "format": "uuid"}, "gateOperationId": {"type": "string", "format": "uuid"},
+        "cleanupAuthorizationRef": {"type": "string", "minLength": 3, "maxLength": 1024},
+        "expectedReleasedReservationRevision": {"type": "integer", "minimum": 1}, "expectedStateRevision": {"type": "integer", "minimum": 1}, "expectedReservationsRevision": {"type": "integer", "minimum": 1}
+      }
+    },
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["schemaVersion", "operation", "requestId", "repositoryKey", "repositoryRoot", "stateHome", "requestedAt", "workflowId", "sourcePath", "destinationPath", "expectedPaths", "reservationId", "reservationControlRef", "autonomousCapabilityRef", "expectedReservationRevision", "expectedStateRevision", "expectedReservationsRevision", "runId"],
+      "properties": {
+        "schemaVersion": {"const": "1.0"}, "operation": {"const": "Handoff"}, "requestId": {"type": "string", "format": "uuid"},
+        "repositoryKey": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"}, "repositoryRoot": {"type": "string", "minLength": 3, "maxLength": 1024},
+        "stateHome": {"type": "string", "minLength": 3, "maxLength": 1024}, "requestedAt": {"type": "string", "format": "date-time"},
+        "workflowId": {"type": "string", "format": "uuid"}, "sourcePath": {"type": "string", "minLength": 3, "maxLength": 1024},
+        "destinationPath": {"type": "string", "minLength": 3, "maxLength": 1024}, "expectedPaths": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 512}},
+        "reservationId": {"type": "string", "format": "uuid"}, "reservationControlRef": {"type": "string", "minLength": 3, "maxLength": 1024},
+        "autonomousCapabilityRef": {"oneOf": [{"type": "null"}, {"type": "string", "minLength": 3, "maxLength": 1024}]},
+        "expectedReservationRevision": {"type": "integer", "minimum": 1}, "expectedStateRevision": {"type": "integer", "minimum": 1}, "expectedReservationsRevision": {"type": "integer", "minimum": 1},
+        "runId": {"oneOf": [{"type": "null"}, {"type": "string", "format": "uuid"}]}
+      }
+    },
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["schemaVersion", "operation", "requestId", "repositoryKey", "repositoryRoot", "stateHome", "requestedAt", "runId", "ownerId", "leaseCapabilityRef", "expectedStateRevision"],
+      "properties": {
+        "schemaVersion": {"const": "1.0"}, "operation": {"const": "ReleaseLease"}, "requestId": {"type": "string", "format": "uuid"},
+        "repositoryKey": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"}, "repositoryRoot": {"type": "string", "minLength": 3, "maxLength": 1024},
+        "stateHome": {"type": "string", "minLength": 3, "maxLength": 1024}, "requestedAt": {"type": "string", "format": "date-time"},
+        "runId": {"type": "string", "format": "uuid"}, "ownerId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"}, "leaseCapabilityRef": {"type": "string", "minLength": 3, "maxLength": 1024},
+        "expectedStateRevision": {"type": "integer", "minimum": 1}
+      }
+    }
+  ],
+  "x-luchdom-runtimeParity": {
+    "version": "1.0", "runtimeValidator": "scripts.contracts.validate_contract",
+    "constraints": [{"id": "canonical-absolute-paths"}, {"id": "command-path-trust-boundaries"}, {"id": "operation-inventory-parity"}, {"id": "no-caller-output-path"}, {"id": "no-raw-capability-or-nonce"}, {"id": "no-secret-like-material"}]
+  }
+}

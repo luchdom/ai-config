@@ -1,0 +1,74 @@
+{
+  "acceptanceCriteria": [],
+  "artifactFolder": "C:\\dev\\luchdom\\ai-config\\docs-ai\\002-saas-46-supervisor-reservation-permissions-recov",
+  "artifactInventory": [
+    "workflow.json",
+    "2026-07-18-saas-46-supervisor-core-plan.md",
+    "2026-07-18-saas-46-supervisor-core-tasks.md",
+    "2026-07-18-saas-46-supervisor-core-audit.md",
+    "2026-07-18-saas-46-supervisor-core-re-audit.md",
+    "2026-07-18-saas-46-supervisor-core-re-audit-2.md",
+    "2026-07-18-saas-46-supervisor-core-code-review.md",
+    "2026-07-19-saas-46-supervisor-core-code-re-review.md",
+    "2026-07-19-saas-46-supervisor-core-code-re-review-2.md",
+    "2026-07-19-saas-46-supervisor-core-code-re-review-3.md",
+    "2026-07-19-saas-46-supervisor-core-code-re-review-4.md",
+    "2026-07-19-saas-46-supervisor-core-code-re-review-5.md",
+    "2026-07-19-saas-46-supervisor-core-code-re-review-6.md",
+    "2026-07-19-saas-46-supervisor-core-code-re-review-7.md",
+    "2026-07-19-saas-46-supervisor-core-code-re-review-8.md",
+    "2026-07-19-saas-46-supervisor-core-qa.md",
+    "2026-07-19-saas-46-supervisor-core-pr.md"
+  ],
+  "assumptionsDecisionRefs": [],
+  "completionBoundary": "merge",
+  "currentArtifactStage": "publication",
+  "deliverySummary": {
+    "auditArtifact": "2026-07-18-saas-46-supervisor-core-re-audit-2.md",
+    "auditVerdict": "pass",
+    "codeReReviewArtifact": "2026-07-19-saas-46-supervisor-core-code-re-review-8.md",
+    "codeReReviewFindings": {
+      "p1": 0,
+      "p2": 0
+    },
+    "codeReReviewVerdict": "pass",
+    "codeReviewArtifact": "2026-07-18-saas-46-supervisor-core-code-review.md",
+    "codeReviewFindings": {
+      "p1": 6,
+      "p2": 3
+    },
+    "codeReviewVerdict": "fail",
+    "fullSupervisorTestEvidence": {
+      "command": "python -m unittest discover -s tests\\linear_delivery_supervisor -t . -v",
+      "count": 92,
+      "status": "pass"
+    },
+    "implementationAuthorized": true,
+    "qaArtifact": "2026-07-19-saas-46-supervisor-core-qa.md",
+    "qaVerdict": "pass",
+    "prDescriptionArtifact": "2026-07-19-saas-46-supervisor-core-pr.md",
+    "repairStatus": "completed"
+  },
+  "design": {
+    "reason": "No product UI or interaction change declared.",
+    "required": false
+  },
+  "goal": "SAAS-46: Build the machine-stable supervisor, reservation, permissions, and recovery core",
+  "nonGoals": [],
+  "physicalWorktreeFingerprint": "sha256:ec10d90a90d5d5aa018df7cfb870f5be7e7bb9167cf06ae30af1875a79e5ac32",
+  "repositoryKey": "ai-config",
+  "repositoryRoot": "C:\\dev\\luchdom\\ai-config",
+  "revision": 14,
+  "riskFlags": [],
+  "schemaVersion": "2.0",
+  "slug": "saas-46-supervisor-reservation-permissions-recov",
+  "supersededArtifactNames": [],
+  "tracking": {
+    "externalId": "SAAS-46",
+    "provider": "linear"
+  },
+  "workKey": "002",
+  "workSource": "local",
+  "workflow": "semi-autonomous",
+  "workflowId": "1a0fa044-199b-4f57-ac46-1cc38061debb"
+}

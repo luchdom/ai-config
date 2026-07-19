@@ -54,6 +54,8 @@ Per-work evidence belongs in `docs-ai/`. Reusable how-tos, concepts, references,
 
 The base helper binds `repositoryKey` to the normalized repository's state home; legacy unbound state requires attended reconciliation. Workflow-managed Handoff requires an exact repeated `--expected-path` scope, preserves the registry as authority, writes redacted hash-bound evidence, and transfers no reservation. See the canonical [artifact contract](src/skills/goal-to-delivery/references/artifact-contract.md) for the complete boundary and its distinction from native Codex **Hand off**.
 
+The shared [supervisor core](src/skills/linear-delivery-loop/references/supervisor-core.md) layers machine-stable leases, repository editing reservations, mutation authorization, persistent issue/gate worktrees, permission preflight, recovery/cleanup, and reservation-aware assembled Handoff on that base. It is local and transport-free: Linear selection/updates, ntfy delivery, and GitHub publication/merge remain later adapters. Semi-autonomous and manual implementation use the same reservation namespace as autonomous work, so one workflow cannot silently edit through another workflow's active authority.
+
 ## Layout
 
 - `src/agents/`: canonical specialist agent definitions
