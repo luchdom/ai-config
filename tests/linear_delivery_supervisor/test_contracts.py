@@ -146,6 +146,54 @@ class SupervisorContractTests(unittest.TestCase):
                 "observedAt": self.now, "expiresAt": self.later, "journalHash": self.hash, "attestationHash": self.hash,
                 "consumedAt": None, "status": "issued",
             },
+            "tracking-config": {
+                "schemaVersion": "1.0", "controlPlaneVersion": "1.0",
+                "supervisorVersion": "1.0", "repositoryKey": "ai-config",
+                "workspace": {"id": "workspace-1", "name": "Luchdom"},
+                "team": {"id": "team-1", "key": "SAAS"},
+                "project": {"id": "project-1", "name": "SaaS"},
+                "owner": {"id": "owner-1", "name": "Lucas"},
+                "states": {
+                    name: {"id": f"state-{name}", "name": display}
+                    for name, display in (
+                        ("backlog", "Backlog"), ("todo", "Todo"),
+                        ("inProgress", "In Progress"), ("inReview", "In Review"),
+                        ("done", "Done"),
+                    )
+                },
+                "labels": {
+                    name: {"id": f"label-{name}", "name": display}
+                    for name, display in (
+                        ("autonomous", "autonomous"),
+                        ("needsRefinement", "needs-refinement"),
+                        ("needsHuman", "needs-human"),
+                        ("externalIntegration", "external-integration"),
+                        ("stop", "stop"),
+                    )
+                },
+                "linear": {
+                    "endpoint": "https://api.linear.app/graphql",
+                    "allowedHost": "api.linear.app",
+                    "apiKeyEnvironmentVariable": "LINEAR_API_KEY",
+                    "timeoutSeconds": 15, "maxAttempts": 3,
+                },
+                "ntfy": {
+                    "enabled": False,
+                    "endpointEnvironmentVariable": "NTFY_URL",
+                    "topicEnvironmentVariable": "NTFY_TOPIC",
+                    "tokenEnvironmentVariable": "NTFY_TOKEN",
+                    "allowedHosts": ["ntfy.sh"], "maxAttempts": 3,
+                },
+            },
+            "control-plane-state": {
+                "schemaVersion": "1.0", "revision": 0, "decisions": [],
+                "publicationRequests": [], "followUps": [],
+                "attentionEvents": [], "notifications": [], "selectionClaims": [],
+            },
+            "migration-report": {
+                "schemaVersion": "1.0", "generatedAt": self.now,
+                "mutationFree": True, "issues": [],
+            },
         }
 
     def test_runtime_parity_inventory_and_every_valid_contract(self) -> None:

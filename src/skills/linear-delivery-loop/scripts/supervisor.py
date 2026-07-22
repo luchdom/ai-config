@@ -19,6 +19,11 @@ from .worktrees import WorktreeManager
 class SupervisorEngine:
     """One repository-bound state engine; transport and selection remain outside."""
 
+    __slots__ = (
+        "runtime", "manager", "store", "operations", "leases", "reservations",
+        "worktrees", "recovery", "extra_handlers",
+    )
+
     OPERATION_NAMES = frozenset(
         {
             "Preflight",
@@ -37,6 +42,14 @@ class SupervisorEngine:
             "ReleaseLease",
         }
     )
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if name in {
+            "_control_plane_registries", "_control_plane_registry",
+            "describe_control_plane_reference", "execute_control_plane_operation",
+        }:
+            raise AttributeError("Control-plane ownership cannot be caller-replaced")
+        object.__setattr__(self, name, value)
 
     def __init__(
         self,
@@ -92,6 +105,39 @@ class SupervisorEngine:
         unknown = set(self.extra_handlers) - self.OPERATION_NAMES
         if unknown:
             raise SupervisorStoreError("Supervisor received an unknown operation handler")
+
+    def describe_control_plane_reference(self, reference: str) -> dict[str, str]:
+        """Return non-authority metadata for an engine-owned opaque reference.
+
+        SAAS-47 deliberately does not activate a live provider.  A later
+        integration may implement this closed operation against durable engine
+        configuration; production callers cannot install adapters here.
+        """
+
+        raise SupervisorStoreError("Control-plane provider is not activated")
+
+    def execute_control_plane_operation(
+        self,
+        reference: str,
+        operation: str,
+        payload: Mapping[str, Any],
+        *,
+        linear: Any,
+    ) -> Any:
+        """Execute one closed provider/repository operation inside the owner.
+
+        No callback, adapter, registry entry, or repository authority crosses
+        this boundary.  Fixture composition is supplied only by test support.
+        """
+
+        allowed = {
+            "observe-issues", "observe-selection", "claim-reread", "claim",
+            "claim-readback", "current-execution-lease", "authorize-recovery",
+            "prepare", "commit", "rollback-if-safe", "protect", "recover",
+        }
+        if operation not in allowed or not isinstance(payload, Mapping):
+            raise SupervisorStoreError("Control-plane operation is not closed")
+        raise SupervisorStoreError("Control-plane provider is not activated")
 
     def status(self) -> dict[str, Any]:
         with self.store.mutex():

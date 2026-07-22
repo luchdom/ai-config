@@ -12,12 +12,21 @@ from .contracts import (
     validate_engine_command,
 )
 from .supervisor import Supervisor, SupervisorEngine
+from .control_plane import LinearControlPlane
+from .control_plane_records import ControlPlaneRecords, ControlPlaneStore
+from .linear_transport import LinearTransport
+from .ntfy_transport import NtfyTransport
 
 __all__ = [
     "BaseRuntime",
     "BaseRuntimeError",
     "CONTRACT_VERSION",
     "ContractValidationError",
+    "ControlPlaneRecords",
+    "ControlPlaneStore",
+    "LinearControlPlane",
+    "LinearTransport",
+    "NtfyTransport",
     "OPERATION_NAMES",
     "SCHEMA_FILENAMES",
     "Supervisor",

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 import os
 import re
@@ -43,6 +44,9 @@ SCHEMA_FILENAMES = {
     "release-authorization": "release-authorization.schema.json",
     "handoff-authorization": "handoff-authorization.schema.json",
     "trusted-observation": "trusted-observation.schema.json",
+    "tracking-config": "tracking-config.schema.json",
+    "control-plane-state": "control-plane-state.schema.json",
+    "migration-report": "migration-report.schema.json",
 }
 RUNTIME_CONSTRAINTS = {
     "project-config": {
@@ -114,6 +118,19 @@ RUNTIME_CONSTRAINTS = {
         "observation-time-order",
         "one-shot-observation-state",
         "no-raw-capability-or-nonce",
+        "no-secret-like-material",
+    },
+    "tracking-config": {
+        "tracking-identifier-only-configuration",
+        "no-secret-like-material",
+    },
+    "control-plane-state": {
+        "canonical-record-identities",
+        "no-raw-capability-or-nonce",
+        "no-secret-like-material",
+    },
+    "migration-report": {
+        "mutation-free-report-shape",
         "no-secret-like-material",
     },
 }
@@ -276,6 +293,11 @@ def _timestamp(value: str, location: str) -> datetime:
 
 def _key_token(key: str) -> str:
     return re.sub(r"[^a-z]", "", key.casefold())
+
+
+def _stable_record_id(kind: str, *parts: str) -> str:
+    digest = hashlib.sha256("\0".join(parts).encode("utf-8")).hexdigest()[:24]
+    return f"{kind}-{digest}"
 
 
 def _walk(value: Any, *, key: str | None = None):
@@ -489,6 +511,281 @@ def _check_runtime(name: str, value: Mapping[str, Any]) -> None:
             raise ContractValidationError("Observation consumption predates observation")
         if (value["status"] == "consumed") != (consumed is not None):
             raise ContractValidationError("Consumed observation status/timestamp mismatch")
+    if name == "tracking-config":
+        expected_top = {
+            "schemaVersion", "controlPlaneVersion", "supervisorVersion",
+            "repositoryKey", "workspace", "team", "project", "owner",
+            "states", "labels", "linear", "ntfy",
+        }
+        if set(value) != expected_top:
+            raise ContractValidationError("Tracking configuration inventory is not exact")
+        for key in ("workspace", "project", "owner"):
+            if set(value[key]) != {"id", "name"} or not all(
+                isinstance(item, str) and item for item in value[key].values()
+            ):
+                raise ContractValidationError(f"Tracking {key} identity is malformed")
+        if set(value["team"]) != {"id", "key"}:
+            raise ContractValidationError("Tracking team identity is malformed")
+        expected_states = {"backlog", "todo", "inProgress", "inReview", "done"}
+        expected_labels = {
+            "autonomous", "needsRefinement", "needsHuman", "externalIntegration", "stop"
+        }
+        if set(value["states"]) != expected_states or set(value["labels"]) != expected_labels:
+            raise ContractValidationError("Tracking state/label inventory is not exact")
+        observed_ids: list[str] = []
+        for group in ("states", "labels"):
+            for identity in value[group].values():
+                if set(identity) != {"id", "name"} or not all(
+                    isinstance(item, str) and item for item in identity.values()
+                ):
+                    raise ContractValidationError(f"Tracking {group} identity is malformed")
+                observed_ids.append(identity["id"])
+        observed_ids.extend(
+            [value["workspace"]["id"], value["team"]["id"], value["project"]["id"], value["owner"]["id"]]
+        )
+        if len(observed_ids) != len(set(observed_ids)):
+            raise ContractValidationError("Tracking provider identifiers must be unique")
+        if value["team"]["key"] != "SAAS":
+            raise ContractValidationError("Tracking configuration must bind the SAAS team")
+        if value["linear"]["apiKeyEnvironmentVariable"] != "LINEAR_API_KEY":
+            raise ContractValidationError("Linear credentials must resolve from LINEAR_API_KEY")
+        serialized = json.dumps(value, sort_keys=True).casefold()
+        if any(token in serialized for token in ('"token":', '"apikey":', '"secret":')):
+            raise ContractValidationError("Tracking configuration contains credential material")
+    if name == "control-plane-state":
+        all_ids: list[str] = []
+        for collection in (
+            "decisions",
+            "publicationRequests",
+            "followUps",
+            "attentionEvents",
+            "notifications",
+            "selectionClaims",
+        ):
+            records = value[collection]
+            identities = [record["id"] for record in records]
+            if len(identities) != len(set(identities)):
+                raise ContractValidationError(f"{collection} contains duplicate record IDs")
+            all_ids.extend(identities)
+            for record in records:
+                if _timestamp(record["createdAt"], "createdAt") < _timestamp(
+                    record["sourceTimestamp"], "sourceTimestamp"
+                ):
+                    raise ContractValidationError("Control-plane record predates its source")
+        if len(all_ids) != len(set(all_ids)):
+            raise ContractValidationError("Control-plane record IDs collide across collections")
+        for record in value["decisions"]:
+            data = record["data"]
+            expected_id = _stable_record_id(
+                "decision", record["issueId"], record["sourceTimestamp"],
+                record["summary"], data["ownerId"], data["configDigest"],
+                data["repositoryId"]
+            )
+            option_ids = [item["id"] for item in data["options"]]
+            if record["id"] != expected_id or len(option_ids) != len(set(option_ids)):
+                raise ContractValidationError("Decision identity or options are non-canonical")
+            if data["recommendation"] not in option_ids:
+                raise ContractValidationError("Decision recommendation is not an option")
+            expected_syntax = f"DECIDE {record['id']} <{'|'.join(option_ids)}>"
+            if data["replySyntax"] != expected_syntax:
+                raise ContractValidationError("Decision reply syntax is non-canonical")
+            consumed = data["consumedReplyId"] is not None
+            if consumed != (data["consumedReplyTimestamp"] is not None):
+                raise ContractValidationError("Decision consumption evidence is incomplete")
+            if (record["status"] == "consumed") != consumed:
+                raise ContractValidationError("Decision consumption marker/status mismatch")
+            if consumed and data.get("selectedOption") not in option_ids:
+                raise ContractValidationError("Consumed decision lacks a valid selected option")
+            if not consumed and "selectedOption" in data:
+                raise ContractValidationError("Pending decision contains a selected option")
+            if consumed and _timestamp(
+                data["consumedReplyTimestamp"], "consumedReplyTimestamp"
+            ) <= _timestamp(record["sourceTimestamp"], "sourceTimestamp"):
+                raise ContractValidationError("Decision reply does not follow its source")
+        for record in value["publicationRequests"]:
+            data = record["data"]
+            expected_id = _stable_record_id(
+                "publication", record["issueId"], data["operationId"],
+                data["headSha"], data["ownerId"], data["configDigest"],
+                data["repositoryId"]
+            )
+            if record["id"] != expected_id:
+                raise ContractValidationError("Publication request identity is non-canonical")
+            expected_syntax = f"RETRY-PUBLICATION {data['operationId']} {data['headSha']}"
+            if data["replySyntax"] != expected_syntax:
+                raise ContractValidationError("Publication reply syntax is non-canonical")
+            consumed = data["consumedReplyId"] is not None
+            if consumed != (data["consumedReplyTimestamp"] is not None):
+                raise ContractValidationError("Publication consumption evidence is incomplete")
+            if (record["status"] == "authorized") != consumed:
+                raise ContractValidationError("Publication consumption marker/status mismatch")
+            if consumed and _timestamp(
+                data["consumedReplyTimestamp"], "consumedReplyTimestamp"
+            ) <= _timestamp(record["sourceTimestamp"], "sourceTimestamp"):
+                raise ContractValidationError("Publication reply does not follow its source")
+            evidence_keys = {"issueState", "reservationId", "worktreePath", "branch", "prId"}
+            if set(data["evidence"]) != evidence_keys:
+                raise ContractValidationError("Publication evidence inventory is incomplete")
+        source_records: dict[str, Mapping[str, Any]] = {}
+        for collection in ("decisions", "publicationRequests", "followUps"):
+            source_records.update({item["id"]: item for item in value[collection]})
+        for record in value["followUps"]:
+            data = record["data"]
+            if record["kind"] in {"needs-refinement", "external-integration"}:
+                if data["proposalType"] == "external-prerequisite":
+                    expected_id = _stable_record_id(
+                        "followup", record["issueId"], record["sourceTimestamp"], record["summary"]
+                    )
+                    if record["kind"] != "external-integration":
+                        raise ContractValidationError("External prerequisite has the wrong kind")
+                else:
+                    expected_id = _stable_record_id(
+                        "proposal", record["issueId"], record["sourceTimestamp"],
+                        record["summary"], record["kind"]
+                    )
+                if data["proposedState"] != "Backlog" or data["proposedLabel"] != record["kind"]:
+                    raise ContractValidationError("Follow-up proposal fields are inconsistent")
+            else:
+                expected_id = _stable_record_id(
+                    "failure", record["issueId"], record["kind"], data["sourceId"]
+                )
+            if record["id"] != expected_id:
+                raise ContractValidationError("Follow-up/failure identity is non-canonical")
+        expected_attention: dict[str, str | None] = {
+            record["id"]: "needs-human" for record in value["decisions"]
+        }
+        expected_attention.update(
+            {record["id"]: "publication-refusal" for record in value["publicationRequests"]}
+        )
+        for record in value["followUps"]:
+            if record["kind"] == "external-integration":
+                expected_attention[record["id"]] = (
+                    "external-blocker"
+                    if record["data"]["proposalType"] == "external-prerequisite"
+                    else None
+                )
+            elif record["kind"] == "needs-refinement":
+                expected_attention[record["id"]] = None
+            elif record["kind"] == "reconciliation-failure":
+                expected_attention[record["id"]] = "multiple-wip"
+            else:
+                expected_attention[record["id"]] = record["kind"]
+        attention_by_source: dict[str, list[Mapping[str, Any]]] = {}
+        for record in value["attentionEvents"]:
+            source_id = record["data"]["sourceId"]
+            attention_by_source.setdefault(source_id, []).append(record)
+            source = source_records.get(source_id)
+            required_kind = expected_attention.get(source_id)
+            if source is None or required_kind is None or record["kind"] != required_kind:
+                raise ContractValidationError("Attention event has an invalid source taxonomy")
+            expected_id = _stable_record_id(
+                "attention", source["issueId"], required_kind, source_id
+            )
+            if record["id"] != expected_id or any(
+                record[key] != source[key]
+                for key in ("issueId", "sourceTimestamp", "link", "summary")
+            ):
+                raise ContractValidationError("Attention event metadata differs from its source")
+        for source_id, required_kind in expected_attention.items():
+            count = len(attention_by_source.get(source_id, []))
+            if count != (1 if required_kind is not None else 0):
+                raise ContractValidationError("Source attention cardinality violates its taxonomy")
+        attention = {item["id"]: item for item in value["attentionEvents"]}
+        for record in value["notifications"]:
+            data = record["data"]
+            if data["eventId"] not in attention:
+                raise ContractValidationError("Notification lacks its attention event")
+            event = attention[data["eventId"]]
+            if any(
+                record[key] != event[key]
+                for key in ("issueId", "sourceTimestamp", "link", "summary")
+            ):
+                raise ContractValidationError("Notification metadata differs from its attention source")
+            if record["id"] != _stable_record_id("notification", data["eventId"]):
+                raise ContractValidationError("Notification identity is non-canonical")
+            if data["attemptId"] != _stable_record_id("attempt", data["eventId"]):
+                raise ContractValidationError("Notification attempt identity is non-canonical")
+            terminal = data["attemptState"] == "terminal"
+            if terminal != (record["status"] in {"delivered", "failed"}):
+                raise ContractValidationError("Notification attempt/status mismatch")
+            if terminal != (data["completedAt"] is not None and data["outcome"] is not None):
+                raise ContractValidationError("Notification completion evidence mismatch")
+            if data["completedAt"] is not None and _timestamp(
+                data["completedAt"], "completedAt"
+            ) < _timestamp(record["createdAt"], "createdAt"):
+                raise ContractValidationError("Notification completed before its attempt")
+            if terminal and data["outcome"].get("status") != record["status"]:
+                raise ContractValidationError("Notification outcome/status mismatch")
+        for record in value["selectionClaims"]:
+            data = record["data"]
+            expected_id = _stable_record_id(
+                "selection", record["issueId"], data["snapshotDigest"],
+                data["configDigest"], data["repositoryId"]
+            )
+            if record["id"] != expected_id:
+                raise ContractValidationError("Selection claim identity is non-canonical")
+            bound = record["status"] in {
+                "in-flight", "protected", "recovering", "consumed", "inert"
+            }
+            lease_bound = all(
+                data[key] is not None for key in (
+                    "operationId", "startedAt", "executionOwnerId",
+                    "executionLeaseRevision", "executionLeaseExpiresAt",
+                )
+            )
+            if bound != lease_bound:
+                raise ContractValidationError("Selection operation binding/status mismatch")
+            if data["startedAt"] is not None and _timestamp(
+                data["startedAt"], "startedAt"
+            ) < _timestamp(record["createdAt"], "createdAt"):
+                raise ContractValidationError("Selection operation predates its claim")
+            recovering = record["status"] == "recovering"
+            recovery_bound = all(
+                data[key] is not None for key in (
+                    "recoveryOwnerId", "recoveryLeaseRevision",
+                    "recoveryLeaseExpiresAt", "recoveryStartedAt", "recoveryProof"
+                )
+            )
+            if recovering and not recovery_bound:
+                raise ContractValidationError("Recovering selection lacks exclusive proof")
+            if data["recoveryGeneration"] == 0 and recovery_bound:
+                raise ContractValidationError("Selection recovery proof lacks a generation")
+            if data["recoveryGeneration"] > 0 and data["recoveryProof"] is None:
+                raise ContractValidationError("Selection recovery generation lacks durable proof")
+            proof = data["recoveryProof"]
+            if proof is not None:
+                if (
+                    proof["operationId"] != data["operationId"]
+                    or proof["recoveryOwnerId"] != data["recoveryOwnerId"]
+                    or proof["recoveryLeaseRevision"] != data["recoveryLeaseRevision"]
+                    or proof["recoveryLeaseExpiresAt"] != data["recoveryLeaseExpiresAt"]
+                    or proof["observedAt"] != data["recoveryStartedAt"]
+                ):
+                    raise ContractValidationError("Selection recovery proof is differently bound")
+                if data["recoveryGeneration"] == 1 and (
+                    proof["previousOwnerId"] != data["executionOwnerId"]
+                    or proof["previousLeaseRevision"] != data["executionLeaseRevision"]
+                    or proof["previousLeaseExpiresAt"] != data["executionLeaseExpiresAt"]
+                ):
+                    raise ContractValidationError("First recovery proof lacks execution binding")
+                if proof["reason"] == "lease-expired" and _timestamp(
+                    proof["previousLeaseExpiresAt"], "previousLeaseExpiresAt"
+                ) > _timestamp(proof["observedAt"], "observedAt"):
+                    raise ContractValidationError("Recovery lease had not expired")
+            terminal = record["status"] in {"consumed", "inert"}
+            if terminal != (data["terminalResult"] is not None):
+                raise ContractValidationError("Selection terminal result/status mismatch")
+            result = data["terminalResult"]
+            if result is not None and (
+                result["operationId"] != data["operationId"]
+                or result["issueId"] != record["issueId"]
+                or (record["status"] == "inert") != (result["status"] == "inert")
+            ):
+                raise ContractValidationError("Selection terminal result is differently bound")
+    if name == "migration-report":
+        identities = [record["issueId"] for record in value["issues"]]
+        if len(identities) != len(set(identities)):
+            raise ContractValidationError("Migration report contains duplicate issues")
 
 
 def validate_contract(name: str, value: Mapping[str, Any]) -> dict[str, Any]:
