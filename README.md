@@ -39,6 +39,32 @@ Autonomous delivery uses progressive disclosure. A healthy `$linear-delivery-loo
 
 Precedence is user/system requirements and repository-specific stricter safety, then the explicitly invoked entry policy, then the canonical shared contract. An unresolved conflict fails closed before implementation or external mutation.
 
+## Harness engineering coverage
+
+A dependable engineering harness needs more than a prompt that asks an agent to keep working. It needs bounded behavior, controlled capabilities and context, independent evidence, durable state, safe execution, and explicit points for human intervention. The seven components below are complementary: no single component substitutes for another, and fixture-backed design is not the same as live operational readiness.
+
+| Component | Why it matters | How this repository covers it | Current maturity |
+|---|---|---|---|
+| System prompt | Establishes role, behavior, constraints, precedence, and stopping conditions. | The three entry skills route into one canonical protocol; repository instructions add local rules; specialist agent definitions keep stage ownership distinct. | Shared policy is implemented. |
+| Tools | Gives each role the capabilities it needs without exposing every possible mutation surface. | Reusable skills and specialist agents provide narrow responsibilities; generated adapters carry tool-specific metadata; deterministic wrappers and provider boundaries use fixed, schema-validated operations. | Shared surfaces exist; complete least-privilege SaaS integration remains pending. |
+| Context management | Controls what the agent knows now so relevant evidence is available without loading the whole harness. | Autonomous work uses progressive disclosure and a compact runtime contract; detailed schemas and diagnostics stay out of healthy-run context; repository discovery and stage artifacts load only the nearest relevant sources. | Implemented by design; context size and token efficiency still require measurement and tuning. |
+| Verification mechanisms | Prevents model confidence from being treated as proof that work is correct. | Plan audit, exact-diff code review, runtime QA, documentation checks, repository-owned local aggregates, and clean exact-head/exact-merge-SHA validation are separate gates. | Shared gates are implemented; repository-specific real HTTP/browser QA must be supplied by each project. |
+| Memory | Preserves the state and knowledge needed to resume safely across sessions. | Linear stores durable work and decisions; `workflow.json` and `docs-ai/` retain delivery identity and evidence; the supervisor state home retains leases, reservations, journals, recovery state, and persistent worktrees; curated repository docs retain reusable knowledge. | Operational memory is implemented; compact curated knowledge, retrieval, retention, and promotion from run evidence need further work. |
+| Sandboxes | Limits the damage of commands, tools, network access, and concurrent edits. | Agent metadata declares sandbox expectations; repository reservations and scoped mutation authorization constrain writes; preflight checks environment and permissions; persistent issue worktrees and disposable validation worktrees isolate execution. | Core controls are implemented and fixture-tested; the scheduled SaaS configuration and attended pilot must prove them live without a full-access fallback. |
+| Hooks | Provides explicit human intervention when product judgment, external reconciliation, or unsafe failure blocks automation. | Structured `needs-human` decisions use exact authorized Linear replies; ntfy is an attention channel; pause, kill-switch, retry, recovery, and publication-refusal paths preserve protected work instead of guessing. | Decision and attention behavior is fixture-backed; live notification configuration and an attended pilot remain pending. |
+
+The compact [autonomous runtime contract](src/skills/goal-to-delivery/references/autonomous-runtime-contract.md) owns healthy-run policy. The [supervisor core](src/skills/linear-delivery-loop/references/supervisor-core.md) documents local authority, state, isolation, and recovery. The [Linear control plane](src/skills/linear-delivery-loop/references/linear-control-plane.md) documents selection, decisions, durable requests, and attention behavior. The canonical [quality gates](src/skills/goal-to-delivery/references/quality-gates.md) define the evidence required before completion.
+
+### Additional success factors
+
+The seven components are a useful harness model, but a successful unattended engineering loop also depends on:
+
+- **Determinism, idempotency, and recovery:** every issue, mutation, retry, checkpoint, and publication operation needs a stable identity, compare-and-set state, bounded retry policy, and safe crash recovery.
+- **Observability and engineering economics:** status and evidence should make stage, owner, lease, retry, duration, tool-call volume, context size, token use, and failure cause understandable without exposing secrets. The current harness has structured status and evidence, but aggregate cost and efficiency reporting remain a gap.
+- **Input and rollout quality:** autonomous candidates must be achievable, bounded, locally verifiable issue leaves. Enablement should progress through fixture tests, an attended pilot, a kill switch, and observed scheduled heartbeats before eligibility expands.
+
+The goal is therefore not to maximize autonomy. It is to make each autonomous action bounded, observable, recoverable, independently verifiable, and interruptible by its owner.
+
 ## Work artifacts
 
 New work is initialized by the deterministic helper into:
