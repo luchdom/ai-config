@@ -136,6 +136,22 @@
          }}
       ]
     },
+    "publication": {
+      "oneOf": [
+        {"type": "null"},
+        {"type": "object", "additionalProperties": false,
+         "required": ["operationId", "issueId", "headSha", "status", "stateRef", "proposalRef", "transitionDigest"],
+         "properties": {
+           "operationId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"},
+           "issueId": {"type": "string", "pattern": "^[A-Z][A-Z0-9]+-[1-9][0-9]*$"},
+           "headSha": {"type": "string", "pattern": "^[0-9a-f]{40}([0-9a-f]{24})?$"},
+           "status": {"enum": ["prepared", "attempting", "retry-wait", "paused", "pushed", "pr-open", "head-gated", "merge-ready", "succeeded", "merged", "post-merge-validating", "repairing", "base-drift", "completed"]},
+           "stateRef": {"type": "string", "minLength": 3, "maxLength": 1024},
+           "proposalRef": {"type": "string", "minLength": 3, "maxLength": 1024},
+           "transitionDigest": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"}
+         }}
+      ]
+    },
     "recovery": {
       "type": "object", "additionalProperties": false, "required": ["status", "reason", "updatedAtNs"],
       "properties": {"status": {"enum": ["clean", "required", "recovering", "ambiguous"]}, "reason": {"oneOf": [{"type": "null"}, {"type": "string", "minLength": 1, "maxLength": 512}]}, "updatedAtNs": {"type": "integer", "minimum": 0}}

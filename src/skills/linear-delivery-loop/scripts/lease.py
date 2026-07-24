@@ -627,7 +627,15 @@ class LeaseManager:
             after = copy.deepcopy(state)
             self._apply_clock(after, now)
             after_revision = state["revision"] + 1
-            after["capabilities"][capability_id]["status"] = "consumed"
+            terminal_publication = previous == "publication" and next_stage == "completion"
+            if terminal_publication:
+                # Preserve the exact prepared capability only for the bounded
+                # terminal publication mutations (convergence, merge, and
+                # post-merge validation). It remains expiry/run/worktree bound.
+                after["capabilities"][capability_id]["stateRevision"] = after_revision
+                after["capabilities"][capability_id]["stage"] = "completion"
+            else:
+                after["capabilities"][capability_id]["status"] = "consumed"
             after["currentWork"]["stage"] = next_stage
             observed = self._observe_worktree(prepared["worktreePath"])
             after["issueWorktrees"][prepared["issueId"]]["headSha"] = observed[
@@ -650,9 +658,10 @@ class LeaseManager:
                 after_reservations=reservations,
                 operation=f"ApplyCheckpoint:{transition_id}",
             )
-            self._revoke_sidecar(
-                capability["capabilityRef"], capability["capabilitySha256"], "prepared-iteration"
-            )
+            if not terminal_publication:
+                self._revoke_sidecar(
+                    capability["capabilityRef"], capability["capabilitySha256"], "prepared-iteration"
+                )
             return copy.deepcopy(committed["checkpoints"][transition_id])
 
     def _observe_clock(

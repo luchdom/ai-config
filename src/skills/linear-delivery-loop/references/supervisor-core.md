@@ -12,9 +12,10 @@ The supervisor consumes the exact versioned `goal-to-delivery/scripts` base pack
 - revisioned supervisor/reservation state, operation journals, and deterministic recovery;
 - persistent issue worktrees and disposable exact-SHA validation worktrees;
 - mutation-free least-privilege preflight;
-- structured status, cleanup, and reservation-aware assembled Handoff.
+- structured status, cleanup, and reservation-aware assembled Handoff;
+- fixture-first deterministic publication state, contained Git preparation, injected provider readback, and exact-SHA attestations described in [`publication.md`](publication.md).
 
-It does not select or mutate Linear issues, publish ntfy messages, push branches, create/merge pull requests, query hosted checks, launch hosted CI, or launch nested Codex. SAAS-46 supplies local contracts and fixture-backed observations only; live provider transports and hosted CI orchestration belong to later delivery tasks.
+It does not directly select or mutate Linear issues, publish ntfy messages, acquire a live provider client, query hosted checks, launch hosted CI, or launch nested Codex. Publication is available only through injected fixture ports; live transport composition belongs to later delivery tasks.
 
 ## Authoritative local state
 
@@ -38,11 +39,11 @@ Every linked checkout of one normalized Git common directory derives the same re
 
 State and reservation revisions are monotonic. Mutating commands compare the caller's observed state revision, and reservation mutations also compare the observed reservation revision. `Reserve` therefore requires both `expectedStateRevision` and `expectedReservationsRevision`; a queued request cannot claim the repository after an intervening reserve/release lifecycle. Each operation has one schema-validated `operations/<operation-id>/journal.json` with an immutable request hash. Only an exact request replay through that journal returns the recorded result; changed input, a reused identifier, or ambiguous crash evidence fails closed.
 
-`supervisor-state.json` persists current work plus issue, allocation, and gate-worktree mappings so callers never supply cleanup authority as booleans or mutable records. The complete persisted state and reservation contracts are validated on reads and commits. Split transactions, malformed/unknown reservation state, path escapes, reparse/hard-link aliases, stale revisions, or uncertain external facts fail closed.
+`supervisor-state.json` persists current work plus issue, allocation, gate-worktree, and publication mappings so callers never supply cleanup or publication authority as booleans or mutable records. Existing valid version 1.0 state receives the deterministic `publication: null` default once; a pending legacy paired transaction blocks that migration for attended reconciliation. The complete persisted state and reservation contracts are validated on reads and commits. Split transactions, malformed/unknown reservation state, path escapes, reparse/hard-link aliases, stale revisions, or uncertain external facts fail closed.
 
 ## Authority surfaces
 
-`Status` is observation only and never distributes authority. It returns repository/revision metadata, lease identity and timing, current-work/recovery/Handoff state, and reservation summaries, but omits the lease capability reference and digest plus reservation control/release and cleanup authorization references. Those opaque references are returned only to the exact journaled operation that minted them.
+`Status` is observation only and never distributes authority. It returns repository/revision metadata, lease identity and timing, current-work/publication/recovery/Handoff state, and reservation summaries, but omits the lease capability reference and digest plus reservation control/release and cleanup authorization references. Those opaque references are returned only to the exact journaled operation that minted them.
 
 `AcquireLease` creates a non-derivable sidecar reference. Once any lease record exists, a second acquire cannot reconstruct or redistribute it from public run/owner/revision fields; only replaying the exact original `AcquireLease` request through its operation journal returns the original result. `RenewLease` requires the current opaque reference, rotates it to a new non-derivable reference, and revokes the old reference. The same exact reference may reauthorize the lease lifecycle after ordinary expiry, including the `expired-lease` recovery barrier, but it does not refresh an expired prepared capability or grant mutation authority. Recovery recognizes a pending renewal only when the current sidecar is active, digest-bound, and carries the exact renewal request ID; an unrelated revision advance is ambiguous, not a successful renewal.
 
@@ -59,12 +60,18 @@ The exhaustive operation set is:
 | `Preflight` | Validate engine/base/config versions, paths, fixed command/network policy, minimal environment, and read-only probe evidence before mutation. The probe is pinned to the current engine script/interpreter/bytes and never inherits provider secrets. |
 | `AcquireLease` / `RenewLease` / `ReleaseLease` | Create, rotate/extend, or reconcile/revoke one opaque autonomous run authority. |
 | `PrepareIteration` / `ApplyCheckpoint` | Create one issue-bound prepared capability and accept one replay-safe stage transition. |
-| `Status` | Return non-authorizing, redacted supervisor, lease-timing, current-work, reservation, and pending-recovery summaries. |
+| `Status` | Return non-authorizing, redacted supervisor, lease-timing, current-work, publication, reservation, and pending-recovery summaries. |
 | `Reserve` / `RenewReservation` | Create or extend the exact repository editing reservation under state-and-reservation revision CAS. |
 | `AuthorizeMutation` | Issue a one-operation authorization after checking the current reservation/capability/revision. |
 | `Release` | Release only with engine-owned one-shot authority and reconciled clean/unprotected observations. |
 | `Recover` / `Cleanup` | Reconcile journals/barriers or remove only proven disposable state. |
 | `Handoff` | Transfer base workflow authority plus reservation/capability through the assembled three-phase protocol. |
+| `PreparePublication` | Reconcile the authorized manifest, run the issue-worktree aggregate, stage only contained paths, and persist engine-owned branch/base/head preparation evidence. |
+| `PublicationProvider` | Reconcile one injected, idempotent push, pull-request, or squash-merge operation through exact provider readback. |
+| `PublicationGate` | Run and persist one clean isolated aggregate at the exact prepared head or returned merge SHA. |
+| `RecordPublicationAttestation` | Derive trusted specialist evidence from an authoritative checkpoint, or perform the sole classifier-scoped evidence finalization. |
+| `PublicationRepair` | Prepare the next bounded same-issue repair through engine-owned manifest reconciliation, aggregate, staging, commit, and readback. |
+| `RecoverPublication` | Reconcile bounded transient retry or one exact attended publication retry without redistributing provider authority. |
 
 `agent-worker-engine.ps1` is a thin fixed-argument wrapper around the sibling Python CLI. It never evaluates arbitrary shell content and never launches Codex.
 

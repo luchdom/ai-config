@@ -12,6 +12,8 @@ Completion and publication are separate. Stop exactly at the active entry's decl
 | `pr` | Commit gates pass, the branch is pushed, one PR exists, and linked tracking may enter review. |
 | `merge` | Exact-head gates pass, authorized squash merge occurs, and the exact returned merge SHA passes the repository clean local post-merge gate. |
 
+A failed exact returned-merge-SHA gate is not completion. Keep the same work identity and protected publication state, and follow the repository's bounded repair policy. Every repair reruns all applicable exact-head, review, QA, docs/evidence, merge-readback, and exact-merge-SHA gates; repair exhaustion requires attended recovery and never authorizes auto-revert.
+
 `$goal-to-delivery` defaults to `working-tree`; a later explicit grant resumes the same work rather than recreating it. `$spec-driven-delivery` never infers stages from a boundary: `Commit`, `PR`, and `Merge` remain separate invocations. Autonomous code always targets `merge`; manual operational evidence never creates an artificial branch or PR.
 
 ## Authority

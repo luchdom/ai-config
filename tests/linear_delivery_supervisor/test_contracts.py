@@ -52,6 +52,12 @@ class SupervisorContractTests(unittest.TestCase):
         lease_capability_ref = self.state_home / "runs" / self.run_id / "lease-capability.json"
         reservation_control_ref = self.state_home / "reservation-authorizations" / "control.json"
         worker_result = self.repository / "docs-ai" / "worker-result.json"
+        publication_auth = {
+            "reservationId": identifier(),
+            "authorizationRef": str(self.state_home / "mutation-authorizations" / "publication.json"),
+            "expectedRecordRevision": 1, "expectedReservationsRevision": 1,
+            "physicalWorktreeFingerprint": self.fingerprint,
+        }
         variants = {
             "Preflight": {"configPath": str(self.repository / "delivery-config.json")},
             "AcquireLease": {"ownerId": "scheduled-owner", "expectedStateRevision": 1},
@@ -67,6 +73,12 @@ class SupervisorContractTests(unittest.TestCase):
             "Cleanup": {"releasedReservationId": identifier(), "gateOperationId": identifier(), "cleanupAuthorizationRef": str(self.state_home / "cleanup-authorizations" / "cleanup.json"), "expectedReleasedReservationRevision": 1, "expectedStateRevision": 1, "expectedReservationsRevision": 1},
             "Handoff": {"workflowId": self.workflow_id, "sourcePath": str(self.repository), "destinationPath": str(self.state_home / "worktrees" / self.issue_id), "expectedPaths": ["src/feature.py"], "reservationId": identifier(), "reservationControlRef": str(reservation_control_ref), "autonomousCapabilityRef": None, "expectedReservationRevision": 1, "expectedStateRevision": 1, "expectedReservationsRevision": 1, "runId": None},
             "ReleaseLease": {"runId": self.run_id, "ownerId": "scheduled-owner", "leaseCapabilityRef": str(lease_capability_ref), "expectedStateRevision": 1},
+            "PreparePublication": {"publicationStateRef": str(self.state_home / "operations" / "publish-1" / "publication-state.json"), "preparationOperationId": "prepare-1", "artifactManifest": ["src/feature.py"], "preexistingPaths": [], "expectedStateRevision": 1, **publication_auth},
+            "PublicationProvider": {"publicationOperationId": "publish-1", "providerOperation": "push", "providerOperationId": "provider-push-1", "expectedStateRevision": 1, **publication_auth},
+            "PublicationGate": {"publicationOperationId": "publish-1", "gateOperationId": identifier(), "exactSha": "d" * 40, "gateKind": "exact-head-aggregate", "startedAt": self.now, "completedAt": self.later, "expectedStateRevision": 1, **publication_auth},
+            "RecordPublicationAttestation": {"publicationOperationId": "publish-1", "attestationId": "review-1", "sourceOperationId": "review-source-1", "expectedStateRevision": 1, **publication_auth},
+            "PublicationRepair": {"publicationOperationId": "publish-1", "repairOperationId": "repair-operation-1", "currentMainSha": "d" * 40, "expectedStateRevision": 1, **publication_auth},
+            "RecoverPublication": {"publicationOperationId": "publish-1", "recoveryOperationId": "recovery-operation-1", "expectedStateRevision": 1, **publication_auth},
         }
         return {name: self.common_command(name) | fields for name, fields in variants.items()}
 
@@ -186,13 +198,34 @@ class SupervisorContractTests(unittest.TestCase):
                 },
             },
             "control-plane-state": {
-                "schemaVersion": "1.0", "revision": 0, "decisions": [],
+                "schemaVersion": "1.1", "revision": 0, "decisions": [],
                 "publicationRequests": [], "followUps": [],
                 "attentionEvents": [], "notifications": [], "selectionClaims": [],
             },
             "migration-report": {
                 "schemaVersion": "1.0", "generatedAt": self.now,
                 "mutationFree": True, "issues": [],
+            },
+            "publication-state": {
+                "schemaVersion": "1.0", "repositoryId": self.repository_id,
+                "repositoryKey": "ai-config", "workflowId": self.workflow_id,
+                "issueId": self.issue_id, "operationId": "publication-operation-1",
+                "idempotencyKey": "publication-operation-1", "operation": "push",
+                "status": "prepared", "branch": "codex/SAAS-46-publication",
+                "baseRef": "main", "baseSha": "c" * 40, "headSha": "d" * 40, "mergeSha": None,
+                "pullRequest": None, "attemptCount": 0, "retryCount": 0,
+                "nextRetryAt": None, "refusalKind": None, "providerEvidenceRef": None,
+                "preservedState": {
+                    "issueState": "In Progress", "autonomous": True,
+                    "globalWip": True, "reservationId": identifier(),
+                    "worktreePath": str(self.repository),
+                    "physicalWorktreeFingerprint": self.fingerprint,
+                    "branch": "codex/SAAS-46-publication", "pullRequest": None,
+                    "evidenceRefs": [],
+                },
+                "attestations": {}, "providerOperationIds": {"push": None, "pull-request": None, "squash-merge": None}, "activeProviderOperation": None, "authorityReadback": None, "preparation": None, "evidenceFinalization": None, "evidenceFinalizationCount": 0,
+                "repairAttempt": 0, "consumedReplyId": None,
+                "createdAt": self.now, "updatedAt": self.now,
             },
         }
 
@@ -204,7 +237,55 @@ class SupervisorContractTests(unittest.TestCase):
             with self.subTest(contract=name):
                 self.assertEqual(value, contracts.validate_contract(name, value))
 
-    def test_engine_command_union_accepts_exactly_all_fourteen_operations(self) -> None:
+    def test_publication_state_complete_primary_repair_merged_and_completed_fixtures(self) -> None:
+        base = copy.deepcopy(self.valid_contracts()["publication-state"])
+        head, base_sha, merge_sha = "d" * 40, "c" * 40, "e" * 40
+        base.update({
+            "status": "head-gated", "baseSha": base_sha, "headSha": head,
+            "attemptCount": 1,
+            "preparation": {"branch": base["branch"], "baseSha": base_sha, "headSha": "b" * 40,
+                "paths": ["src/feature.py"], "manifestDigest": self.hash, "aggregateDigest": self.hash},
+            "evidenceFinalization": {"headSha": head, "stagedPaths": ["docs-ai/005-saas-48/review.md"],
+                "deltaDigest": self.hash, "providerEvidenceRef": self.hash},
+            "evidenceFinalizationCount": 1,
+            "providerOperationIds": {"push": "push-1", "pull-request": "pr-1", "squash-merge": None},
+            "pullRequest": {"id": "48"},
+            "authorityReadback": {"issueId": self.issue_id, "labels": ["autonomous"], "pullRequestId": "48",
+                "baseRef": "main", "baseSha": base_sha, "headSha": head, "mergeability": True,
+                "evidenceRef": self.hash, "expectedHeadSha": head},
+        })
+        def attestation(kind: str, producer: str, exact: str, stage: str = "pre-merge") -> dict:
+            return {"schemaVersion": "1.0", "attestationId": kind + "-1",
+                "publicationOperationId": base["operationId"], "kind": kind, "producer": producer,
+                "stage": stage, "result": "passed", "provenanceRef": self.hash,
+                "exactSha": exact, "issuedStateRevision": 1, "recordedAt": self.now}
+        base["attestations"] = {
+            "pre-staging-aggregate": attestation("pre-staging-aggregate", "gate-runner", head),
+            "exact-head-aggregate": attestation("exact-head-aggregate", "gate-runner", head),
+            "review": attestation("review", "code-reviewer", head),
+            "qa": attestation("qa", "qa", head), "docs": attestation("docs", "docs", head),
+            "evidence-convergence": attestation("evidence-convergence", "evidence-classifier", head),
+        }
+        fixtures = {"primary": copy.deepcopy(base)}
+        repair = copy.deepcopy(base)
+        repair.update({"branch": "codex/SAAS-46-repair-1", "repairAttempt": 1})
+        repair["preparation"]["branch"] = repair["branch"]
+        repair["preservedState"]["branch"] = repair["branch"]
+        fixtures["repair-premerge"] = repair
+        merged = copy.deepcopy(base)
+        merged.update({"status": "merged", "mergeSha": merge_sha,
+            "providerOperationIds": {"push": "push-1", "pull-request": "pr-1", "squash-merge": "merge-1"}})
+        merged["attestations"]["merge-readback"] = attestation("merge-readback", "provider-readback", head, "post-merge")
+        fixtures["merged"] = merged
+        completed = copy.deepcopy(merged)
+        completed["status"] = "completed"
+        completed["attestations"]["exact-merge-aggregate"] = attestation("exact-merge-aggregate", "gate-runner", merge_sha, "post-merge")
+        fixtures["completed"] = completed
+        for name, value in fixtures.items():
+            with self.subTest(name=name):
+                self.assertEqual(value, contracts.validate_contract("publication-state", value))
+
+    def test_engine_command_union_accepts_exactly_all_twenty_operations(self) -> None:
         variants = self.command_variants()
         self.assertEqual(tuple(variants), contracts.OPERATION_NAMES)
         for operation, value in variants.items():
@@ -291,6 +372,12 @@ class SupervisorContractTests(unittest.TestCase):
         stale_reserve.pop("expectedReservationsRevision")
         with self.assertRaises(contracts.ContractValidationError):
             contracts.validate_engine_command(stale_reserve)
+
+    def test_publication_repair_rejects_caller_supplied_commit_identity(self) -> None:
+        repair = copy.deepcopy(self.command_variants()["PublicationRepair"])
+        repair["repairHeadSha"] = "f" * 40
+        with self.assertRaises(contracts.ContractValidationError):
+            contracts.validate_engine_command(repair)
 
     def test_rejects_malformed_uuid_hash_path_timestamp_cross_field_and_secret(self) -> None:
         fixtures = self.valid_contracts()

@@ -9,6 +9,7 @@ import os
 import subprocess
 import sys
 import time
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Mapping
 
@@ -37,6 +38,31 @@ else:
 
 class SupervisorCommandError(RuntimeError):
     """A public command failed without exposing an implementation traceback."""
+
+
+@dataclass(frozen=True)
+class FixtureAssembly:
+    """Closed local-only assembly consumed by run_request fixture tests."""
+    publication_provider: Any
+    publication_recovery: Any
+    publication_git: Any = None
+    publication_gate_runner: Any = None
+    clock: Any = None
+    reservation_clock: Any = None
+    fixture_mode: bool = True
+
+
+_FIXTURE_ASSEMBLIES: dict[str, FixtureAssembly] = {}
+
+
+def register_fixture_assembly(state_home: str | Path, assembly: FixtureAssembly) -> None:
+    if not isinstance(assembly, FixtureAssembly) or assembly.fixture_mode is not True:
+        raise SupervisorCommandError("only a closed fixture assembly may be registered")
+    _FIXTURE_ASSEMBLIES[_normalized(state_home)] = assembly
+
+
+def unregister_fixture_assembly(state_home: str | Path) -> None:
+    _FIXTURE_ASSEMBLIES.pop(_normalized(state_home), None)
 
 
 class CleanupAmbiguousError(SupervisorCommandError):
@@ -274,6 +300,7 @@ def _protect_cleanup_ambiguity(
 
 def _execute(engine: SupervisorEngine, command: Mapping[str, Any]) -> dict[str, Any]:
     operation = command["operation"]
+    committed_replay = command.get("_committedReplay") is True
     state, reservations = _state_pair(engine)
     if operation == "AcquireLease":
         return engine.leases.acquire(
@@ -446,6 +473,99 @@ def _execute(engine: SupervisorEngine, command: Mapping[str, Any]) -> dict[str, 
         return recovered
     if operation == "Cleanup":
         return _cleanup(engine, command)
+    if operation == "PreparePublication":
+        if state["revision"] != command["expectedStateRevision"] and not committed_replay:
+            raise SupervisorCommandError("PreparePublication supervisor revision is stale")
+        publication = _read_public_json(command["publicationStateRef"])
+        validate_contract("publication-state", publication)
+        return engine.prepare_publication(
+            publication_state=publication,
+            artifact_manifest=command["artifactManifest"],
+            preexisting_paths=command["preexistingPaths"],
+            preparation_operation_id=command["preparationOperationId"],
+            expected_state_revision=command["expectedStateRevision"],
+            reservation_id=command["reservationId"], authorization_ref=command["authorizationRef"],
+            expected_record_revision=command["expectedRecordRevision"], expected_reservations_revision=command["expectedReservationsRevision"],
+            physical_worktree_fingerprint=command["physicalWorktreeFingerprint"],
+            replay_committed=committed_replay,
+        )
+    if operation == "PublicationProvider":
+        if state["revision"] != command["expectedStateRevision"]:
+            raise SupervisorCommandError("PublicationProvider supervisor revision is stale")
+        return engine.execute_publication_provider(
+            operation_id=command["publicationOperationId"],
+            provider_operation=command["providerOperation"],
+            provider_operation_id=command["providerOperationId"],
+            expected_state_revision=command["expectedStateRevision"],
+            reservation_id=command["reservationId"], authorization_ref=command["authorizationRef"],
+            expected_record_revision=command["expectedRecordRevision"], expected_reservations_revision=command["expectedReservationsRevision"],
+            physical_worktree_fingerprint=command["physicalWorktreeFingerprint"],
+        )
+    if operation == "PublicationGate":
+        if state["revision"] != command["expectedStateRevision"]:
+            raise SupervisorCommandError("PublicationGate supervisor revision is stale")
+        return engine.execute_publication_gate(
+            operation_id=command["publicationOperationId"],
+            gate_operation_id=command["gateOperationId"],
+            exact_sha=command["exactSha"], kind=command["gateKind"],
+            started_at=command["startedAt"], completed_at=command["completedAt"],
+            expected_state_revision=command["expectedStateRevision"],
+            reservation_id=command["reservationId"], authorization_ref=command["authorizationRef"],
+            expected_record_revision=command["expectedRecordRevision"], expected_reservations_revision=command["expectedReservationsRevision"],
+            physical_worktree_fingerprint=command["physicalWorktreeFingerprint"],
+        )
+    if operation == "RecordPublicationAttestation":
+        if state["revision"] != command["expectedStateRevision"] and not (
+            committed_replay and "evidencePaths" in command
+        ):
+            raise SupervisorCommandError("RecordPublicationAttestation supervisor revision is stale")
+        if "evidencePaths" in command:
+            return engine.finalize_publication_evidence(
+                operation_id=command["publicationOperationId"],
+                finalization_operation_id=command["attestationId"],
+                evidence_paths=command["evidencePaths"],
+                draft_inventory=command["draftInventory"],
+                design_required=command["designRequired"],
+                expected_state_revision=command["expectedStateRevision"],
+                reservation_id=command["reservationId"], authorization_ref=command["authorizationRef"],
+                expected_record_revision=command["expectedRecordRevision"], expected_reservations_revision=command["expectedReservationsRevision"],
+                physical_worktree_fingerprint=command["physicalWorktreeFingerprint"],
+                replay_committed=committed_replay,
+            )
+        return engine.record_publication_attestation(
+            operation_id=command["publicationOperationId"],
+            attestation_id=command["attestationId"], source_operation_id=command["sourceOperationId"],
+            expected_state_revision=command["expectedStateRevision"],
+            reservation_id=command["reservationId"], authorization_ref=command["authorizationRef"],
+            expected_record_revision=command["expectedRecordRevision"], expected_reservations_revision=command["expectedReservationsRevision"],
+            physical_worktree_fingerprint=command["physicalWorktreeFingerprint"],
+        )
+    if operation == "PublicationRepair":
+        if state["revision"] != command["expectedStateRevision"] and not committed_replay:
+            raise SupervisorCommandError("PublicationRepair supervisor revision is stale")
+        return engine.next_publication_repair(
+            operation_id=command["publicationOperationId"],
+            repair_operation_id=command["repairOperationId"],
+            current_main_sha=command["currentMainSha"],
+            artifact_manifest=command.get("artifactManifest"),
+            preexisting_paths=command.get("preexistingPaths"),
+            expected_state_revision=command["expectedStateRevision"],
+            reservation_id=command["reservationId"], authorization_ref=command["authorizationRef"],
+            expected_record_revision=command["expectedRecordRevision"], expected_reservations_revision=command["expectedReservationsRevision"],
+            physical_worktree_fingerprint=command["physicalWorktreeFingerprint"],
+            replay_committed=committed_replay,
+        )
+    if operation == "RecoverPublication":
+        if state["revision"] != command["expectedStateRevision"]:
+            raise SupervisorCommandError("RecoverPublication supervisor revision is stale")
+        return engine.recover_publication(
+            operation_id=command["publicationOperationId"], now=command["requestedAt"],
+            attended=command.get("attended"), recovery_operation_id=command["recoveryOperationId"],
+            expected_state_revision=command["expectedStateRevision"], reservation_id=command["reservationId"],
+            authorization_ref=command["authorizationRef"], expected_record_revision=command["expectedRecordRevision"],
+            expected_reservations_revision=command["expectedReservationsRevision"],
+            physical_worktree_fingerprint=command["physicalWorktreeFingerprint"],
+        )
     raise SupervisorCommandError(f"Operation {operation} is not assembled")
 
 
@@ -453,6 +573,7 @@ def _journaled(
     engine: SupervisorEngine,
     command: Mapping[str, Any],
     action: Callable[[], Mapping[str, Any]],
+    committed_replay_action: Callable[[], Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
     operation_id = command["requestId"]
     operation = command["operation"]
@@ -467,10 +588,27 @@ def _journaled(
             raise SupervisorCommandError(f"Replayed {operation} remains {replay['status']}")
         return replay
     if begun["status"] == "pending":
-        raise SupervisorCommandError("Operation requires deterministic recovery before replay")
+        if operation not in {
+            "PreparePublication", "PublicationProvider", "PublicationGate",
+            "RecordPublicationAttestation", "PublicationRepair", "RecoverPublication",
+        }:
+            raise SupervisorCommandError("Operation requires deterministic recovery before replay")
+        # Publication operations are exact-ID/head bound and every external
+        # mutation performs authoritative readback before repeating. Resume the
+        # same action so its operation result can converge after a crash.
     try:
-        result = dict(action())
+        result = dict(
+            committed_replay_action()
+            if begun["status"] == "pending" and committed_replay_action is not None
+            else action()
+        )
     except Exception as exc:
+        from .publication_git import PublicationGitCommittedInterruption
+        if isinstance(exc, PublicationGitCommittedInterruption):
+            # A real process crash would leave the request pending. Preserve
+            # that exact replay boundary in fixtures rather than terminalizing
+            # the command after the immutable Git commit already exists.
+            raise
         status = "failed"
         if isinstance(exc, CleanupAmbiguousError) or (
             isinstance(exc, AssembledHandoffError)
@@ -499,16 +637,28 @@ def run_request(request_path: str | Path) -> dict[str, Any]:
     _validate_command_path(request_path, command)
     if command["operation"] == "Preflight":
         return _preflight(command)
+    assembly = _FIXTURE_ASSEMBLIES.get(_normalized(command["stateHome"]))
     engine = SupervisorEngine(
         command["repositoryRoot"],
         repository_key=command["repositoryKey"],
         state_home_override=Path(command["stateHome"]).parent,
+        publication_provider=assembly.publication_provider if assembly else None,
+        publication_recovery=assembly.publication_recovery if assembly else None,
+        publication_git=assembly.publication_git if assembly else None,
+        publication_gate_runner=assembly.publication_gate_runner if assembly else None,
+        clock=assembly.clock if assembly else None,
+        reservation_clock=assembly.reservation_clock if assembly else None,
     )
     if _normalized(engine.store.root) != _normalized(command["stateHome"]):
         raise SupervisorCommandError("EngineCommand state home differs from canonical authority")
     if command["operation"] == "Status":
         return engine.status()
-    return _journaled(engine, command, lambda: _execute(engine, command))
+    return _journaled(
+        engine, command, lambda: _execute(engine, command),
+        committed_replay_action=lambda: _execute(
+            engine, {**command, "_committedReplay": True}
+        ),
+    )
 
 
 def _parser() -> argparse.ArgumentParser:

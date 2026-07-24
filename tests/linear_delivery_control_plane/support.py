@@ -10,6 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = ROOT / "src" / "skills" / "linear-delivery-loop" / "scripts"
 PACKAGE = "tests_linear_delivery_control_plane_runtime"
+CONTROL_PLANE_STATE_VERSION = "1.1"
 
 
 def load_package():
