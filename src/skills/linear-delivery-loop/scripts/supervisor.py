@@ -22,6 +22,10 @@ from .publication_recovery import MergeRepairPolicy, PublicationRecovery, TRANSI
 from .publication_records import ATTESTATION_PRODUCERS, retry_delay_minutes, sha256_json
 
 
+def _linear_issue_link(issue_id: str) -> str:
+    return f"https://linear.app/issue/{issue_id}"
+
+
 class SupervisorEngine:
     """One repository-bound state engine; transport and selection remain outside."""
 
@@ -167,6 +171,8 @@ class SupervisorEngine:
         raise SupervisorStoreError("Control-plane provider is not activated")
 
     def status(self) -> dict[str, Any]:
+        from .repository_memory import memory_status_snapshot
+
         with self.store.mutex():
             state, reservations = self.store.load_pair_unlocked()
             public_reservations = copy.deepcopy(reservations["reservations"])
@@ -195,6 +201,12 @@ class SupervisorEngine:
                 "recovery": copy.deepcopy(state["recovery"]),
                 "handoffPending": copy.deepcopy(state["handoffPending"]),
                 "reservations": public_reservations,
+                "memory": memory_status_snapshot(
+                    self.store.root,
+                    repository_id=self.manager.identity.repository_id,
+                    repository_key=self.manager.repository_key,
+                    state_guard=self.store.guard,
+                ),
             }
 
     def dispatch(self, operation: str, payload: Mapping[str, Any]) -> dict[str, Any]:
@@ -922,7 +934,8 @@ class SupervisorEngine:
                     "issue_id": publication["issueId"], "operation_id": operation_id,
                     "head_sha": publication["headSha"],
                     "source_timestamp": publication["updatedAt"],
-                    "created_at": publication["updatedAt"], "link": "publication-refusal",
+                    "created_at": publication["updatedAt"],
+                    "link": _linear_issue_link(publication["issueId"]),
                     "reason": f"publication {provider_operation} refused",
                     "evidence": {
                         "issueState": preserved["issueState"],
@@ -1292,7 +1305,7 @@ class SupervisorEngine:
                         "head_sha": publication["headSha"],
                         "source_timestamp": publication["updatedAt"],
                         "created_at": publication["updatedAt"],
-                        "link": "publication-repair-exhausted",
+                        "link": _linear_issue_link(publication["issueId"]),
                         "reason": "three post-merge repair attempts were exhausted",
                         "evidence": {
                             "issueState": publication["preservedState"]["issueState"],

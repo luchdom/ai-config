@@ -23,6 +23,7 @@ if __package__ in {None, ""}:
     from scripts.contracts import validate_contract, validate_engine_command
     from scripts.preflight import PreflightValidator
     from scripts.supervisor import SupervisorEngine
+    from scripts.repository_memory import RepositoryMemory, compose_context
     from scripts.worktrees import WorktreeManager
 else:
     from .assembled_handoff import (
@@ -33,6 +34,7 @@ else:
     from .contracts import validate_contract, validate_engine_command
     from .preflight import PreflightValidator
     from .supervisor import SupervisorEngine
+    from .repository_memory import RepositoryMemory, compose_context
     from .worktrees import WorktreeManager
 
 
@@ -603,7 +605,10 @@ def _journaled(
             else action()
         )
     except Exception as exc:
-        from .publication_git import PublicationGitCommittedInterruption
+        if __package__ in {None, ""}:
+            from scripts.publication_git import PublicationGitCommittedInterruption
+        else:
+            from .publication_git import PublicationGitCommittedInterruption
         if isinstance(exc, PublicationGitCommittedInterruption):
             # A real process crash would leave the request pending. Preserve
             # that exact replay boundary in fixtures rather than terminalizing
@@ -661,16 +666,62 @@ def run_request(request_path: str | Path) -> dict[str, Any]:
     )
 
 
+def run_repository_memory_request(request_path: str | Path) -> dict[str, Any]:
+    """Run the separate non-authorizing memory surface without expanding OPERATION_NAMES."""
+
+    request = _read_public_json(request_path)
+    expected = {"schemaVersion", "operation", "repositoryRoot", "repositoryKey", "payload"}
+    if set(request) != expected or request.get("schemaVersion") != "1.0":
+        raise SupervisorCommandError("Repository-memory request inventory is not exact")
+    if request["operation"] not in {"query", "rebuild", "repair", "context"}:
+        raise SupervisorCommandError("Repository-memory CLI operation is unsupported")
+    if not isinstance(request["payload"], Mapping):
+        raise SupervisorCommandError("Repository-memory payload must be an object")
+    engine = SupervisorEngine(request["repositoryRoot"], repository_key=request["repositoryKey"])
+    memory = RepositoryMemory(
+        engine.manager, store=engine.store, reservations=engine.reservations,
+    )
+    operation = request["operation"]
+    if operation == "query":
+        return memory.query(request["payload"])
+    if operation == "rebuild":
+        if request["payload"]:
+            raise SupervisorCommandError("Rebuild accepts no caller-selected options")
+        return memory.rebuild(persist=True)
+    if operation == "repair":
+        if request["payload"]:
+            raise SupervisorCommandError("Repair accepts no caller-selected options")
+        return memory.repair()
+    payload = request["payload"]
+    if set(payload) != {"query", "workflowId", "issueId", "stage", "maxRecords", "maxCharacters", "maxBytes"}:
+        raise SupervisorCommandError("Context payload inventory is not exact")
+    result = memory.query(payload["query"])
+    selectors = memory.context_selectors(
+        workflow_id=payload["workflowId"], issue_id=payload["issueId"],
+        stage=payload["stage"], query=payload["query"],
+    )
+    return compose_context(
+        result, authenticated=selectors, max_records=payload["maxRecords"],
+        max_characters=payload["maxCharacters"], max_bytes=payload["maxBytes"],
+    )
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="agent-worker-engine")
-    parser.add_argument("--request", required=True)
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--request")
+    group.add_argument("--repository-memory-request")
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     arguments = _parser().parse_args(argv)
     try:
-        result = run_request(arguments.request)
+        result = (
+            run_repository_memory_request(arguments.repository_memory_request)
+            if arguments.repository_memory_request
+            else run_request(arguments.request)
+        )
         print(json.dumps(result, sort_keys=True))
         return 0
     except Exception as exc:

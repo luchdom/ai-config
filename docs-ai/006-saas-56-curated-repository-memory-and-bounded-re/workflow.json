@@ -1,0 +1,181 @@
+{
+  "acceptanceCriteria": [
+    "Completed workflows can propose zero or more exact-provenance memory candidates without direct unreviewed promotion.",
+    "Approved promotion is idempotent, versioned, repository-scoped, redacted, and preserves superseded history.",
+    "Retrieval is deterministic and bounded by repository, work, stage, path, topic, item count, and byte budget with provenance.",
+    "Raw docs-ai history, chat, Linear comments, and model prose are never implicitly trusted or bulk-loaded as memory.",
+    "Memory never overrides repository precedence or grants workflow, mutation, provider, product, or security authority.",
+    "Stale, conflicting, superseded, missing, corrupt, cross-repository, path-escaping, secret-like, and over-budget inputs fail closed or are visibly excluded.",
+    "Manual, semi-autonomous, and autonomous entries share the memory contract without changing their advancement or clarification policies.",
+    "Focused fixtures, generated projections, durable documentation, and python .\\scripts\\validate.py pass at exact PR head and exact merge SHA."
+  ],
+  "artifactFolder": "C:\\dev\\luchdom\\ai-config\\docs-ai\\006-saas-56-curated-repository-memory-and-bounded-re",
+  "artifactInventory": [
+    "workflow.json",
+    "2026-07-24-saas-56-curated-repository-memory-and-bounded-re-audit.md",
+    "2026-07-24-saas-56-curated-repository-memory-and-bounded-re-code-review-2.md",
+    "2026-07-24-saas-56-curated-repository-memory-and-bounded-re-code-review-3.md",
+    "2026-07-24-saas-56-curated-repository-memory-and-bounded-re-code-review-4.md",
+    "2026-07-24-saas-56-curated-repository-memory-and-bounded-re-code-review-5.md",
+    "2026-07-24-saas-56-curated-repository-memory-and-bounded-re-code-review.md",
+    "2026-07-24-saas-56-curated-repository-memory-and-bounded-re-documentation.md",
+    "2026-07-24-saas-56-curated-repository-memory-and-bounded-re-plan.md",
+    "2026-07-24-saas-56-curated-repository-memory-and-bounded-re-pr-description.md",
+    "2026-07-24-saas-56-curated-repository-memory-and-bounded-re-qa.md",
+    "2026-07-24-saas-56-curated-repository-memory-and-bounded-re-re-audit-2.md",
+    "2026-07-24-saas-56-curated-repository-memory-and-bounded-re-re-audit-3.md",
+    "2026-07-24-saas-56-curated-repository-memory-and-bounded-re-re-audit.md",
+    "2026-07-24-saas-56-curated-repository-memory-and-bounded-re-tasks.md",
+    "2026-07-24-saas-56-curated-repository-memory-and-bounded-re-validation.md"
+  ],
+  "assumptionsDecisionRefs": [],
+  "completionBoundary": "merge",
+  "currentArtifactStage": "docs",
+  "deliverySummary": {
+    "audit1": {
+      "artifact": "2026-07-24-saas-56-curated-repository-memory-and-bounded-re-audit.md",
+      "findings": {
+        "p1": 0,
+        "p2": 6,
+        "p3": 0
+      },
+      "verdict": "failed"
+    },
+    "audit2": {
+      "artifact": "2026-07-24-saas-56-curated-repository-memory-and-bounded-re-re-audit.md",
+      "findings": {
+        "p1": 0,
+        "p2": 4,
+        "p3": 1
+      },
+      "verdict": "failed"
+    },
+    "audit3": {
+      "artifact": "2026-07-24-saas-56-curated-repository-memory-and-bounded-re-re-audit-2.md",
+      "findings": {
+        "p1": 0,
+        "p2": 2,
+        "p3": 1
+      },
+      "verdict": "failed"
+    },
+    "audit4": {
+      "artifact": "2026-07-24-saas-56-curated-repository-memory-and-bounded-re-re-audit-3.md",
+      "findings": {
+        "p1": 0,
+        "p2": 0,
+        "p3": 1
+      },
+      "verdict": "passed"
+    },
+    "codeReview1": {
+      "artifact": "2026-07-24-saas-56-curated-repository-memory-and-bounded-re-code-review.md",
+      "findings": {
+        "p1": 1,
+        "p2": 5,
+        "p3": 1
+      },
+      "verdict": "failed"
+    },
+    "codeReview2": {
+      "artifact": "2026-07-24-saas-56-curated-repository-memory-and-bounded-re-code-review-2.md",
+      "findings": {
+        "p1": 1,
+        "p2": 2,
+        "p3": 1
+      },
+      "verdict": "failed"
+    },
+    "codeReview3": {
+      "artifact": "2026-07-24-saas-56-curated-repository-memory-and-bounded-re-code-review-3.md",
+      "findings": {
+        "p1": 0,
+        "p2": 0,
+        "p3": 0
+      },
+      "verdict": "passed"
+    },
+    "codeReview4": {
+      "artifact": "2026-07-24-saas-56-curated-repository-memory-and-bounded-re-code-review-4.md",
+      "findings": {
+        "p1": 0,
+        "p2": 0,
+        "p3": 0
+      },
+      "verdict": "passed"
+    },
+    "codeReview5": {
+      "artifact": "2026-07-24-saas-56-curated-repository-memory-and-bounded-re-code-review-5.md",
+      "findings": {
+        "p1": 0,
+        "p2": 0,
+        "p3": 0
+      },
+      "verdict": "passed"
+    },
+    "documentation": {
+      "artifact": "2026-07-24-saas-56-curated-repository-memory-and-bounded-re-documentation.md",
+      "verdict": "passed"
+    },
+    "plan": {
+      "artifact": "2026-07-24-saas-56-curated-repository-memory-and-bounded-re-plan.md",
+      "designRequired": false,
+      "verdict": "ready-for-tasking"
+    },
+    "prDescription": {
+      "artifact": "2026-07-24-saas-56-curated-repository-memory-and-bounded-re-pr-description.md",
+      "verdict": "ready"
+    },
+    "qa": {
+      "artifact": "2026-07-24-saas-56-curated-repository-memory-and-bounded-re-qa.md",
+      "testsPassed": 32,
+      "verdict": "passed"
+    },
+    "task": {
+      "artifact": "2026-07-24-saas-56-curated-repository-memory-and-bounded-re-tasks.md",
+      "taskCount": 6,
+      "verdict": "ready-for-audit"
+    },
+    "validation": {
+      "artifact": "2026-07-24-saas-56-curated-repository-memory-and-bounded-re-validation.md",
+      "exitCode": 0,
+      "testsPassed": 340,
+      "verdict": "passed"
+    }
+  },
+  "design": {
+    "reason": "Local deterministic repository-data, indexing, CLI/runtime, and documentation contracts only; no product UI or interaction change.",
+    "required": false
+  },
+  "goal": "SAAS-56: Add curated repository memory and bounded retrieval",
+  "nonGoals": [
+    "External vector databases, embeddings, hosted search, or network dependencies",
+    "Raw prompt, chat, log, tool payload, credential, or authority-reference archives",
+    "Automatic memory accumulation, product/security decisions, or workflow authority from memory",
+    "Rewriting historical docs-ai artifacts or activating implicit autonomous memory loading"
+  ],
+  "physicalWorktreeFingerprint": "sha256:ec10d90a90d5d5aa018df7cfb870f5be7e7bb9167cf06ae30af1875a79e5ac32",
+  "repositoryKey": "ai-config",
+  "repositoryRoot": "C:\\dev\\luchdom\\ai-config",
+  "revision": 10,
+  "riskFlags": [
+    "authority-confusion",
+    "prompt-injection",
+    "secret-persistence",
+    "provenance-drift",
+    "index-corruption",
+    "non-deterministic-retrieval",
+    "unbounded-context"
+  ],
+  "schemaVersion": "2.0",
+  "slug": "saas-56-curated-repository-memory-and-bounded-re",
+  "supersededArtifactNames": [],
+  "tracking": {
+    "externalId": "SAAS-56",
+    "provider": "linear"
+  },
+  "workKey": "006",
+  "workSource": "local",
+  "workflow": "semi-autonomous",
+  "workflowId": "8417f24e-b7e5-456e-9755-ff3befebeb2f"
+}

@@ -559,6 +559,95 @@ class ReservationManager:
             self._consume_authorization(authorization_ref)
             return result
 
+    def consume_mutation_authorization_unlocked(
+        self,
+        *,
+        state: Mapping[str, Any],
+        reservations: Mapping[str, Any],
+        reservation_id: str,
+        authorization_ref: str | Path,
+        operation_id: str,
+        required_scope: Iterable[str],
+        expected_record_revision: int,
+        expected_state_revision: int,
+        expected_reservations_revision: int,
+        physical_worktree_fingerprint: str,
+        prepared_evidence_path: str | Path,
+        prepared_evidence: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        """Consume one exact mutation grant while the canonical mutex is held.
+
+        Repository-memory promotion owns the surrounding critical section. This
+        primitive deliberately accepts no mutation callback and no caller-shaped
+        authority evidence: it resolves the engine-owned opaque reference,
+        persists the prepared journal through StatePathGuard, and commits the
+        consumed authorization ID before returning.
+        """
+
+        self._safe_id(operation_id, "operation ID")
+        scope = self._canonical_mutation_scope(required_scope)
+        self._expected_revisions(
+            state, reservations, expected_state_revision,
+            expected_reservations_revision,
+        )
+        self._barrier(state)
+        record = self._active_record(reservations, reservation_id)
+        self._require_manager_authority(state, record)
+        if record["revision"] != expected_record_revision:
+            raise SupervisorConflictError("Reservation revision is stale")
+        authorization = self._resolve_authorization(
+            authorization_ref, expected_kind="mutation"
+        )
+        binding = authorization["binding"]
+        expected = {
+            "reservationId": reservation_id,
+            "workflowId": record["workflowId"],
+            "issueId": record["issueId"],
+            "repositoryId": record["repositoryId"],
+            "repositoryKey": record["repositoryKey"],
+            "runId": record["runId"],
+            "operationId": operation_id,
+            "stateRevision": state["revision"],
+            "reservationRevision": record["revision"],
+            "physicalWorktreeFingerprint": physical_worktree_fingerprint,
+            "scope": scope,
+        }
+        if any(binding.get(key) != value for key, value in expected.items()):
+            raise ReservationError("Mutation authorization binding is forged or stale")
+        if physical_worktree_fingerprint != record["physicalWorktreeFingerprint"]:
+            raise ReservationError("Mutation worktree authority differs from reservation")
+        if self._now() >= binding.get("expiresAtNs", 0):
+            raise ReservationError("Mutation authorization is expired")
+        authorization_id = authorization["authorizationId"]
+        if authorization_id in reservations["consumedAuthorizationIds"]:
+            raise ReservationError("Mutation authorization was already consumed")
+        self._transfer_fault("before-prepared-evidence", operation_id)
+        evidence_path = self.store.guard.leaf(prepared_evidence_path)
+        if evidence_path.exists():
+            observed = self.store.guard.read_json(evidence_path)
+            if observed != prepared_evidence:
+                raise ReservationError("Prepared mutation evidence conflicts with replay")
+        else:
+            self.store.guard.write_json(evidence_path, dict(prepared_evidence))
+        if self.store.guard.read_json(evidence_path) != prepared_evidence:
+            raise ReservationError("Prepared mutation evidence readback differs")
+        self._transfer_fault("after-prepared-evidence", operation_id)
+        after_reservations = copy.deepcopy(dict(reservations))
+        after_reservations["consumedAuthorizationIds"].append(authorization_id)
+        after_reservations["revision"] = reservations["revision"] + 1
+        self._transfer_fault("before-consumed-commit", operation_id)
+        self.store.commit_pair_unlocked(
+            before_state=dict(state), after_state=dict(state),
+            before_reservations=dict(reservations),
+            after_reservations=after_reservations,
+            operation=f"AuthorizedMutation:{operation_id}",
+        )
+        self._transfer_fault("after-consumed-commit", operation_id)
+        self._transfer_fault("before-opaque-cleanup", operation_id)
+        self._consume_authorization(authorization_ref)
+        self._transfer_fault("after-opaque-cleanup", operation_id)
+        return copy.deepcopy(record)
+
     def execute_cleanup_authorization(
         self,
         *,

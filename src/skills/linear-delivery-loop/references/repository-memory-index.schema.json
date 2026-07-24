@@ -1,0 +1,6 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "repository-memory-index.schema.json", "title": "Repository Memory Derived Index V1", "type": "object", "additionalProperties": false,
+  "required": ["schemaVersion", "builderVersion", "repositoryId", "repositoryKey", "sourceTree", "builtAt", "markers", "entries", "diagnostics", "counts", "indexSemanticSha256"],
+  "properties": {"schemaVersion": {"const": "1.0"}, "builderVersion": {"const": "1.0"}, "repositoryId": {"type": "string"}, "repositoryKey": {"type": "string"}, "sourceTree": {"type": "string"}, "builtAt": {"type": "string", "format": "date-time"}, "markers": {"type": "array", "items": {"type": "object"}}, "entries": {"type": "array", "items": {"type": "object"}}, "diagnostics": {"type": "object"}, "counts": {"type": "object"}, "indexSemanticSha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}},
+  "x-luchdom-runtimeParity": {"version": "1.0", "runtimeValidator": "scripts.contracts.validate_contract", "constraints": [{"id": "canonical-index-semantic-projection"}, {"id": "marker-owned-inputs-only"}, {"id": "graph-and-conflict-projection"}, {"id": "repository-binding"}, {"id": "no-secret-like-material"}]}
+}

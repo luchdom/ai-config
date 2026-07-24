@@ -1,0 +1,6 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "repository-memory-query.schema.json", "title": "Repository Memory Query V1", "type": "object", "additionalProperties": false,
+  "required": ["schemaVersion", "repositoryId", "repositoryKey", "work", "stage", "paths", "topics", "maxRecords", "maxCharacters", "maxBytes", "includeLegacy"],
+  "properties": {"schemaVersion": {"const": "1.0"}, "repositoryId": {"type": "string"}, "repositoryKey": {"type": "string"}, "work": {"type": ["object", "null"]}, "stage": {"type": ["string", "null"]}, "paths": {"type": "array", "maxItems": 32, "uniqueItems": true, "items": {"type": "string"}}, "topics": {"type": "array", "maxItems": 16, "uniqueItems": true, "items": {"type": "string"}}, "maxRecords": {"type": "integer", "minimum": 1, "maximum": 32}, "maxCharacters": {"type": "integer", "minimum": 1000, "maximum": 48000}, "maxBytes": {"type": "integer", "minimum": 4096, "maximum": 98304}, "includeLegacy": {"type": "boolean"}},
+  "x-luchdom-runtimeParity": {"version": "1.0", "runtimeValidator": "scripts.contracts.validate_contract", "constraints": [{"id": "canonical-query-projection"}, {"id": "normalized-filters"}, {"id": "repository-binding"}, {"id": "no-callback-or-authority"}, {"id": "no-secret-like-material"}]}
+}

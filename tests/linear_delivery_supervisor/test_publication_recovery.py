@@ -7,7 +7,9 @@ from tests.linear_delivery_supervisor import load_supervisor_package
 
 package = load_supervisor_package(); module = importlib.import_module(package.__name__ + ".publication_recovery")
 control_records = importlib.import_module(package.__name__ + ".control_plane_records")
+supervisor_module = importlib.import_module(package.__name__ + ".supervisor")
 SHA = "a" * 40
+REPOSITORY_ID = "repo-" + "a" * 24
 
 class Requests:
     def publication_refusal(self, **kwargs): self.kwargs = kwargs; return {"id": "request-1"}
@@ -20,12 +22,18 @@ class OneShotReply:
         return value
 
 class PublicationRecoveryTests(unittest.TestCase):
+    def test_supervisor_publication_context_uses_schema_valid_linear_issue_link(self):
+        self.assertEqual(
+            "https://linear.app/issue/SAAS-48",
+            supervisor_module._linear_issue_link("SAAS-48"),
+        )
+
     def setUp(self):
         self.releases = 0; self.labels = []; self.states = []; self.notifications = []; self.requests = Requests()
         self.subject = module.PublicationRecovery(requests=self.requests, release_lease=lambda: setattr(self, "releases", self.releases + 1), set_labels=self.labels.append, set_issue_state=self.states.append, notify=self.notifications.append)
         self.state = {"operationId": "push-1", "headSha": SHA, "status": "attempting", "attemptCount": 1, "retryCount": 0,
             "preservedState": {"issueState": "In Progress", "autonomous": True, "globalWip": True, "reservationId": "r", "worktreePath": "C:/work", "physicalWorktreeFingerprint": "sha256:" + "b" * 64, "branch": "codex/SAAS-48-x", "pullRequest": None, "evidenceRefs": []}}
-        self.context = {"issue_id": "SAAS-48", "operation_id": "push-1", "head_sha": SHA, "source_timestamp": "2026-07-22T00:00:00Z", "created_at": "2026-07-22T00:01:00Z", "link": "https://example.invalid/48", "reason": "refused", "evidence": {"issueState": "In Progress", "reservationId": "r", "worktreePath": "C:/work", "branch": "codex/SAAS-48-x", "prId": "none"}, "owner_id": "owner", "config_digest": "sha256:" + "c" * 64, "repository_id": "repo", "refusal_kind": "stable"}
+        self.context = {"issue_id": "SAAS-48", "operation_id": "push-1", "head_sha": SHA, "source_timestamp": "2026-07-22T00:00:00Z", "created_at": "2026-07-22T00:01:00Z", "link": "https://example.invalid/48", "reason": "refused", "evidence": {"issueState": "In Progress", "reservationId": "r", "worktreePath": "C:/work", "branch": "codex/SAAS-48-x", "prId": "none"}, "owner_id": "owner", "config_digest": "sha256:" + "c" * 64, "repository_id": REPOSITORY_ID, "refusal_kind": "stable"}
 
     def test_transient_backoff_then_stable_pause_preserves_work(self):
         transient = self.subject.refusal(publication=self.state, response={"statusCode": 429}, readback={"applied": False}, now="2026-07-22T00:00:00Z", request_context=self.context)
@@ -87,7 +95,7 @@ class PublicationRecoveryTests(unittest.TestCase):
                 created_at="2026-07-22T00:01:00Z", link="https://example.invalid/48",
                 reason="stable refusal", evidence={"issueState": "In Progress", "reservationId": "r", "worktreePath": "C:/work", "branch": "codex/SAAS-48-x", "prId": "none"},
                 owner_id="owner", config_digest="sha256:" + "c" * 64,
-                repository_id="repo", refusal_kind="stable",
+                repository_id=REPOSITORY_ID, refusal_kind="stable",
             )
             def consume():
                 return records.consume_publication_reply(
@@ -95,7 +103,7 @@ class PublicationRecoveryTests(unittest.TestCase):
                     reply_created_at="2026-07-22T00:02:00Z",
                     body=f"RETRY-PUBLICATION push-1 {SHA}", reconciled=True,
                     owner_id="owner", config_digest="sha256:" + "c" * 64,
-                    repository_id="repo",
+                    repository_id=REPOSITORY_ID,
                 )
             paused = dict(self.state, status="paused"); persisted = []; attempts = []
             rereads = {name: True for name in module.REQUIRED_ATTENDED_REREADS}

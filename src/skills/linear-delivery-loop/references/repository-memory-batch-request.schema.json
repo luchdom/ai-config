@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "repository-memory-batch-request.schema.json",
+  "title": "Repository Memory Promotion Batch Request V1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "batchPromotionId", "manifestPath", "promotionManifestPayloadSha256", "promotionManifestFileSha256", "markerTargetPath", "candidates", "expectedPriorIndexSemanticSha256", "repositoryId", "repositoryKey", "headSha", "physicalWorktreeFingerprint", "authorization", "promotionBatchRequestSha256"],
+  "properties": {
+    "schemaVersion": {"const": "1.0"},
+    "batchPromotionId": {"type": "string", "format": "uuid"},
+    "manifestPath": {"type": "string", "pattern": "^docs-ai/[^/]+/[^/]+-memory-promotion\\.json$"},
+    "promotionManifestPayloadSha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "promotionManifestFileSha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "markerTargetPath": {"type": "string", "pattern": "^docs/repository-memory/commits/[0-9a-f-]{36}\\.json$"},
+    "candidates": {"type": "array", "minItems": 1, "maxItems": 32, "items": {"type": "object", "additionalProperties": false, "required": ["candidateId", "candidatePromotionId", "recordTargetPath", "candidateIntentSha256"], "properties": {"candidateId": {"type": "string", "format": "uuid"}, "candidatePromotionId": {"type": "string", "format": "uuid"}, "recordTargetPath": {"type": "string", "pattern": "^docs/repository-memory/records/[a-z0-9][a-z0-9-]*\\.v[0-9]{4}\\.json$"}, "candidateIntentSha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}}}},
+    "expectedPriorIndexSemanticSha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "repositoryId": {"type": "string", "minLength": 1, "maxLength": 128},
+    "repositoryKey": {"type": "string", "minLength": 1, "maxLength": 128},
+    "headSha": {"type": "string", "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$"},
+    "physicalWorktreeFingerprint": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "authorization": {"type": "object", "additionalProperties": false, "required": ["authorizationId", "operationId", "authorizationSha256", "scope"], "properties": {"authorizationId": {"type": "string", "format": "uuid"}, "operationId": {"type": "string", "format": "uuid"}, "authorizationSha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}, "scope": {"type": "array", "minItems": 2, "maxItems": 33, "items": {"type": "string"}}}},
+    "promotionBatchRequestSha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+  },
+  "x-luchdom-runtimeParity": {"version": "1.0", "runtimeValidator": "scripts.contracts.validate_contract", "constraints": [{"id": "canonical-digest-projections"}, {"id": "exact-authorization-binding"}, {"id": "canonical-candidate-order"}, {"id": "safe-repository-paths"}, {"id": "no-secret-like-material"}]}
+}

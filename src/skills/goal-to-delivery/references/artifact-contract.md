@@ -15,6 +15,7 @@ docs-ai/<work-key>-<slug>/
   <date>-<slug>-audit.md
   <date>-<slug>-code-review.md
   <date>-<slug>-qa.md
+  <date>-<slug>-memory-promotion.json # optional; docs-owned curation evidence
   <date>-<slug>-completion.md
 ```
 
@@ -43,6 +44,9 @@ Later Linear attachment updates the same descriptor/registry atomically. It pres
 - Auditor: `*-audit.md`
 - Code reviewer: `*-code-review.md`
 - QA: `*-qa.md`
+- Docs-as-code: optional `*-memory-promotion.json`; this is inventoried curation
+  evidence produced only in a distinct curation workflow. It cannot grant
+  reservation, mutation, publication, provider, or completion authority.
 - Authorized orchestrator/adapter: `*-completion.md`
 
 Per-work evidence stays in `docs-ai/`. Reusable concepts, how-tos, references, ADRs, runbooks, and troubleshooting belong in curated repository docs. Link between them instead of copying normative policy or full run evidence.

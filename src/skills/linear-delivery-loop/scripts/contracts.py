@@ -56,6 +56,17 @@ SCHEMA_FILENAMES = {
     "migration-report": "migration-report.schema.json",
     "publication-state": "publication-state.schema.json",
 }
+MEMORY_SCHEMA_FILENAMES = {
+    "repository-memory-record": "repository-memory-record.schema.json",
+    "repository-memory-promotion": "repository-memory-promotion.schema.json",
+    "repository-memory-commit": "repository-memory-commit.schema.json",
+    "repository-memory-index": "repository-memory-index.schema.json",
+    "repository-memory-query": "repository-memory-query.schema.json",
+    "repository-memory-result": "repository-memory-result.schema.json",
+    "repository-memory-context-envelope": "repository-memory-context-envelope.schema.json",
+    "repository-memory-batch-request": "repository-memory-batch-request.schema.json",
+    "repository-memory-promotion-result": "repository-memory-promotion-result.schema.json",
+}
 RUNTIME_CONSTRAINTS = {
     "project-config": {
         "canonical-absolute-paths",
@@ -151,6 +162,53 @@ RUNTIME_CONSTRAINTS = {
         "no-secret-like-material",
     },
 }
+MEMORY_RUNTIME_CONSTRAINTS = {
+    "repository-memory-record": {
+        "canonical-digest-projections", "typed-assertion-parity",
+        "lifecycle-cross-fields", "sorted-normalized-arrays",
+        "safe-repository-paths", "no-secret-like-material",
+    },
+    "repository-memory-promotion": {
+        "manifest-decision-cross-fields", "canonical-candidate-order",
+        "distinct-curation-workflow", "canonical-digest-projections",
+        "no-authority-fields", "no-secret-like-material",
+    },
+    "repository-memory-commit": {
+        "canonical-digest-projections", "canonical-candidate-order",
+        "complete-marker-owned-set", "safe-repository-paths",
+        "no-secret-like-material",
+    },
+    "repository-memory-index": {
+        "canonical-index-semantic-projection", "marker-owned-inputs-only",
+        "graph-and-conflict-projection", "repository-binding",
+        "no-secret-like-material",
+    },
+    "repository-memory-query": {
+        "canonical-query-projection", "normalized-filters",
+        "repository-binding", "no-callback-or-authority",
+        "no-secret-like-material",
+    },
+    "repository-memory-result": {
+        "whole-item-budgets", "canonical-result-accounting",
+        "complete-provenance", "no-authority-fields",
+        "no-secret-like-material",
+    },
+    "repository-memory-context-envelope": {
+        "tool-role-untrusted-envelope", "canonical-context-escaping",
+        "inclusive-sentinel-accounting", "authenticated-selector-invariance",
+        "whole-item-budgets", "no-authority-from-memory",
+    },
+    "repository-memory-batch-request": {
+        "canonical-digest-projections", "exact-authorization-binding",
+        "canonical-candidate-order", "safe-repository-paths",
+        "no-secret-like-material",
+    },
+    "repository-memory-promotion-result": {
+        "canonical-digest-projections", "complete-marker-owned-set",
+        "status-cross-fields", "no-authority-fields",
+        "no-secret-like-material",
+    },
+}
 
 _UUID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$")
 _RAW_AUTHORITY_KEYS = {
@@ -161,6 +219,9 @@ _RAW_AUTHORITY_KEYS = {
     "rawnonce",
 }
 _CALLER_OUTPUT_KEYS = {"outputpath", "resultpath"}
+_MEMORY_DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
+_ASSERTION_KEY = re.compile(r"^[a-z][a-z0-9]*(?:[._-][a-z0-9]+){0,7}$")
+_SECRET_SEMANTIC_KEY = re.compile(r"(?:^|[._-])(?:token|secret|password|passwd|api[_-]?key|private[_-]?key|nonce)(?:$|[._-])", re.IGNORECASE)
 _PATH_KEYS = {
     "repositoryRoot",
     "stateHome",
@@ -203,7 +264,7 @@ def _references_dir() -> Path:
 def load_schema(name: str) -> dict[str, Any]:
     """Read one canonical schema by contract name."""
 
-    filename = SCHEMA_FILENAMES.get(name)
+    filename = SCHEMA_FILENAMES.get(name) or MEMORY_SCHEMA_FILENAMES.get(name)
     if filename is None:
         raise ContractValidationError(f"Unknown supervisor contract: {name}")
     path = _references_dir() / filename
@@ -228,7 +289,42 @@ def _type_matches(expected: str, value: Any) -> bool:
     }[expected]
 
 
-def _validate_native(schema: Mapping[str, Any], value: Any, location: str = "$") -> None:
+def _validate_native(
+    schema: Mapping[str, Any],
+    value: Any,
+    location: str = "$",
+    *,
+    root_schema: Mapping[str, Any] | None = None,
+    resolving: frozenset[str] = frozenset(),
+) -> None:
+    root = schema if root_schema is None else root_schema
+    reference = schema.get("$ref")
+    if reference is not None:
+        if not isinstance(reference, str) or not reference.startswith("#/"):
+            raise ContractValidationError(
+                f"{location} uses an unsupported non-local schema reference"
+            )
+        if reference in resolving:
+            raise ContractValidationError(
+                f"{location} contains a cyclic schema reference"
+            )
+        target: Any = root
+        try:
+            for token in reference[2:].split("/"):
+                key = token.replace("~1", "/").replace("~0", "~")
+                target = target[key]
+        except (KeyError, TypeError) as exc:
+            raise ContractValidationError(
+                f"{location} references an unknown local schema definition"
+            ) from exc
+        if not isinstance(target, Mapping):
+            raise ContractValidationError(
+                f"{location} schema reference does not resolve to an object"
+            )
+        _validate_native(
+            target, value, location, root_schema=root,
+            resolving=resolving | {reference},
+        )
     expected = schema.get("type")
     if isinstance(expected, str) and not _type_matches(expected, value):
         raise ContractValidationError(f"{location} must be {expected}")
@@ -266,7 +362,10 @@ def _validate_native(schema: Mapping[str, Any], value: Any, location: str = "$")
         item_schema = schema.get("items")
         if isinstance(item_schema, dict):
             for index, item in enumerate(value):
-                _validate_native(item_schema, item, f"{location}[{index}]")
+                _validate_native(
+                    item_schema, item, f"{location}[{index}]",
+                    root_schema=root, resolving=resolving,
+                )
     if isinstance(value, dict):
         required = set(schema.get("required", []))
         missing = required - set(value)
@@ -279,17 +378,26 @@ def _validate_native(schema: Mapping[str, Any], value: Any, location: str = "$")
                 raise ContractValidationError(f"{location} contains unknown fields: {', '.join(sorted(unknown))}")
         elif isinstance(schema.get("additionalProperties"), dict):
             for key in set(value) - set(properties):
-                _validate_native(schema["additionalProperties"], value[key], f"{location}.{key}")
+                _validate_native(
+                    schema["additionalProperties"], value[key], f"{location}.{key}",
+                    root_schema=root, resolving=resolving,
+                )
         for key, item in value.items():
             property_schema = properties.get(key)
             if isinstance(property_schema, dict):
-                _validate_native(property_schema, item, f"{location}.{key}")
+                _validate_native(
+                    property_schema, item, f"{location}.{key}",
+                    root_schema=root, resolving=resolving,
+                )
     if "oneOf" in schema:
         accepted = 0
         errors: list[Exception] = []
         for option in schema["oneOf"]:
             try:
-                _validate_native(option, value, location)
+                _validate_native(
+                    option, value, location,
+                    root_schema=root, resolving=resolving,
+                )
                 accepted += 1
             except ContractValidationError as exc:
                 errors.append(exc)
@@ -447,6 +555,437 @@ def _check_engine_command(value: Mapping[str, Any], paths: Mapping[str, Path]) -
     # can transfer to an ordinary sibling worktree.
     if "expectedPaths" in value:
         _safe_relative_paths(value["expectedPaths"], "expectedPaths")
+
+
+def canonical_json_bytes(value: Any) -> bytes:
+    """Canonical bytes used by every repository-memory digest projection."""
+
+    try:
+        encoded = json.dumps(
+            value, sort_keys=True, separators=(",", ":"), ensure_ascii=True,
+            allow_nan=False,
+        )
+    except (TypeError, ValueError) as exc:
+        raise ContractValidationError("Value cannot be canonically serialized") from exc
+    # JSON permits escaped lone surrogates; the memory contract deliberately does not.
+    for _, item in _walk(value):
+        if isinstance(item, str) and any(0xD800 <= ord(character) <= 0xDFFF for character in item):
+            raise ContractValidationError("Repository memory rejects lone surrogate code points")
+    return encoded.encode("utf-8")
+
+
+def sha256_canonical(value: Any) -> str:
+    return "sha256:" + hashlib.sha256(canonical_json_bytes(value)).hexdigest()
+
+
+def digest_projection(value: Mapping[str, Any], excluded_field: str) -> dict[str, Any]:
+    projected = copy.deepcopy(dict(value))
+    if excluded_field not in projected:
+        raise ContractValidationError(f"Digest projection lacks {excluded_field}")
+    projected.pop(excluded_field)
+    return projected
+
+
+def candidate_intent_projection(value: Mapping[str, Any]) -> dict[str, Any]:
+    return digest_projection(value, "candidateIntentSha256")
+
+
+def promotion_manifest_payload_projection(value: Mapping[str, Any]) -> dict[str, Any]:
+    return digest_projection(value, "promotionManifestPayloadSha256")
+
+
+def record_payload_projection(value: Mapping[str, Any]) -> dict[str, Any]:
+    return digest_projection(value, "recordPayloadSha256")
+
+
+def batch_commit_payload_projection(value: Mapping[str, Any]) -> dict[str, Any]:
+    return digest_projection(value, "batchCommitPayloadSha256")
+
+
+def promotion_batch_request_projection(value: Mapping[str, Any]) -> dict[str, Any]:
+    return digest_projection(value, "promotionBatchRequestSha256")
+
+
+def retrieval_query_projection(value: Mapping[str, Any]) -> dict[str, Any]:
+    return copy.deepcopy(dict(value))
+
+
+def retrieval_result_projection(value: Mapping[str, Any]) -> dict[str, Any]:
+    return copy.deepcopy(dict(value))
+
+
+def context_envelope_payload_projection(value: Mapping[str, Any]) -> dict[str, Any]:
+    return digest_projection(value, "contextPayloadSha256")
+
+
+def index_semantic_projection(value: Mapping[str, Any]) -> dict[str, Any]:
+    projected = digest_projection(value, "indexSemanticSha256")
+    projected.pop("builtAt", None)
+    return projected
+
+
+def context_delivery_accounting_projection(value: Mapping[str, Any]) -> dict[str, Any]:
+    projected = copy.deepcopy(dict(value))
+    accounting = projected.get("accounting")
+    if not isinstance(accounting, dict):
+        raise ContractValidationError("Context delivery lacks accounting")
+    accounting["charactersUsed"] = "000000"
+    accounting["bytesUsed"] = "000000"
+    return projected
+
+
+def _canonical_text(value: str, *, collapsed: bool = False) -> str:
+    if any(0xD800 <= ord(character) <= 0xDFFF for character in value):
+        raise ContractValidationError("Repository memory rejects lone surrogate code points")
+    normalized = unicodedata.normalize("NFC", value)
+    if collapsed:
+        normalized = " ".join(normalized.strip().split())
+    return normalized
+
+
+def _memory_relative_path(value: str, location: str) -> None:
+    if value != _canonical_text(value) or not value or "\\" in value or value.startswith("/"):
+        raise ContractValidationError(f"{location} must be a canonical repository-relative path")
+    if any(part in {"", ".", ".."} for part in value.split("/")):
+        raise ContractValidationError(f"{location} contains traversal or an empty component")
+
+
+def _sorted_unique(values: list[Any], key, location: str) -> None:
+    keys = [key(item) for item in values]
+    if keys != sorted(keys) or len(keys) != len(set(keys)):
+        raise ContractValidationError(f"{location} must be sorted and unique")
+
+
+def _assert_digest(value: str, location: str) -> None:
+    if _MEMORY_DIGEST.fullmatch(value) is None:
+        raise ContractValidationError(f"{location} must be a canonical SHA-256 digest")
+
+
+def _assert_memory_record(value: Mapping[str, Any]) -> None:
+    expected_filename = f"{value['recordId']}.v{value['recordVersion']:04d}.json"
+    if value["filename"] != expected_filename:
+        raise ContractValidationError("Record filename does not match record identity/version")
+    _sorted_unique(value["topics"], lambda item: item.casefold(), "topics")
+    _sorted_unique(value["paths"], lambda item: item.casefold(), "paths")
+    _sorted_unique(value["stages"], lambda item: item.casefold(), "stages")
+    for location in ("topics", "stages"):
+        if any(item != _canonical_text(item) or item != item.casefold() for item in value[location]):
+            raise ContractValidationError(f"{location} must use lowercase NFC values")
+    for path in value["paths"]:
+        _memory_relative_path(path, "paths")
+    work = value["work"]
+    if work is not None:
+        expected_work = {"workflowId", "workKey", "provider", "externalId"}
+        if set(work) != expected_work or not all(isinstance(work[key], str) and work[key] for key in expected_work):
+            raise ContractValidationError("Record work binding inventory is not exact")
+    if set(value["freshness"]) != {"policy", "reviewAfter"} or value["freshness"]["policy"] != "digest-on-read":
+        raise ContractValidationError("Freshness policy must be digest-on-read")
+    if value["freshness"]["reviewAfter"] is not None:
+        _timestamp(value["freshness"]["reviewAfter"], "freshness.reviewAfter")
+    retention = value["retention"]
+    if set(retention) != {"class", "reviewAt", "expiresAt"} or retention["class"] not in {"durable", "review-on", "expire-on"}:
+        raise ContractValidationError("Retention inventory/class is invalid")
+    if retention["class"] == "durable" and (retention["reviewAt"] is not None or retention["expiresAt"] is not None):
+        raise ContractValidationError("Durable retention cannot carry dates")
+    if retention["class"] == "review-on" and (retention["reviewAt"] is None or retention["expiresAt"] is not None):
+        raise ContractValidationError("Review-on retention requires only reviewAt")
+    if retention["class"] == "expire-on" and (retention["expiresAt"] is None or retention["reviewAt"] is not None):
+        raise ContractValidationError("Expire-on retention requires only expiresAt")
+    for key in ("reviewAt", "expiresAt"):
+        if retention[key] is not None:
+            _timestamp(retention[key], f"retention.{key}")
+    provenance = value["provenance"]
+    _sorted_unique(provenance, lambda item: item["id"], "provenance")
+    provenance_by_id = {item["id"]: item for item in provenance}
+    for source in provenance:
+        _memory_relative_path(source["path"], "provenance.path")
+        _assert_digest(source["sha256"], "provenance.sha256")
+        if source["kind"] == "repository-source" and source["path"].startswith("docs-ai/"):
+            raise ContractValidationError("Current repository sources cannot be docs-ai artifacts")
+        if source["kind"] != "repository-source" and not source["path"].startswith("docs-ai/"):
+            raise ContractValidationError("Delivery evidence must remain under docs-ai")
+    assertions = value["assertions"]
+    _sorted_unique(assertions, lambda item: item["key"], "assertions")
+    assertion_classes: list[str] = []
+    for assertion in assertions:
+        key = assertion["key"]
+        if len(key) > 128 or _ASSERTION_KEY.fullmatch(key) is None:
+            raise ContractValidationError("Assertion key is not canonical")
+        if _SECRET_SEMANTIC_KEY.search(key):
+            raise ContractValidationError("Assertion key is secret-like")
+        refs = assertion["provenanceRefs"]
+        _sorted_unique(refs, lambda item: item, "assertion provenanceRefs")
+        if any(ref not in provenance_by_id for ref in refs):
+            raise ContractValidationError("Assertion references unknown provenance")
+        kind = assertion["valueType"]
+        item = assertion["value"]
+        if kind == "string":
+            if not isinstance(item, str) or item != _canonical_text(item, collapsed=True) or not item:
+                raise ContractValidationError("Assertion string is not normalized")
+        elif kind == "integer":
+            if isinstance(item, bool) or not isinstance(item, int) or abs(item) > 9007199254740991:
+                raise ContractValidationError("Assertion integer is outside the safe range")
+        elif kind == "boolean":
+            if not isinstance(item, bool):
+                raise ContractValidationError("Assertion boolean must be native JSON boolean")
+        elif kind == "string-set":
+            if not isinstance(item, list) or not item:
+                raise ContractValidationError("Assertion string-set must be non-empty")
+            if any(not isinstance(member, str) or member != _canonical_text(member, collapsed=True) or not member for member in item):
+                raise ContractValidationError("Assertion string-set member is not normalized")
+            _sorted_unique(item, lambda member: member, "assertion string-set")
+        source_kinds = {provenance_by_id[ref]["kind"] for ref in refs}
+        if source_kinds == {"repository-source"}:
+            assertion_classes.append("current-source-bound")
+        elif "repository-source" in source_kinds and any(kind != "repository-source" for kind in source_kinds):
+            assertion_classes.append("source-evidence-bound")
+        elif source_kinds == {"legacy-delivery-artifact"}:
+            assertion_classes.append("legacy-evidence-bound")
+        else:
+            raise ContractValidationError("Assertion provenance topology is unsupported")
+    lifecycle = value["lifecycle"]
+    if lifecycle == "active":
+        if not value["title"] or not value["summary"] or not assertions:
+            raise ContractValidationError("Active memory requires display content and assertions")
+        priority = {"current-source-bound": 2, "source-evidence-bound": 1, "legacy-evidence-bound": 0}
+        expected_confidence = min(assertion_classes, key=priority.__getitem__)
+        if value["confidence"] != expected_confidence:
+            raise ContractValidationError("Record confidence is not its weakest assertion topology")
+        if value["archiveReason"] is not None or value["redactionReason"] is not None:
+            raise ContractValidationError("Active memory contains terminal lifecycle reasons")
+    elif lifecycle == "archived":
+        if value["summary"] is not None or assertions or not value["archiveReason"] or value["redactionReason"] is not None:
+            raise ContractValidationError("Archived memory must be content-free except its safe title/reason")
+        if value["confidence"] != "not-applicable":
+            raise ContractValidationError("Archived confidence must be not-applicable")
+    else:
+        if value["title"] is not None or value["summary"] is not None or assertions or not value["redactionReason"] or value["archiveReason"] is not None:
+            raise ContractValidationError("Redacted memory must be content-free")
+        if value["confidence"] != "not-applicable":
+            raise ContractValidationError("Redacted confidence must be not-applicable")
+    if value["recordVersion"] == 1 and value["supersedes"] and len(value["supersedes"]) < 2:
+        raise ContractValidationError("Version-one consolidation requires two to eight predecessors")
+    if value["recordVersion"] > 1:
+        expected = [{"recordId": value["recordId"], "recordVersion": value["recordVersion"] - 1}]
+        if value["supersedes"] != expected:
+            raise ContractValidationError("Later record versions must supersede the immediate predecessor")
+    if value["restores"] is not None and value["lifecycle"] != "active":
+        raise ContractValidationError("Only an active successor may restore an archive")
+    if value["updatedBy"]["promotionManifestPayloadSha256"] != value["promotionManifestPayloadSha256"]:
+        raise ContractValidationError("Update evidence differs from manifest binding")
+    if value["updatedBy"]["candidatePromotionId"] != value["candidatePromotionId"]:
+        raise ContractValidationError("Update identity differs from candidate promotion")
+    if value["recordVersion"] == 1 and value["createdBy"] != value["updatedBy"]:
+        raise ContractValidationError("Version-one creation/update identities must be equal")
+    expected = sha256_canonical(record_payload_projection(value))
+    if value["recordPayloadSha256"] != expected:
+        raise ContractValidationError("Record payload digest mismatch")
+
+
+def _assert_memory_promotion(value: Mapping[str, Any]) -> None:
+    candidates = value["candidates"]
+    if value["decision"] == "no-candidates":
+        if candidates or not value["noCandidatesReason"] or value["noCandidatesSummary"] is None:
+            raise ContractValidationError("No-candidates decision is incomplete")
+    else:
+        if not 1 <= len(candidates) <= 32 or value["noCandidatesReason"] is not None or value["noCandidatesSummary"] is not None:
+            raise ContractValidationError("Promotion-approved decision requires one to 32 candidates")
+    _sorted_unique(candidates, lambda item: item.get("candidateId", ""), "manifest candidates")
+    promotion_ids: set[str] = set()
+    targets: set[str] = set()
+    for candidate in candidates:
+        allowed_candidate = {
+            "candidateId", "candidatePromotionId", "targetRecordId",
+            "targetRecordVersion", "targetPath", "kind", "topics", "paths",
+            "stages", "work", "title", "summary", "assertions", "provenance",
+            "confidence", "freshness", "lifecycle", "retention", "supersedes",
+            "restores", "createdAt", "reviewedAt", "archiveReason",
+            "redactionReason", "candidateIntentSha256",
+        }
+        if set(candidate) != allowed_candidate:
+            raise ContractValidationError("Manifest candidate field inventory is not exact")
+        required = {"candidateId", "candidatePromotionId", "targetRecordId", "targetRecordVersion", "targetPath", "candidateIntentSha256"}
+        if not required <= set(candidate):
+            raise ContractValidationError("Manifest candidate identity is incomplete")
+        if _UUID.fullmatch(candidate["candidateId"]) is None or _UUID.fullmatch(candidate["candidatePromotionId"]) is None:
+            raise ContractValidationError("Manifest candidate IDs must be canonical UUIDs")
+        _memory_relative_path(candidate["targetPath"], "candidate.targetPath")
+        expected = f"docs/repository-memory/records/{candidate['targetRecordId']}.v{candidate['targetRecordVersion']:04d}.json"
+        if candidate["targetPath"] != expected:
+            raise ContractValidationError("Manifest target path does not match identity/version")
+        if candidate["candidatePromotionId"] in promotion_ids or candidate["targetPath"].casefold() in targets:
+            raise ContractValidationError("Manifest candidate promotion IDs/targets must be unique")
+        promotion_ids.add(candidate["candidatePromotionId"])
+        targets.add(candidate["targetPath"].casefold())
+        if candidate["candidateIntentSha256"] != sha256_canonical(candidate_intent_projection(candidate)):
+            raise ContractValidationError("Candidate intent digest mismatch")
+        # Candidate intent is the record payload source. Validate every nested
+        # type, lifecycle field, assertion, and provenance object now rather
+        # than deferring shape enforcement until repository preparation.
+        from .repository_memory_records import candidate_to_record
+        try:
+            candidate_to_record(value, candidate)
+        except Exception as exc:
+            raise ContractValidationError(f"Manifest candidate payload is invalid: {exc}") from exc
+    if value["promotionManifestPayloadSha256"] != sha256_canonical(promotion_manifest_payload_projection(value)):
+        raise ContractValidationError("Promotion manifest payload digest mismatch")
+
+
+def _assert_promotion_batch_request(value: Mapping[str, Any]) -> None:
+    required = {
+        "schemaVersion", "batchPromotionId", "manifestPath",
+        "promotionManifestPayloadSha256", "promotionManifestFileSha256",
+        "markerTargetPath", "candidates", "expectedPriorIndexSemanticSha256",
+        "repositoryId", "repositoryKey", "headSha",
+        "physicalWorktreeFingerprint", "authorization",
+        "promotionBatchRequestSha256",
+    }
+    if set(value) != required or value.get("schemaVersion") != "1.0":
+        raise ContractValidationError("Promotion batch request inventory is not exact")
+    candidate_keys = {"candidateId", "candidatePromotionId", "recordTargetPath", "candidateIntentSha256"}
+    if not isinstance(value["candidates"], list) or not 1 <= len(value["candidates"]) <= 32:
+        raise ContractValidationError("Promotion batch request candidate cardinality is invalid")
+    if any(set(item) != candidate_keys for item in value["candidates"]):
+        raise ContractValidationError("Promotion batch request candidate inventory is not exact")
+    authorization_keys = {"authorizationId", "operationId", "authorizationSha256", "scope"}
+    if set(value["authorization"]) != authorization_keys:
+        raise ContractValidationError("Promotion batch authorization inventory is not exact")
+    expected_marker = f"docs/repository-memory/commits/{value['batchPromotionId']}.json"
+    expected_scope = sorted(
+        [item["recordTargetPath"] for item in value["candidates"]] + [expected_marker],
+        key=str.casefold,
+    )
+    if (
+        value["markerTargetPath"] != expected_marker
+        or value["authorization"]["operationId"] != value["batchPromotionId"]
+        or value["authorization"]["scope"] != expected_scope
+    ):
+        raise ContractValidationError("Promotion batch authorization binding is not exact")
+    if value["promotionBatchRequestSha256"] != sha256_canonical(promotion_batch_request_projection(value)):
+        raise ContractValidationError("Promotion batch request digest mismatch")
+    _check_no_authority_leak(value, engine_command=False)
+
+
+def validate_promotion_batch_request(value: Mapping[str, Any]) -> dict[str, Any]:
+    return validate_contract("repository-memory-batch-request", value)
+
+
+def _assert_promotion_result(value: Mapping[str, Any]) -> None:
+    if value.get("status") == "no-candidates":
+        required = {"schemaVersion", "status", "batchPromotionId", "promotionManifestPayloadSha256", "promotionManifestFileSha256", "records"}
+        if set(value) != required or value["records"]:
+            raise ContractValidationError("No-candidates result inventory is invalid")
+    else:
+        required = {
+            "schemaVersion", "status", "batchPromotionId",
+            "promotionBatchRequestSha256", "promotionManifestPayloadSha256",
+            "promotionManifestFileSha256", "batchCommitPayloadSha256",
+            "batchCommitFileSha256", "records", "indexSemanticSha256",
+        }
+        if set(value) != required or value["status"] not in {"committed", "index-reconstruction-required"}:
+            raise ContractValidationError("Promotion result inventory/status is invalid")
+        member_keys = {"candidateId", "candidatePromotionId", "targetPath", "candidateIntentSha256", "recordPayloadSha256", "recordFileSha256", "outcome"}
+        if not isinstance(value["records"], list) or not value["records"] or any(set(item) != member_keys or item["outcome"] != "promoted" for item in value["records"]):
+            raise ContractValidationError("Promotion result record inventory is invalid")
+    _check_no_authority_leak(value, engine_command=False)
+
+
+def validate_promotion_result(value: Mapping[str, Any]) -> dict[str, Any]:
+    return validate_contract("repository-memory-promotion-result", value)
+
+
+def _assert_memory_commit(value: Mapping[str, Any]) -> None:
+    records = value["records"]
+    _sorted_unique(records, lambda item: item["candidateId"], "commit records")
+    targets = [item["targetPath"].casefold() for item in records]
+    promotions = [item["candidatePromotionId"] for item in records]
+    if len(targets) != len(set(targets)) or len(promotions) != len(set(promotions)):
+        raise ContractValidationError("Commit marker owns duplicate targets or promotions")
+    for item in records:
+        _memory_relative_path(item["targetPath"], "commit targetPath")
+        if not item["targetPath"].startswith("docs/repository-memory/records/"):
+            raise ContractValidationError("Commit marker target is outside the fixed record root")
+    if value["batchCommitPayloadSha256"] != sha256_canonical(batch_commit_payload_projection(value)):
+        raise ContractValidationError("Batch commit payload digest mismatch")
+
+
+def _assert_memory_index(value: Mapping[str, Any]) -> None:
+    if re.fullmatch(r"(?:[0-9a-f]{40}|[0-9a-f]{64})", value["sourceTree"]) is None:
+        raise ContractValidationError("Index source-tree identity must be an exact Git SHA")
+    _sorted_unique(value["markers"], lambda item: item.get("path", ""), "index markers")
+    _sorted_unique(value["entries"], lambda item: (item.get("recordId", ""), item.get("recordVersion", 0), item.get("filename", "")), "index entries")
+    marker_keys = {"path", "batchPromotionId", "payloadSha256", "fileSha256"}
+    if any(set(item) != marker_keys for item in value["markers"]):
+        raise ContractValidationError("Index marker inventory is not exact")
+    entry_keys = {
+        "recordId", "recordVersion", "filename", "path", "recordFileSha256",
+        "recordPayloadSha256", "markerPath", "markerPayloadSha256", "kind",
+        "topics", "paths", "stages", "work", "confidence", "lifecycle",
+        "superseded", "successor", "invalidGraph", "conflictKeys", "expired",
+        "reviewDue", "stale", "staleReasons", "freshnessState",
+        "duplicateRepresentative", "duplicateMembers", "provenanceSha256",
+        "assertionMapSha256",
+    }
+    if any(set(item) != entry_keys for item in value["entries"]):
+        raise ContractValidationError("Index entry inventory is not exact")
+    for mapping_name in ("diagnostics", "counts"):
+        if not isinstance(value[mapping_name], dict) or any(
+            not isinstance(key, str) or not key or isinstance(item, bool)
+            or not isinstance(item, int) or item < 0
+            for key, item in value[mapping_name].items()
+        ):
+            raise ContractValidationError(f"Index {mapping_name} inventory is invalid")
+    if value["indexSemanticSha256"] != sha256_canonical(index_semantic_projection(value)):
+        raise ContractValidationError("Index semantic digest mismatch")
+
+
+def _assert_memory_query(value: Mapping[str, Any]) -> None:
+    _sorted_unique(value["paths"], lambda item: item.casefold(), "query paths")
+    _sorted_unique(value["topics"], lambda item: item.casefold(), "query topics")
+    for path in value["paths"]:
+        _memory_relative_path(path, "query path")
+    if any(item != _canonical_text(item) or item != item.casefold() or not item for item in value["topics"]):
+        raise ContractValidationError("Query topics must be lowercase NFC values")
+    if value["stage"] is not None and (value["stage"] != value["stage"].casefold() or value["stage"] != _canonical_text(value["stage"])):
+        raise ContractValidationError("Query stage must be lowercase NFC")
+
+
+def _assert_memory_result(value: Mapping[str, Any]) -> None:
+    item_keys = {
+        "recordId", "recordVersion", "kind", "title", "summary", "assertions",
+        "confidence", "provenance", "recordPayloadSha256", "recordFileSha256",
+        "rank", "duplicateProvenance",
+    }
+    if any(set(item) != item_keys for item in value["items"]):
+        raise ContractValidationError("Retrieval item inventory is not exact")
+    if not isinstance(value["diagnostics"], dict) or any(
+        not isinstance(key, str) or isinstance(item, bool) or not isinstance(item, int) or item < 0
+        for key, item in value["diagnostics"].items()
+    ):
+        raise ContractValidationError("Retrieval diagnostics inventory is invalid")
+    items_bytes = canonical_json_bytes(value["items"])
+    if value["accounting"]["recordsUsed"] != len(value["items"]):
+        raise ContractValidationError("Retrieval item accounting mismatch")
+    if value["accounting"]["charactersUsed"] != len(items_bytes.decode("utf-8")):
+        raise ContractValidationError("Retrieval character accounting mismatch")
+    if value["accounting"]["bytesUsed"] != len(canonical_json_bytes(value)):
+        raise ContractValidationError("Retrieval byte accounting mismatch")
+
+
+def _assert_memory_context(value: Mapping[str, Any]) -> None:
+    if value["developer"]["role"] != "developer" or value["tool"] != {**value["tool"], "role": "tool", "name": "repository_memory_context"}:
+        raise ContractValidationError("Context delivery roles are not fixed")
+    projection = context_delivery_accounting_projection(value)
+    encoded = canonical_json_bytes(projection)
+    characters = len(encoded.decode("utf-8"))
+    byte_count = len(encoded)
+    expected_characters = f"{characters:06d}"
+    expected_bytes = f"{byte_count:06d}"
+    if value["accounting"]["charactersUsed"] != expected_characters or value["accounting"]["bytesUsed"] != expected_bytes:
+        raise ContractValidationError("Context delivery inclusive accounting invariant failed")
+    final = canonical_json_bytes(value)
+    if len(final.decode("utf-8")) != characters or len(final) != byte_count:
+        raise ContractValidationError("Context sentinel substitution changed serialized length")
 
 
 def _check_runtime(name: str, value: Mapping[str, Any]) -> None:
@@ -822,6 +1361,24 @@ def _check_runtime(name: str, value: Mapping[str, Any]) -> None:
         from .publication_records import validate_publication_state
 
         validate_publication_state(value)
+    if name == "repository-memory-record":
+        _assert_memory_record(value)
+    if name == "repository-memory-promotion":
+        _assert_memory_promotion(value)
+    if name == "repository-memory-commit":
+        _assert_memory_commit(value)
+    if name == "repository-memory-index":
+        _assert_memory_index(value)
+    if name == "repository-memory-query":
+        _assert_memory_query(value)
+    if name == "repository-memory-result":
+        _assert_memory_result(value)
+    if name == "repository-memory-context-envelope":
+        _assert_memory_context(value)
+    if name == "repository-memory-batch-request":
+        _assert_promotion_batch_request(value)
+    if name == "repository-memory-promotion-result":
+        _assert_promotion_result(value)
 
 
 def validate_contract(name: str, value: Mapping[str, Any]) -> dict[str, Any]:
@@ -846,16 +1403,18 @@ def assert_runtime_parity() -> None:
 
     reference_dir = _references_dir()
     observed_files = {path.name for path in reference_dir.glob("*.schema.json")}
-    expected_files = set(SCHEMA_FILENAMES.values())
+    schemas = {**SCHEMA_FILENAMES, **MEMORY_SCHEMA_FILENAMES}
+    constraints_by_name = {**RUNTIME_CONSTRAINTS, **MEMORY_RUNTIME_CONSTRAINTS}
+    expected_files = set(schemas.values())
     if observed_files != expected_files:
         missing = expected_files - observed_files
         extra = observed_files - expected_files
         raise ContractValidationError(
             f"Supervisor schema inventory drift; missing={sorted(missing)}, extra={sorted(extra)}"
         )
-    if set(RUNTIME_CONSTRAINTS) != set(SCHEMA_FILENAMES):
+    if set(constraints_by_name) != set(schemas):
         raise ContractValidationError("Runtime constraint inventory lacks a supervisor schema")
-    for name in SCHEMA_FILENAMES:
+    for name in schemas:
         schema = load_schema(name)
         expected_version = CONTRACT_VERSIONS.get(name, CONTRACT_VERSION)
         if schema.get("properties", {}).get("schemaVersion", {}).get("const") != expected_version and name != "engine-command":
@@ -868,7 +1427,7 @@ def assert_runtime_parity() -> None:
         constraints = extension.get("constraints")
         if not isinstance(constraints, list) or {
             item.get("id") for item in constraints if isinstance(item, dict)
-        } != RUNTIME_CONSTRAINTS[name]:
+        } != constraints_by_name[name]:
             raise ContractValidationError(f"{name} runtime constraint inventory drifted")
     engine = load_schema("engine-command")
     operations = tuple(branch["properties"]["operation"]["const"] for branch in engine["oneOf"])
