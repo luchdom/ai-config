@@ -169,6 +169,82 @@
         "runId": {"type": "string", "format": "uuid"}, "ownerId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"}, "leaseCapabilityRef": {"type": "string", "minLength": 3, "maxLength": 1024},
         "expectedStateRevision": {"type": "integer", "minimum": 1}
       }
+    },
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["schemaVersion", "operation", "requestId", "repositoryKey", "repositoryRoot", "stateHome", "requestedAt", "publicationStateRef", "preparationOperationId", "artifactManifest", "preexistingPaths", "expectedStateRevision", "reservationId", "authorizationRef", "expectedRecordRevision", "expectedReservationsRevision", "physicalWorktreeFingerprint"],
+      "properties": {
+        "schemaVersion": {"const": "1.0"}, "operation": {"const": "PreparePublication"}, "requestId": {"type": "string", "format": "uuid"},
+        "repositoryKey": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"}, "repositoryRoot": {"type": "string", "minLength": 3, "maxLength": 1024},
+        "stateHome": {"type": "string", "minLength": 3, "maxLength": 1024}, "requestedAt": {"type": "string", "format": "date-time"},
+        "publicationStateRef": {"type": "string", "minLength": 3, "maxLength": 1024},
+        "preparationOperationId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"},
+        "artifactManifest": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 512}},
+        "preexistingPaths": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 512}},
+        "expectedStateRevision": {"type": "integer", "minimum": 1},
+        "reservationId": {"type": "string", "format": "uuid"}, "authorizationRef": {"type": "string", "minLength": 3}, "expectedRecordRevision": {"type": "integer", "minimum": 1}, "expectedReservationsRevision": {"type": "integer", "minimum": 1}, "physicalWorktreeFingerprint": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+      }
+    },
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["schemaVersion", "operation", "requestId", "repositoryKey", "repositoryRoot", "stateHome", "requestedAt", "publicationOperationId", "providerOperation", "providerOperationId", "expectedStateRevision", "reservationId", "authorizationRef", "expectedRecordRevision", "expectedReservationsRevision", "physicalWorktreeFingerprint"],
+      "properties": {
+        "schemaVersion": {"const": "1.0"}, "operation": {"const": "PublicationProvider"}, "requestId": {"type": "string", "format": "uuid"},
+        "repositoryKey": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"}, "repositoryRoot": {"type": "string", "minLength": 3, "maxLength": 1024},
+        "stateHome": {"type": "string", "minLength": 3, "maxLength": 1024}, "requestedAt": {"type": "string", "format": "date-time"},
+        "publicationOperationId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"}, "providerOperation": {"enum": ["push", "pull-request", "squash-merge"]},
+        "providerOperationId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"},
+        "expectedStateRevision": {"type": "integer", "minimum": 1}, "reservationId": {"type": "string", "format": "uuid"}, "authorizationRef": {"type": "string", "minLength": 3}, "expectedRecordRevision": {"type": "integer", "minimum": 1}, "expectedReservationsRevision": {"type": "integer", "minimum": 1}, "physicalWorktreeFingerprint": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+      }
+    },
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["schemaVersion", "operation", "requestId", "repositoryKey", "repositoryRoot", "stateHome", "requestedAt", "publicationOperationId", "gateOperationId", "exactSha", "gateKind", "startedAt", "completedAt", "expectedStateRevision", "reservationId", "authorizationRef", "expectedRecordRevision", "expectedReservationsRevision", "physicalWorktreeFingerprint"],
+      "properties": {
+        "schemaVersion": {"const": "1.0"}, "operation": {"const": "PublicationGate"}, "requestId": {"type": "string", "format": "uuid"},
+        "repositoryKey": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"}, "repositoryRoot": {"type": "string", "minLength": 3, "maxLength": 1024},
+        "stateHome": {"type": "string", "minLength": 3, "maxLength": 1024}, "requestedAt": {"type": "string", "format": "date-time"},
+        "publicationOperationId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"}, "gateOperationId": {"type": "string", "format": "uuid"},
+        "exactSha": {"type": "string", "pattern": "^[0-9a-f]{40}([0-9a-f]{24})?$"}, "gateKind": {"enum": ["pre-staging-aggregate", "exact-head-aggregate", "exact-merge-aggregate"]},
+        "startedAt": {"type": "string", "format": "date-time"}, "completedAt": {"type": "string", "format": "date-time"}, "expectedStateRevision": {"type": "integer", "minimum": 1}, "reservationId": {"type": "string", "format": "uuid"}, "authorizationRef": {"type": "string", "minLength": 3}, "expectedRecordRevision": {"type": "integer", "minimum": 1}, "expectedReservationsRevision": {"type": "integer", "minimum": 1}, "physicalWorktreeFingerprint": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+      }
+    },
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["schemaVersion", "operation", "requestId", "repositoryKey", "repositoryRoot", "stateHome", "requestedAt", "publicationOperationId", "attestationId", "sourceOperationId", "expectedStateRevision", "reservationId", "authorizationRef", "expectedRecordRevision", "expectedReservationsRevision", "physicalWorktreeFingerprint"],
+      "properties": {
+        "schemaVersion": {"const": "1.0"}, "operation": {"const": "RecordPublicationAttestation"}, "requestId": {"type": "string", "format": "uuid"},
+        "repositoryKey": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"}, "repositoryRoot": {"type": "string", "minLength": 3, "maxLength": 1024},
+        "stateHome": {"type": "string", "minLength": 3, "maxLength": 1024}, "requestedAt": {"type": "string", "format": "date-time"},
+        "publicationOperationId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"}, "attestationId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"}, "sourceOperationId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"},
+        "evidencePaths": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 512}},
+        "draftInventory": {"type": "object"}, "designRequired": {"type": "boolean"},
+        "expectedStateRevision": {"type": "integer", "minimum": 1}, "reservationId": {"type": "string", "format": "uuid"}, "authorizationRef": {"type": "string", "minLength": 3}, "expectedRecordRevision": {"type": "integer", "minimum": 1}, "expectedReservationsRevision": {"type": "integer", "minimum": 1}, "physicalWorktreeFingerprint": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+      }
+    },
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["schemaVersion", "operation", "requestId", "repositoryKey", "repositoryRoot", "stateHome", "requestedAt", "publicationOperationId", "repairOperationId", "currentMainSha", "expectedStateRevision", "reservationId", "authorizationRef", "expectedRecordRevision", "expectedReservationsRevision", "physicalWorktreeFingerprint"],
+      "properties": {
+        "schemaVersion": {"const": "1.0"}, "operation": {"const": "PublicationRepair"}, "requestId": {"type": "string", "format": "uuid"},
+        "repositoryKey": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"}, "repositoryRoot": {"type": "string", "minLength": 3, "maxLength": 1024},
+        "stateHome": {"type": "string", "minLength": 3, "maxLength": 1024}, "requestedAt": {"type": "string", "format": "date-time"},
+        "publicationOperationId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"}, "repairOperationId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"}, "currentMainSha": {"type": "string", "pattern": "^[0-9a-f]{40}([0-9a-f]{24})?$"},
+        "artifactManifest": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 512}}, "preexistingPaths": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 512}},
+        "expectedStateRevision": {"type": "integer", "minimum": 1}, "reservationId": {"type": "string", "format": "uuid"}, "authorizationRef": {"type": "string", "minLength": 3}, "expectedRecordRevision": {"type": "integer", "minimum": 1}, "expectedReservationsRevision": {"type": "integer", "minimum": 1}, "physicalWorktreeFingerprint": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+      }
+    },
+    {
+      "type": "object", "additionalProperties": false,
+      "required": ["schemaVersion", "operation", "requestId", "repositoryKey", "repositoryRoot", "stateHome", "requestedAt", "publicationOperationId", "recoveryOperationId", "expectedStateRevision", "reservationId", "authorizationRef", "expectedRecordRevision", "expectedReservationsRevision", "physicalWorktreeFingerprint"],
+      "properties": {
+        "schemaVersion": {"const": "1.0"}, "operation": {"const": "RecoverPublication"}, "requestId": {"type": "string", "format": "uuid"},
+        "repositoryKey": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"}, "repositoryRoot": {"type": "string", "minLength": 3, "maxLength": 1024},
+        "stateHome": {"type": "string", "minLength": 3, "maxLength": 1024}, "requestedAt": {"type": "string", "format": "date-time"},
+        "publicationOperationId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"}, "recoveryOperationId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"}, "expectedStateRevision": {"type": "integer", "minimum": 1},
+        "reservationId": {"type": "string", "format": "uuid"}, "authorizationRef": {"type": "string", "minLength": 3}, "expectedRecordRevision": {"type": "integer", "minimum": 1}, "expectedReservationsRevision": {"type": "integer", "minimum": 1}, "physicalWorktreeFingerprint": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "attended": {"type": "object", "additionalProperties": false, "required": ["request_id", "actor_id", "reply_id", "reply_created_at", "body", "owner_id", "config_digest", "repository_id"], "properties": {"request_id": {"type": "string", "minLength": 1}, "actor_id": {"type": "string", "minLength": 1}, "reply_id": {"type": "string", "minLength": 1}, "reply_created_at": {"type": "string", "format": "date-time"}, "body": {"type": "string", "minLength": 1}, "owner_id": {"type": "string", "minLength": 1}, "config_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}, "repository_id": {"type": "string", "minLength": 1}}}
+      }
     }
   ],
   "x-luchdom-runtimeParity": {

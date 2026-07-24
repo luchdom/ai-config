@@ -85,6 +85,7 @@ class SupervisorStore:
         "operations",
         "runs",
         "final-attestations",
+        "publication-attestations",
         "worktrees",
         "validation-worktrees",
         "reservation-authorizations",
@@ -155,6 +156,7 @@ class SupervisorStore:
             "gateWorktrees": {},
             "checkpoints": {},
             "currentWork": None,
+            "publication": None,
             "recovery": {"status": "clean", "reason": None, "updatedAtNs": 0},
             "handoffPending": None,
             "clockEvidence": {
@@ -185,10 +187,42 @@ class SupervisorStore:
 
     def load_pair_unlocked(self) -> tuple[dict[str, Any], dict[str, Any]]:
         state = self.guard.read_json(self.state_path)
+        state = self._migrate_publication_state_unlocked(state)
         reservations = self.guard.read_json(self.reservations_path)
         self._validate_state(state)
         self._validate_reservations(reservations)
         return state, reservations
+
+    def _migrate_publication_state_unlocked(self, state: dict[str, Any]) -> dict[str, Any]:
+        """Add the sole deterministic SAAS-48 default to valid legacy state once.
+
+        A pending paired transaction may contain hashes of the legacy shape, so
+        silently rewriting through that recovery boundary would be ambiguous.
+        """
+
+        if "publication" in state:
+            return state
+        legacy_keys = {
+            "schemaVersion", "revision", "repository", "lease", "capabilities",
+            "worktreeAllocations", "issueWorktrees", "gateWorktrees", "checkpoints",
+            "currentWork", "recovery", "handoffPending", "clockEvidence",
+        }
+        if set(state) != legacy_keys or state.get("schemaVersion") != SUPERVISOR_STATE_VERSION:
+            return state
+        if any(self.guard.glob_files(self.transaction_dir, "*.json")):
+            raise SupervisorRecoveryError(
+                "Legacy supervisor state has a pending transaction; publication migration requires attended reconciliation"
+            )
+        migrated = copy.deepcopy(state)
+        migrated["publication"] = None
+        self._validate_state(migrated)
+        self.guard.write_json(
+            self.state_path, migrated, expected_revision=state["revision"]
+        )
+        observed = self.guard.read_json(self.state_path)
+        if observed != migrated:
+            raise SupervisorRecoveryError("Publication-state migration readback differs")
+        return migrated
 
     def commit_pair(
         self,
@@ -388,6 +422,7 @@ class SupervisorStore:
             "gateWorktrees",
             "checkpoints",
             "currentWork",
+            "publication",
             "recovery",
             "handoffPending",
             "clockEvidence",

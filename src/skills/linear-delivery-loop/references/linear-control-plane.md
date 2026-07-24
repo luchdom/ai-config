@@ -31,7 +31,7 @@ The winner is reread immediately. Before any authority or provider mutation, the
 - Incomplete goals propose `Backlog + needs-refinement` and remain quiet.
 - Deferred provider work proposes `Backlog + external-integration` and remains quiet.
 - A follow-up is permitted only for one separately achievable, independently actionable external prerequisite.
-- Publication refusal retains issue, WIP, reservation, worktree, branch, PR, operation, and head evidence. Only `RETRY-PUBLICATION <operation-id> <head-sha>` from the configured owner, newer than the request and after reconciliation, yields one SAAS-48 retry approval. This package never executes GitHub publication.
+- Publication refusal retains the complete ordinary-state, autonomous-label, WIP, reservation, worktree, branch, optional PR, operation/head, and attestation snapshot. Stable/exhausted refusals add `blocked + needs-human`; success clears those stop labels. Only `RETRY-PUBLICATION <operation-id> <head-sha>` from the configured owner, newer than the request and after complete independent reconciliation, yields one SAAS-48 retry approval. The control plane records/authorizes the retry; the separate injected fixture-first [publication engine](publication.md) executes it.
 
 ## Attention and quiet states
 
@@ -40,6 +40,8 @@ An attention event is emitted exactly once for each material decision, independe
 `NtfyTransport` accepts only allowed HTTPS hosts, refuses redirects, uses a stable provider idempotency key, bounds retries, and returns a persistable outcome. Before sending, the control plane atomically creates one durable in-flight attempt. Concurrent or replayed callers do not publish again; an interrupted in-flight attempt remains `recovery-required` for attended reconciliation instead of guessing whether delivery occurred. Terminal delivery/failure is compare-and-set onto that attempt. Notifications contain a redacted summary and link to the single Linear request. Delivery failure stays visible in the redacted control-plane status; it never replaces Linear or creates a second request.
 
 ## Migration, status, and rollback
+
+`ControlPlaneStore` accepts only the explicit legacy `1.0` to current `1.1` state migration. For each legacy publication request, it backfills `lastConsumedReplyTimestamp` from `sourceTimestamp` while the request is pending, or from the active `consumedReplyTimestamp` while authorized. It then validates the complete `1.1` contract and atomically persists one revision bump under the shared supervisor mutex; subsequent reads are idempotent. Malformed `1.0`, unknown versions, and current `1.1` state with a missing or tampered watermark fail closed without rewriting the file, preserving the evidence for attended reconciliation.
 
 The migration report consumes the same engine-owned, terminally proven pagination observation as selection and performs no mutation. It refuses caller-provided issue iterables, incomplete pages, and repeated cursors. It lists every issue, all rejection reasons, current metadata, and deterministic proposed ordinary-state/label changes while retaining unrelated labels. Operators must review the report before any later attended migration.
 

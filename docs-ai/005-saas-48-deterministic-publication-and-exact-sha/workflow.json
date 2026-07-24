@@ -1,0 +1,157 @@
+{
+  "acceptanceCriteria": [
+    "Reconcile the specialist manifest to the real contained diff, run the pre-staging aggregate, and stage only approved paths.",
+    "Publish only one issue branch and primary PR through injected idempotent push, PR, and squash-merge operations with independent readback.",
+    "Run repository-configured local validation in clean isolated worktrees at exact provider-observed PR head and returned merge SHA.",
+    "Preserve complete ordinary state, labels, WIP, reservation, worktree, branch, PR, evidence, and run-lease semantics across bounded refusal retry and attended recovery.",
+    "Converge through at most one classifier-scoped evidence commit and persist terminal attestations without another branch mutation.",
+    "Rerun the complete publication and evidence pipeline for at most three same-issue post-merge repair attempts.",
+    "Expose no hosted-check, provider-control, bypass, direct-main, force, rebase, tag, release, auto-revert, arbitrary-shell, or live-provider authority.",
+    "Focused fixtures, generated projections, documentation checks, and python .\\scripts\\validate.py pass."
+  ],
+  "artifactFolder": "C:\\dev\\luchdom\\ai-config\\docs-ai\\005-saas-48-deterministic-publication-and-exact-sha",
+  "artifactInventory": [
+    "workflow.json",
+    "2026-07-22-saas-48-deterministic-publication-and-exact-sha-audit.md",
+    "2026-07-22-saas-48-deterministic-publication-and-exact-sha-code-re-review.md",
+    "2026-07-22-saas-48-deterministic-publication-and-exact-sha-code-review-3.md",
+    "2026-07-22-saas-48-deterministic-publication-and-exact-sha-code-review.md",
+    "2026-07-22-saas-48-deterministic-publication-and-exact-sha-implementation.md",
+    "2026-07-22-saas-48-deterministic-publication-and-exact-sha-plan.md",
+    "2026-07-22-saas-48-deterministic-publication-and-exact-sha-re-audit-2.md",
+    "2026-07-22-saas-48-deterministic-publication-and-exact-sha-re-audit.md",
+    "2026-07-22-saas-48-deterministic-publication-and-exact-sha-tasks.md",
+    "2026-07-23-saas-48-deterministic-publication-and-exact-sha-code-review-10.md",
+    "2026-07-23-saas-48-deterministic-publication-and-exact-sha-code-review-4.md",
+    "2026-07-23-saas-48-deterministic-publication-and-exact-sha-code-review-5.md",
+    "2026-07-23-saas-48-deterministic-publication-and-exact-sha-code-review-6.md",
+    "2026-07-23-saas-48-deterministic-publication-and-exact-sha-code-review-7.md",
+    "2026-07-23-saas-48-deterministic-publication-and-exact-sha-code-review-8.md",
+    "2026-07-23-saas-48-deterministic-publication-and-exact-sha-code-review-9.md",
+    "2026-07-23-saas-48-deterministic-publication-and-exact-sha-documentation.md",
+    "2026-07-23-saas-48-deterministic-publication-and-exact-sha-qa.md",
+    "2026-07-24-saas-48-deterministic-publication-and-exact-sha-code-review-11.md",
+    "2026-07-24-saas-48-deterministic-publication-and-exact-sha-code-review-12.md",
+    "2026-07-24-saas-48-deterministic-publication-and-exact-sha-code-review-13.md",
+    "2026-07-24-saas-48-deterministic-publication-and-exact-sha-completion.md",
+    "2026-07-24-saas-48-deterministic-publication-and-exact-sha-pr-description.md",
+    "2026-07-24-saas-48-deterministic-publication-and-exact-sha-qa-final.md"
+  ],
+  "assumptionsDecisionRefs": [],
+  "completionBoundary": "merge",
+  "currentArtifactStage": "completion",
+  "deliverySummary": {
+    "audit1": {
+      "artifact": "2026-07-22-saas-48-deterministic-publication-and-exact-sha-audit.md",
+      "findings": {
+        "p1": 1,
+        "p2": 2,
+        "p3": 0
+      },
+      "verdict": "failed"
+    },
+    "audit2": {
+      "artifact": "2026-07-22-saas-48-deterministic-publication-and-exact-sha-re-audit.md",
+      "findings": {
+        "p1": 0,
+        "p2": 2,
+        "p3": 0
+      },
+      "verdict": "failed"
+    },
+    "audit3": {
+      "artifact": "2026-07-22-saas-48-deterministic-publication-and-exact-sha-re-audit-2.md",
+      "findings": {
+        "p1": 0,
+        "p2": 0,
+        "p3": 0
+      },
+      "verdict": "pass"
+    },
+    "codeReviewFinal": {
+      "artifact": "2026-07-24-saas-48-deterministic-publication-and-exact-sha-code-review-13.md",
+      "findings": {
+        "p1": 0,
+        "p2": 0,
+        "p3": 0
+      },
+      "reviewRounds": 13,
+      "verdict": "pass"
+    },
+    "completion": {
+      "artifact": "2026-07-24-saas-48-deterministic-publication-and-exact-sha-completion.md",
+      "completionBoundary": "merge",
+      "status": "ready-for-publication"
+    },
+    "documentation": {
+      "artifact": "2026-07-23-saas-48-deterministic-publication-and-exact-sha-documentation.md",
+      "verdict": "pass"
+    },
+    "implementation": {
+      "artifact": "2026-07-22-saas-48-deterministic-publication-and-exact-sha-implementation.md",
+      "liveProviderExecution": "disabled",
+      "verdict": "implemented"
+    },
+    "plan": {
+      "artifact": "2026-07-22-saas-48-deterministic-publication-and-exact-sha-plan.md",
+      "verdict": "ready-for-tasking"
+    },
+    "pullRequest": {
+      "artifact": "2026-07-24-saas-48-deterministic-publication-and-exact-sha-pr-description.md",
+      "status": "drafted"
+    },
+    "qaFinal": {
+      "aggregateDurationSeconds": 6179.4,
+      "aggregateTests": {
+        "failed": 0,
+        "passed": 308
+      },
+      "artifact": "2026-07-24-saas-48-deterministic-publication-and-exact-sha-qa-final.md",
+      "verdict": "pass"
+    },
+    "qaInitial": {
+      "aggregateValidation": "timed-out-with-diagnostic-failure",
+      "artifact": "2026-07-23-saas-48-deterministic-publication-and-exact-sha-qa.md",
+      "verdict": "failed-incomplete"
+    },
+    "task": {
+      "artifact": "2026-07-22-saas-48-deterministic-publication-and-exact-sha-tasks.md",
+      "taskCount": 6,
+      "verdict": "ready-for-audit"
+    }
+  },
+  "design": {
+    "reason": "Transport-free deterministic engine and operator-contract work; no product UI or interaction change.",
+    "required": false
+  },
+  "goal": "Make Git and GitHub publication, provider-refusal recovery, exact-SHA local gates, and bounded post-merge repair deterministic and fail closed.",
+  "nonGoals": [
+    "Live GitHub, Linear, or ntfy mutation by the fixture implementation",
+    "Hosted CI or hosted-check integration",
+    "Provider settings, permission, protection, ruleset, queue, or bypass mutation",
+    "SaaS-specific aggregate/runtime configuration or scheduled-loop activation"
+  ],
+  "physicalWorktreeFingerprint": "sha256:ec10d90a90d5d5aa018df7cfb870f5be7e7bb9167cf06ae30af1875a79e5ac32",
+  "repositoryKey": "ai-config",
+  "repositoryRoot": "C:\\dev\\luchdom\\ai-config",
+  "revision": 5,
+  "riskFlags": [
+    "provider-ambiguity",
+    "publication-idempotency",
+    "exact-sha-evidence",
+    "protected-work-preservation",
+    "evidence-convergence",
+    "post-merge-repair"
+  ],
+  "schemaVersion": "2.0",
+  "slug": "saas-48-deterministic-publication-and-exact-sha",
+  "supersededArtifactNames": [],
+  "tracking": {
+    "externalId": "SAAS-48",
+    "provider": "linear"
+  },
+  "workKey": "005",
+  "workSource": "local",
+  "workflow": "semi-autonomous",
+  "workflowId": "21873a4a-63a8-490c-9d06-ea448546eb19"
+}

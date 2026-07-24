@@ -16,6 +16,7 @@ from .base_runtime import EXPECTED_BASE_VERSIONS, load_base_runtime
 
 
 CONTRACT_VERSION = "1.0"
+CONTRACT_VERSIONS = {"control-plane-state": "1.1"}
 OPERATION_NAMES = (
     "Preflight",
     "AcquireLease",
@@ -31,6 +32,12 @@ OPERATION_NAMES = (
     "Cleanup",
     "Handoff",
     "ReleaseLease",
+    "PreparePublication",
+    "PublicationProvider",
+    "PublicationGate",
+    "RecordPublicationAttestation",
+    "PublicationRepair",
+    "RecoverPublication",
 )
 SCHEMA_FILENAMES = {
     "project-config": "project-config.schema.json",
@@ -47,6 +54,7 @@ SCHEMA_FILENAMES = {
     "tracking-config": "tracking-config.schema.json",
     "control-plane-state": "control-plane-state.schema.json",
     "migration-report": "migration-report.schema.json",
+    "publication-state": "publication-state.schema.json",
 }
 RUNTIME_CONSTRAINTS = {
     "project-config": {
@@ -133,6 +141,15 @@ RUNTIME_CONSTRAINTS = {
         "mutation-free-report-shape",
         "no-secret-like-material",
     },
+    "publication-state": {
+        "immutable-operation-and-head",
+        "initial-plus-three-retries",
+        "complete-preserved-state",
+        "redacted-provider-evidence",
+        "bounded-evidence-and-repair",
+        "no-raw-capability-or-nonce",
+        "no-secret-like-material",
+    },
 }
 
 _UUID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$")
@@ -164,6 +181,7 @@ _PATH_KEYS = {
     "authorizationRef",
     "observationRef",
     "resultRef",
+    "publicationStateRef",
     "normalizedCommonDir",
     "executable",
     "pythonExecutable",
@@ -406,6 +424,13 @@ def _check_engine_command(value: Mapping[str, Any], paths: Mapping[str, Path]) -
     ):
         if key in paths and not _contains(state_home, paths[key]):
             raise ContractValidationError(f"{key} must stay beneath the verified state home")
+    if "publicationStateRef" in paths and not (
+        _contains(repository_root, paths["publicationStateRef"])
+        or _contains(state_home, paths["publicationStateRef"])
+    ):
+        raise ContractValidationError(
+            "publicationStateRef must stay beneath the repository or state home"
+        )
     if "worktreePath" in paths and (
         paths["worktreePath"] != repository_root
         and not _contains(state_home, paths["worktreePath"])
@@ -619,10 +644,17 @@ def _check_runtime(name: str, value: Mapping[str, Any]) -> None:
                 raise ContractValidationError("Publication consumption evidence is incomplete")
             if (record["status"] == "authorized") != consumed:
                 raise ContractValidationError("Publication consumption marker/status mismatch")
+            lower_bound = _timestamp(
+                data["lastConsumedReplyTimestamp"], "lastConsumedReplyTimestamp"
+            )
+            if lower_bound < _timestamp(record["sourceTimestamp"], "sourceTimestamp"):
+                raise ContractValidationError("Publication reply lower bound predates its source")
             if consumed and _timestamp(
                 data["consumedReplyTimestamp"], "consumedReplyTimestamp"
             ) <= _timestamp(record["sourceTimestamp"], "sourceTimestamp"):
                 raise ContractValidationError("Publication reply does not follow its source")
+            if consumed and data["consumedReplyTimestamp"] != data["lastConsumedReplyTimestamp"]:
+                raise ContractValidationError("Publication active reply differs from its durable lower bound")
             evidence_keys = {"issueState", "reservationId", "worktreePath", "branch", "prId"}
             if set(data["evidence"]) != evidence_keys:
                 raise ContractValidationError("Publication evidence inventory is incomplete")
@@ -786,6 +818,10 @@ def _check_runtime(name: str, value: Mapping[str, Any]) -> None:
         identities = [record["issueId"] for record in value["issues"]]
         if len(identities) != len(set(identities)):
             raise ContractValidationError("Migration report contains duplicate issues")
+    if name == "publication-state":
+        from .publication_records import validate_publication_state
+
+        validate_publication_state(value)
 
 
 def validate_contract(name: str, value: Mapping[str, Any]) -> dict[str, Any]:
@@ -821,10 +857,11 @@ def assert_runtime_parity() -> None:
         raise ContractValidationError("Runtime constraint inventory lacks a supervisor schema")
     for name in SCHEMA_FILENAMES:
         schema = load_schema(name)
-        if schema.get("properties", {}).get("schemaVersion", {}).get("const") != CONTRACT_VERSION and name != "engine-command":
-            raise ContractValidationError(f"{name} does not bind schemaVersion {CONTRACT_VERSION}")
+        expected_version = CONTRACT_VERSIONS.get(name, CONTRACT_VERSION)
+        if schema.get("properties", {}).get("schemaVersion", {}).get("const") != expected_version and name != "engine-command":
+            raise ContractValidationError(f"{name} does not bind schemaVersion {expected_version}")
         extension = schema.get("x-luchdom-runtimeParity")
-        if not isinstance(extension, dict) or extension.get("version") != CONTRACT_VERSION:
+        if not isinstance(extension, dict) or extension.get("version") != expected_version:
             raise ContractValidationError(f"{name} lacks runtime parity metadata")
         if extension.get("runtimeValidator") != "scripts.contracts.validate_contract":
             raise ContractValidationError(f"{name} names the wrong runtime validator")
@@ -835,5 +872,5 @@ def assert_runtime_parity() -> None:
             raise ContractValidationError(f"{name} runtime constraint inventory drifted")
     engine = load_schema("engine-command")
     operations = tuple(branch["properties"]["operation"]["const"] for branch in engine["oneOf"])
-    if operations != OPERATION_NAMES or len(set(operations)) != 14:
-        raise ContractValidationError("EngineCommand must contain the exhaustive ordered 14-operation union")
+    if operations != OPERATION_NAMES or len(set(operations)) != 20:
+        raise ContractValidationError("EngineCommand must contain the exhaustive ordered 20-operation union")

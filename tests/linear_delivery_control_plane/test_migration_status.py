@@ -8,7 +8,8 @@ from types import SimpleNamespace
 from pathlib import Path
 
 from tests.linear_delivery_control_plane.support import (
-    fixture_engine_registry, issue, observation, package, raw_issue,
+    CONTROL_PLANE_STATE_VERSION, fixture_engine_registry, issue, observation,
+    package, raw_issue,
 )
 
 
@@ -31,6 +32,58 @@ def completed(nodes):
 
 
 class MigrationStatusTests(unittest.TestCase):
+    def test_control_plane_store_migrates_publication_reply_lower_bounds_once(self):
+        with tempfile.TemporaryDirectory(prefix="control-plane-watermark-migration-") as root:
+            store = records_module.ControlPlaneStore(Path(root), fixture_mode=True)
+            records = records_module.ControlPlaneRecords(store)
+            common = dict(
+                issue_id="SAAS-48", source_timestamp="2026-07-19T12:00:00Z",
+                created_at="2026-07-19T12:00:00Z",
+                link="https://linear.app/luchdom/issue/SAAS-48/example",
+                reason="Publication requires recovery",
+                evidence={"issueState": "In Review", "reservationId": "reservation-48",
+                    "worktreePath": str(Path(root).resolve() / "issue-worktree"),
+                    "branch": "codex/saas-48", "prId": "48"},
+                owner_id="owner-1", config_digest="sha256:" + "c" * 64,
+                repository_id="repo-" + "a" * 24,
+            )
+            pending = records.publication_refusal(
+                operation_id="pending-operation", head_sha="a" * 40, **common,
+            )
+            authorized = records.publication_refusal(
+                operation_id="authorized-operation", head_sha="b" * 40, **common,
+            )
+            consumed_at = "2026-07-19T12:10:00Z"
+            self.assertIsNotNone(records.consume_publication_reply(
+                request_id=authorized["id"], actor_id="owner-1", reply_id="reply-1",
+                reply_created_at=consumed_at,
+                body=f"RETRY-PUBLICATION authorized-operation {'b' * 40}", reconciled=True,
+                owner_id="owner-1", config_digest="sha256:" + "c" * 64,
+                repository_id="repo-" + "a" * 24,
+            ))
+            legacy = store.load()
+            old_revision = legacy["revision"]
+            legacy["schemaVersion"] = "1.0"
+            for request in legacy["publicationRequests"]:
+                request["data"].pop("lastConsumedReplyTimestamp")
+            store.path.write_text(json.dumps(legacy), encoding="utf-8")
+
+            migrated = store.load()
+            by_id = {item["id"]: item for item in migrated["publicationRequests"]}
+            self.assertEqual(CONTROL_PLANE_STATE_VERSION, migrated["schemaVersion"])
+            self.assertEqual(old_revision + 1, migrated["revision"])
+            self.assertEqual(common["source_timestamp"], by_id[pending["id"]]["data"]["lastConsumedReplyTimestamp"])
+            self.assertEqual(consumed_at, by_id[authorized["id"]]["data"]["lastConsumedReplyTimestamp"])
+            self.assertEqual(migrated, json.loads(store.path.read_text(encoding="utf-8")))
+            self.assertEqual(migrated, store.load())
+
+            tampered = copy.deepcopy(migrated)
+            tampered["publicationRequests"][0]["data"].pop("lastConsumedReplyTimestamp")
+            store.path.write_text(json.dumps(tampered), encoding="utf-8")
+            with self.assertRaises(Exception):
+                store.load()
+            self.assertEqual(tampered, json.loads(store.path.read_text(encoding="utf-8")))
+
     def test_report_lists_every_issue_preserves_unrelated_labels_and_never_mutates(self):
         observed = [
             issue(3, goalComplete=False, labels=["customer-important"]),

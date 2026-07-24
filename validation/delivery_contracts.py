@@ -34,7 +34,7 @@ SUPERVISOR_SCHEMAS = (
     "handoff-authorization.schema.json",
     "trusted-observation.schema.json",
 )
-SUPERVISOR_OPERATIONS = {
+SUPERVISOR_OPERATIONS = (
     "Preflight",
     "AcquireLease",
     "RenewLease",
@@ -49,7 +49,13 @@ SUPERVISOR_OPERATIONS = {
     "Cleanup",
     "Handoff",
     "ReleaseLease",
-}
+    "PreparePublication",
+    "PublicationProvider",
+    "PublicationGate",
+    "RecordPublicationAttestation",
+    "PublicationRepair",
+    "RecoverPublication",
+)
 SPECIALIST_AGENTS = (
     "planner",
     "product-designer",
@@ -680,16 +686,16 @@ def check_supervisor_core(root: Path) -> list[str]:
     if command_schema.is_file():
         try:
             schema = json.loads(_read(command_schema))
-            observed = {
+            observed = tuple(
                 branch.get("properties", {}).get("operation", {}).get("const")
                 for branch in schema.get("oneOf", [])
-            }
+            )
         except (json.JSONDecodeError, AttributeError):
-            observed = set()
+            observed = ()
         if observed != SUPERVISOR_OPERATIONS:
             findings.append(
                 "engine-command.schema.json operation inventory drift; expected "
-                + ", ".join(sorted(SUPERVISOR_OPERATIONS))
+                + ", ".join(SUPERVISOR_OPERATIONS)
             )
     required_scripts = {
         "base_runtime.py",

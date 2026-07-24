@@ -8,7 +8,9 @@ import json
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from tests.linear_delivery_control_plane.support import observation, package, tracking_config
+from tests.linear_delivery_control_plane.support import (
+    CONTROL_PLANE_STATE_VERSION, observation, package, tracking_config,
+)
 
 
 records_module = __import__(package.__name__ + ".control_plane_records", fromlist=["ControlPlaneStore"])
@@ -20,6 +22,8 @@ linear_module = __import__(package.__name__ + ".linear_transport", fromlist=["Li
 
 NOW = "2026-07-19T12:00:00Z"
 LATER = "2026-07-19T12:01:00Z"
+MUCH_LATER = "2026-07-19T12:10:00Z"
+NEWER = "2026-07-19T12:11:00Z"
 LINK = "https://linear.app/luchdom/issue/SAAS-47/example"
 REPOSITORY_ID = "repo-" + "a" * 24
 CONFIG_DIGEST = "sha256:" + "c" * 64
@@ -31,6 +35,9 @@ class RecordTests(unittest.TestCase):
         self.addCleanup(self.temporary.cleanup)
         self.store = records_module.ControlPlaneStore(Path(self.temporary.name), fixture_mode=True)
         self.records = records_module.ControlPlaneRecords(self.store)
+
+    def test_new_control_plane_state_uses_current_schema_boundary(self):
+        self.assertEqual(CONTROL_PLANE_STATE_VERSION, self.store.load()["schemaVersion"])
 
     def test_decision_is_deduplicated_and_only_exact_new_owner_reply_is_consumed(self):
         kwargs = dict(
@@ -83,7 +90,7 @@ class RecordTests(unittest.TestCase):
             owner_id="owner-1", config_digest=CONFIG_DIGEST, repository_id=REPOSITORY_ID,
         ))
 
-    def test_publication_retry_is_exact_reconciled_once_and_preserves_evidence(self):
+    def test_publication_retry_reopen_retains_monotonic_reply_lower_bound(self):
         request = self.records.publication_refusal(
             issue_id="SAAS-47", operation_id="operation-47",
             head_sha="a" * 40, source_timestamp=NOW, created_at=NOW,
@@ -104,14 +111,46 @@ class RecordTests(unittest.TestCase):
         ))
         result = self.records.consume_publication_reply(
             request_id=request["id"], actor_id="owner-1",
-            reply_id="r2", reply_created_at=LATER, body=exact, reconciled=True,
+            reply_id="r2", reply_created_at=MUCH_LATER, body=exact, reconciled=True,
             owner_id="owner-1", config_digest=CONFIG_DIGEST, repository_id=REPOSITORY_ID,
         )
         self.assertEqual(result["status"], "authorized")
         self.assertEqual(result["evidence"]["branch"], "codex/saas-47")
+        reopened = self.records.reopen_publication_request(
+            request_id=request["id"], consumed_reply_id="r2",
+        )
+        self.assertEqual(reopened["status"], "pending")
+        self.assertIsNone(reopened["data"]["consumedReplyTimestamp"])
+        self.assertEqual(MUCH_LATER, reopened["data"]["lastConsumedReplyTimestamp"])
+        for reply_id, timestamp in (
+            ("r2", MUCH_LATER),
+            ("older-different", LATER),
+            ("equal-time-different", MUCH_LATER),
+        ):
+            self.assertIsNone(self.records.consume_publication_reply(
+                request_id=request["id"], actor_id="owner-1",
+                reply_id=reply_id, reply_created_at=timestamp, body=exact, reconciled=True,
+                owner_id="owner-1", config_digest=CONFIG_DIGEST,
+                repository_id=REPOSITORY_ID,
+            ))
+        newer = self.records.consume_publication_reply(
+            request_id=request["id"], actor_id="owner-1",
+            reply_id="newer-different", reply_created_at=NEWER,
+            body=exact, reconciled=True, owner_id="owner-1",
+            config_digest=CONFIG_DIGEST, repository_id=REPOSITORY_ID,
+        )
+        self.assertEqual("newer-different", newer["consumedReplyId"])
+        self.assertEqual(NEWER, newer["consumedReplyTimestamp"])
+        valid = self.store.load()
+        corrupted = copy.deepcopy(valid)
+        corrupted["publicationRequests"][0]["data"]["lastConsumedReplyTimestamp"] = NOW
+        self.store.path.write_text(json.dumps(corrupted), encoding="utf-8")
+        with self.assertRaises(Exception):
+            self.store.load()
+        self.store.path.write_text(json.dumps(valid), encoding="utf-8")
         self.assertIsNone(self.records.consume_publication_reply(
             request_id=request["id"], actor_id="owner-1",
-            reply_id="r3", reply_created_at=LATER, body=exact, reconciled=True,
+            reply_id="r3", reply_created_at=NEWER, body=exact, reconciled=True,
             owner_id="owner-1", config_digest=CONFIG_DIGEST, repository_id=REPOSITORY_ID,
         ))
 

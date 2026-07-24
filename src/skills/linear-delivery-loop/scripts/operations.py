@@ -17,6 +17,7 @@ from .store import (
     assert_public_data,
     sha256_json,
 )
+from .publication_records import validate_publication_state
 
 
 _SAFE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
@@ -95,6 +96,9 @@ class OperationJournal:
                 "requestHash": request_hash,
                 "status": "pending",
                 "attemptCount": 1,
+                "retryCount": 0,
+                "headSha": request_value.get("headSha"),
+                "providerEvidenceRef": None,
                 "beforeStateHash": _pair_hash(state, reservations),
                 "afterStateHash": None,
                 "resultRef": None,
@@ -436,3 +440,316 @@ class OperationJournal:
             or value.get("resultHash") != "sha256:" + sha256_json(value.get("result"))
         ):
             raise SupervisorStoreError("Operation result evidence is malformed or tampered")
+
+
+class PublicationJournal:
+    """Persist one strict publication state beneath its immutable operation ID."""
+
+    def __init__(self, store: SupervisorStore, *, fault_injector: Callable[[str, str], None] | None = None):
+        self.store = store
+        self.fault_injector = fault_injector
+
+    def state_path(self, operation_id: str, *, must_exist: bool = False):
+        if not isinstance(operation_id, str) or _SAFE_ID.fullmatch(operation_id) is None:
+            raise SupervisorStoreError("Publication operation ID is unsafe")
+        directory = self.store.guard.directory(
+            self.store.directories["operations"] / operation_id,
+            create=not must_exist,
+        )
+        return self.store.guard.leaf(
+            directory / "publication-state.json", must_exist=must_exist
+        )
+
+    def proposal_path(self, operation_id: str, *, must_exist: bool = False):
+        directory = self.store.guard.directory(
+            self.store.directories["operations"] / operation_id,
+            create=not must_exist,
+        )
+        return self.store.guard.leaf(
+            directory / "publication-proposal.json", must_exist=must_exist
+        )
+
+    def save(self, value: Mapping[str, Any]) -> dict[str, Any]:
+        state = validate_publication_state(value)
+        operation_id = state["operationId"]
+        if _SAFE_ID.fullmatch(operation_id) is None:
+            raise SupervisorStoreError("Publication operation ID is unsafe")
+        assert_public_data(state, location="publication state")
+        path = self.state_path(operation_id)
+        with self.store.mutex():
+            if path.exists():
+                previous = self.store.guard.read_json(path)
+                validate_publication_state(previous)
+                immutable = (
+                    "schemaVersion", "repositoryId", "repositoryKey", "workflowId",
+                    "issueId", "operationId", "idempotencyKey", "operation",
+                    "baseRef", "createdAt",
+                )
+                if any(previous[name] != state[name] for name in immutable):
+                    raise SupervisorConflictError(
+                        "Publication operation was replayed with changed identity/head"
+                    )
+                if (previous["branch"], previous["headSha"]) != (state["branch"], state["headSha"]):
+                    evidence_finalization = (
+                        previous["branch"] == state["branch"]
+                        and previous["evidenceFinalizationCount"] == 0
+                        and state["evidenceFinalizationCount"] == 1
+                        and state.get("evidenceFinalization", {}).get("headSha") == state["headSha"]
+                    )
+                    drift_preparation = previous["status"] == "base-drift" and state["status"] == "prepared" and previous["branch"] == state["branch"] and state.get("preparation", {}).get("headSha") == state["headSha"]
+                    if not (
+                        previous["status"] == "post-merge-validating"
+                        and state["repairAttempt"] == previous["repairAttempt"] + 1
+                        and state["status"] == "prepared"
+                    ) and not (
+                        previous["status"] == state["status"] == "prepared"
+                        and previous["repairAttempt"] == state["repairAttempt"] > 0
+                        and previous["branch"] == state["branch"]
+                        and not previous["attestations"] and not state["attestations"]
+                    ) and not evidence_finalization and not drift_preparation:
+                        raise SupervisorConflictError(
+                            "Publication head may change only for a numbered repair"
+                        )
+                if previous == state:
+                    return copy.deepcopy(state)
+            self.store.guard.write_json(path, state)
+        return copy.deepcopy(state)
+
+    def save_authoritative(
+        self, value: Mapping[str, Any], *, expected_state_revision: int | None = None,
+        authority_check: Callable[[Mapping[str, Any], Mapping[str, Any]], None] | None = None,
+    ) -> dict[str, Any]:
+        """CAS-bind an exact proposal before exposing an authoritative journal.
+
+        A proposal written before the paired supervisor commit is deliberately
+        non-authoritative.  Reconciliation accepts it only when the supervisor
+        summary contains the digest committed by the successful CAS.
+        """
+
+        publication = validate_publication_state(value)
+        operation_id = publication["operationId"]
+        assert_public_data(publication, location="publication state")
+        proposal_path = self.proposal_path(operation_id)
+        path = self.state_path(operation_id)
+        transition_digest = "sha256:" + sha256_json(publication)
+        with self.store.mutex():
+            state, reservations = self.store.load_pair_unlocked()
+            if (
+                expected_state_revision is not None
+                and state["revision"] != expected_state_revision
+            ):
+                raise SupervisorConflictError("Publication supervisor CAS is stale")
+            if authority_check is not None:
+                authority_check(state, reservations)
+            if path.exists():
+                previous = validate_publication_state(self.store.guard.read_json(path))
+                immutable = ("schemaVersion", "repositoryId", "repositoryKey", "workflowId", "issueId", "operationId", "idempotencyKey", "operation", "baseRef", "createdAt")
+                if any(previous[name] != publication[name] for name in immutable):
+                    raise SupervisorConflictError("publication authoritative identity changed")
+                if (previous["branch"], previous["headSha"]) != (publication["branch"], publication["headSha"]):
+                    repair_start = previous["status"] == "post-merge-validating" and publication["status"] == "prepared" and publication["repairAttempt"] == previous["repairAttempt"] + 1
+                    repair_head = previous["status"] == publication["status"] == "prepared" and previous["repairAttempt"] == publication["repairAttempt"] > 0 and previous["branch"] == publication["branch"] and not previous["attestations"] and not publication["attestations"]
+                    evidence_finalization = previous["branch"] == publication["branch"] and previous["evidenceFinalizationCount"] == 0 and publication["evidenceFinalizationCount"] == 1 and publication.get("evidenceFinalization", {}).get("headSha") == publication["headSha"]
+                    base_drift = previous["branch"] == publication["branch"] and previous["baseSha"] != publication["baseSha"] and publication["status"] == "base-drift" and not publication["attestations"]
+                    drift_preparation = previous["status"] == "base-drift" and publication["status"] == "prepared" and previous["branch"] == publication["branch"] and publication.get("preparation", {}).get("headSha") == publication["headSha"]
+                    if not (repair_start or repair_head or evidence_finalization or base_drift or drift_preparation):
+                        raise SupervisorConflictError("publication authoritative head changed illegally")
+            self.store.guard.write_json(proposal_path, publication)
+            summary = {
+                "operationId": operation_id,
+                "issueId": publication["issueId"],
+                "headSha": publication["headSha"],
+                "status": publication["status"],
+                "stateRef": os.fspath(path),
+                "proposalRef": os.fspath(proposal_path),
+                "transitionDigest": transition_digest,
+            }
+            existing = state.get("publication")
+            if existing == summary:
+                return copy.deepcopy(publication)
+            if existing is not None and existing.get("operationId") != operation_id:
+                if existing.get("status") not in {"completed"}:
+                    raise SupervisorConflictError("another publication remains authoritative")
+            after = copy.deepcopy(state)
+            after["publication"] = summary
+            after["revision"] = state["revision"] + 1
+            # A bounded publication transition preserves, but never extends,
+            # the already-live run capability.  This lets the reservation
+            # manager issue the next distinct one-shot grant without turning
+            # a supervisor-owned journal revision into accidental lease loss.
+            if isinstance(after.get("lease"), dict) and after["lease"].get("status") == "live":
+                after["lease"]["revision"] = after["revision"]
+                current = after.get("currentWork") or {}
+                for capability in after.get("capabilities", {}).values():
+                    if (
+                        capability.get("status") == "issued"
+                        and capability.get("runId") == after["lease"].get("runId")
+                        and capability.get("stage") == current.get("stage")
+                        and current.get("stage") in {
+                            "review", "qa", "docs", "publication", "completion",
+                        }
+                    ):
+                        capability["stateRevision"] = after["revision"]
+            self.store.commit_pair_unlocked(
+                before_state=state, after_state=after,
+                before_reservations=reservations, after_reservations=reservations,
+                operation=f"PublicationState:{operation_id}:{publication['status']}",
+            )
+            if self.fault_injector is not None:
+                self.fault_injector("after-publication-cas", operation_id)
+            self.store.guard.write_json(path, publication)
+        return copy.deepcopy(publication)
+
+    def reconcile_authoritative(self, operation_id: str) -> dict[str, Any]:
+        """Materialize only a proposal whose exact digest won supervisor CAS."""
+
+        with self.store.mutex():
+            state, _ = self.store.load_pair_unlocked()
+            summary = state.get("publication")
+            if not isinstance(summary, Mapping) or summary.get("operationId") != operation_id:
+                raise SupervisorConflictError("publication proposal never won authoritative CAS")
+            proposal_path = self.proposal_path(operation_id, must_exist=True)
+            if summary.get("proposalRef") != os.fspath(proposal_path):
+                raise SupervisorConflictError("publication proposal reference is not authoritative")
+            publication = validate_publication_state(self.store.guard.read_json(proposal_path))
+            if summary.get("transitionDigest") != "sha256:" + sha256_json(publication):
+                raise SupervisorConflictError("publication proposal digest is not authoritative")
+            self.store.guard.write_json(self.state_path(operation_id), publication)
+            return copy.deepcopy(publication)
+
+    def load(self, operation_id: str) -> dict[str, Any]:
+        if not isinstance(operation_id, str) or _SAFE_ID.fullmatch(operation_id) is None:
+            raise SupervisorStoreError("Publication operation ID is unsafe")
+        path = self.state_path(operation_id, must_exist=True)
+        return validate_publication_state(self.store.guard.read_json(path))
+
+    def issue_attestation(self, value: Mapping[str, Any]) -> dict[str, Any]:
+        """Persist the engine-issued attestation sidecar used by merge verification."""
+
+        from .publication_records import validate_publication_attestation
+        attestation = validate_publication_attestation(value)
+        filename = f"{attestation['attestationId']}.json"
+        path = self.store.guard.leaf(
+            self.store.directories["publication-attestations"] / filename
+        )
+        with self.store.mutex():
+            if path.exists():
+                existing = validate_publication_attestation(self.store.guard.read_json(path))
+                if existing != attestation:
+                    raise SupervisorConflictError("publication attestation identity was replayed differently")
+                return existing
+            self.store.guard.write_json(path, attestation)
+        return copy.deepcopy(attestation)
+
+    def require_issued_attestation(self, value: Mapping[str, Any]) -> dict[str, Any]:
+        from .publication_records import validate_publication_attestation
+        attestation = validate_publication_attestation(value)
+        path = self.store.guard.leaf(
+            self.store.directories["publication-attestations"]
+            / f"{attestation['attestationId']}.json", must_exist=True,
+        )
+        issued = validate_publication_attestation(self.store.guard.read_json(path))
+        if issued != attestation:
+            raise SupervisorConflictError("publication attestation is not engine-issued evidence")
+        return issued
+
+    def resolve_checkpoint_result(
+        self, *, publication: Mapping[str, Any], source_operation_id: str
+    ) -> dict[str, Any]:
+        """Derive publication evidence from an immutable ApplyCheckpoint journal."""
+        source_dir = self.store.directories["operations"] / source_operation_id
+        if not source_dir.is_dir():
+            raise SupervisorStoreError("publication evidence source operation is absent")
+        evidence = OperationJournal(self.store).load(source_operation_id)
+        journal, request, result = evidence["journal"], evidence["request"], evidence["result"]
+        if journal["operation"] != "ApplyCheckpoint" or journal["status"] != "completed":
+            raise SupervisorStoreError("publication evidence source is not a completed checkpoint")
+        validate_contract("engine-command", request)
+        if request.get("operation") != "ApplyCheckpoint":
+            raise SupervisorStoreError("publication evidence source command is mismatched")
+        transition_id = request.get("transitionId")
+        state = self.store.load_state()
+        checkpoint = state["checkpoints"].get(transition_id)
+        if not isinstance(checkpoint, Mapping) or checkpoint != result or checkpoint.get("status") != "applied":
+            raise SupervisorStoreError("publication evidence checkpoint is absent or mismatched")
+        matches = []
+        for run_dir in self.store.directories["runs"].iterdir():
+            candidate = run_dir / f"checkpoint-{transition_id}.json"
+            if candidate.is_file():
+                matches.append(self.store.guard.leaf(candidate, must_exist=True))
+        if len(matches) != 1:
+            raise SupervisorStoreError("publication evidence checkpoint record is ambiguous")
+        checkpoint_record = self.store.guard.read_json(matches[0])
+        required = {"schemaVersion", "transitionId", "preparedRef", "resultSha256", "result"}
+        if set(checkpoint_record) != required or checkpoint_record.get("transitionId") != transition_id:
+            raise SupervisorStoreError("publication checkpoint result record is malformed")
+        worker = validate_contract("worker-result", checkpoint_record["result"])
+        if checkpoint_record["resultSha256"] != sha256_json(worker):
+            raise SupervisorStoreError("publication worker result digest is mismatched")
+        prepared_ref = self.store.guard.leaf(request["preparedIterationRef"], must_exist=True)
+        prepared = validate_contract("prepared-iteration", self.store.guard.read_json(prepared_ref))
+        if checkpoint_record["preparedRef"] != os.fspath(prepared_ref):
+            raise SupervisorStoreError("publication checkpoint prepared-iteration reference differs")
+        stage_to_kind = {"review": "review", "qa": "qa", "docs": "docs"}
+        kind = stage_to_kind.get(worker["completedStage"])
+        if worker["completedStage"] == "publication" and worker["proposedNextStage"] == "completion":
+            kind = "evidence-convergence"
+        if kind is None or worker["outcome"] not in {"advanced", "completed"} or worker["pause"] is not None:
+            raise SupervisorStoreError("worker result does not establish passing publication evidence")
+        worker_expected = {"workflowId": publication["workflowId"], "issueId": publication["issueId"]}
+        if any(worker.get(name) != value for name, value in worker_expected.items()) or worker["observed"].get("repositoryId") != publication["repositoryId"] or worker["observed"].get("physicalWorktreeFingerprint") != publication["preservedState"]["physicalWorktreeFingerprint"]:
+            raise SupervisorStoreError("publication worker result belongs to another authority")
+        expected = {
+            **worker_expected, "repositoryId": publication["repositoryId"],
+            "physicalWorktreeFingerprint": publication["preservedState"]["physicalWorktreeFingerprint"],
+        }
+        if any(prepared.get(name) != value for name, value in expected.items()):
+            raise SupervisorStoreError("publication prepared iteration belongs to another authority")
+        if prepared.get("repositoryKey") != publication["repositoryKey"] or request.get("repositoryKey") != publication["repositoryKey"]:
+            raise SupervisorStoreError("publication checkpoint repository key differs")
+        if os.path.normcase(os.path.realpath(request.get("stateHome", ""))) != os.path.normcase(os.path.realpath(self.store.root)):
+            raise SupervisorStoreError("publication checkpoint state home differs")
+        normalized_worktree = os.path.normcase(os.path.realpath(publication["preservedState"]["worktreePath"]))
+        if os.path.normcase(os.path.realpath(prepared["worktreePath"])) != normalized_worktree:
+            raise SupervisorStoreError("publication prepared worktree differs")
+        if request.get("expectedStage") != worker["completedStage"] or prepared["stage"] != worker["completedStage"]:
+            raise SupervisorStoreError("publication checkpoint stage binding differs")
+        if worker["observed"]["headSha"] != publication["headSha"]:
+            raise SupervisorStoreError("publication checkpoint exact SHA differs")
+        from .publication_records import ATTESTATION_PRODUCERS
+        return {
+            "schemaVersion": "1.0", "resultId": source_operation_id,
+            "publicationOperationId": publication["operationId"], "kind": kind,
+            "producer": ATTESTATION_PRODUCERS[kind], "stage": "pre-merge",
+            "exactSha": worker["observed"]["headSha"], "outcome": "passed",
+            "recordedAt": journal["updatedAt"], "sourceOperationId": source_operation_id,
+            "sourceRecordDigest": "sha256:" + sha256_json(checkpoint_record),
+        }
+
+    def record_refusal(
+        self, operation_id: str, response: Mapping[str, Any], readback: Mapping[str, Any]
+    ) -> str:
+        from .publication_provider import normalized_refusal
+
+        safe = normalized_refusal(response, readback)
+        value = {"schemaVersion": "1.0", "operationId": operation_id,
+                 **safe}
+        assert_public_data(value, location="publication refusal")
+        digest = "sha256:" + sha256_json(safe)
+        directory = self.store.guard.directory(self.store.directories["operations"] / operation_id)
+        path = self.store.guard.leaf(directory / "provider-refusal.json")
+        value["digest"] = digest
+        with self.store.mutex():
+            self.store.guard.write_json(path, value)
+        return digest
+
+    def require_refusal(self, operation_id: str, expected_digest: str) -> dict[str, Any]:
+        directory = self.store.guard.directory(self.store.directories["operations"] / operation_id)
+        path = self.store.guard.leaf(directory / "provider-refusal.json", must_exist=True)
+        value = self.store.guard.read_json(path)
+        if set(value) != {"schemaVersion", "operationId", "classification", "reconciliation", "digest"} or value.get("schemaVersion") != "1.0" or value.get("operationId") != operation_id:
+            raise SupervisorStoreError("publication refusal record is malformed")
+        actual = "sha256:" + sha256_json({"classification": value["classification"], "reconciliation": value["reconciliation"]})
+        if value.get("digest") != actual or actual != expected_digest:
+            raise SupervisorStoreError("publication refusal record digest is mismatched")
+        return copy.deepcopy(value)

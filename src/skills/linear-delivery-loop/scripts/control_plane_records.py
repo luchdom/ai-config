@@ -26,6 +26,8 @@ class ControlPlaneRecordError(RuntimeError):
 
 _FENCE_MAP_LOCK = threading.Lock()
 _FENCE_LOCKS: dict[str, threading.Lock] = {}
+CONTROL_PLANE_STATE_VERSION = "1.1"
+LEGACY_CONTROL_PLANE_STATE_VERSION = "1.0"
 
 
 def _process_alive(process_id: int) -> bool:
@@ -95,7 +97,7 @@ class ControlPlaneStore:
     @staticmethod
     def empty() -> dict[str, Any]:
         return {
-            "schemaVersion": "1.0",
+            "schemaVersion": CONTROL_PLANE_STATE_VERSION,
             "revision": 0,
             "decisions": [],
             "publicationRequests": [],
@@ -112,7 +114,39 @@ class ControlPlaneStore:
             value = json.loads(self.path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as exc:
             raise ControlPlaneRecordError("Control-plane state cannot be read safely") from exc
-        return validate_contract("control-plane-state", value)
+        migrated = (
+            isinstance(value, dict)
+            and value.get("schemaVersion") == LEGACY_CONTROL_PLANE_STATE_VERSION
+        )
+        if migrated and isinstance(value.get("publicationRequests"), list):
+            for record in value["publicationRequests"]:
+                data = record.get("data") if isinstance(record, dict) else None
+                if isinstance(data, dict) and "lastConsumedReplyTimestamp" not in data:
+                    active = data.get("consumedReplyTimestamp")
+                    data["lastConsumedReplyTimestamp"] = (
+                        active if isinstance(active, str) else record.get("sourceTimestamp")
+                    )
+        if migrated:
+            if not isinstance(value.get("revision"), int) or value["revision"] < 0:
+                raise ControlPlaneRecordError("Legacy control-plane revision is invalid")
+            value["schemaVersion"] = CONTROL_PLANE_STATE_VERSION
+            value["revision"] += 1
+        validated = validate_contract("control-plane-state", value)
+        if migrated:
+            self._write_unlocked(validated)
+        return validated
+
+    def _write_unlocked(self, value: Mapping[str, Any]) -> None:
+        self.root.mkdir(parents=True, exist_ok=True)
+        temporary = self.root / f".{self.path.name}.{uuid.uuid4()}.tmp"
+        try:
+            temporary.write_text(
+                json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+            )
+            os.replace(temporary, self.path)
+        finally:
+            if temporary.exists():
+                temporary.unlink()
 
     def load(self) -> dict[str, Any]:
         with self._guard():
@@ -125,16 +159,7 @@ class ControlPlaneStore:
             result = callback(after)
             after["revision"] = before["revision"] + 1
             validated = validate_contract("control-plane-state", after)
-            self.root.mkdir(parents=True, exist_ok=True)
-            temporary = self.root / f".{self.path.name}.{uuid.uuid4()}.tmp"
-            try:
-                temporary.write_text(
-                    json.dumps(validated, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-                )
-                os.replace(temporary, self.path)
-            finally:
-                if temporary.exists():
-                    temporary.unlink()
+            self._write_unlocked(validated)
             return copy.deepcopy(validated), copy.deepcopy(result)
 
     @contextmanager
@@ -403,6 +428,7 @@ class ControlPlaneRecords:
                 "replySyntax": f"RETRY-PUBLICATION {operation_id} {head_sha}",
                 "consumedReplyId": None,
                 "consumedReplyTimestamp": None,
+                "lastConsumedReplyTimestamp": source_timestamp,
             },
         )
         if refusal_kind not in {"stable", "exhausted", "ambiguous"}:
@@ -430,7 +456,14 @@ class ControlPlaneRecords:
                 or owner_id != (record or {}).get("data", {}).get("ownerId")
                 or config_digest != (record or {}).get("data", {}).get("configDigest")
                 or repository_id != (record or {}).get("data", {}).get("repositoryId")
-                or not reconciled or _timestamp(reply_created_at) <= _timestamp(record["sourceTimestamp"])
+                or not reconciled
+                or _timestamp(reply_created_at) <= max(
+                    _timestamp(record["sourceTimestamp"]),
+                    _timestamp(
+                        record["data"]["lastConsumedReplyTimestamp"],
+                    ),
+                )
+                or reply_id == (record or {}).get("data", {}).get("consumedReplyId")
             ):
                 return
             data = record["data"]
@@ -440,15 +473,47 @@ class ControlPlaneRecords:
             record["status"] = "authorized"
             record["data"]["consumedReplyId"] = reply_id
             record["data"]["consumedReplyTimestamp"] = reply_created_at
+            record["data"]["lastConsumedReplyTimestamp"] = reply_created_at
             result = {
                 "status": "authorized",
                 "requestId": record["id"],
                 "operationId": data["operationId"],
                 "headSha": data["headSha"],
+                "consumedReplyId": reply_id,
+                "consumedReplyTimestamp": reply_created_at,
                 "evidence": copy.deepcopy(data["evidence"]),
             }
 
         self.store.mutate(consume)
+        return result
+
+    def reopen_publication_request(
+        self, *, request_id: str, consumed_reply_id: str,
+    ) -> dict[str, Any] | None:
+        """Reopen one request while retaining its durable reply-time lower bound."""
+
+        result: dict[str, Any] | None = None
+
+        def reopen(state: dict[str, Any]) -> None:
+            nonlocal result
+            record = next(
+                (item for item in state["publicationRequests"] if item["id"] == request_id),
+                None,
+            )
+            if (
+                record is None or record["status"] != "authorized"
+                or record.get("data", {}).get("consumedReplyId") != consumed_reply_id
+            ):
+                return
+            record["status"] = "pending"
+            # Pending requests have no active consumption marker. The durable
+            # lower bound survives so delayed alternate replies cannot regain
+            # one-shot mutation authority.
+            record["data"]["consumedReplyId"] = None
+            record["data"]["consumedReplyTimestamp"] = None
+            result = copy.deepcopy(record)
+
+        self.store.mutate(reopen)
         return result
 
     def propose_follow_up(
