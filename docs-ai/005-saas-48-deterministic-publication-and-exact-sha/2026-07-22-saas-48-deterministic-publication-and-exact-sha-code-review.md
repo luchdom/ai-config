@@ -38,4 +38,3 @@ Required correction: define a narrow role-aware inventory for draft/final eviden
 - Read Linear SAAS-48 and the current plan, tasks, three audits, implementation record, and workflow descriptor.
 - `git diff --check`: PASS.
 - Focused read-only diagnostics confirmed: no SAAS-48 operation in `SupervisorEngine.OPERATION_NAMES`; arbitrary README text is classified evidence-only; and one authorized reply invokes the attended attempt twice when replayed.
-

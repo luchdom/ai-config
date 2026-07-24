@@ -52,4 +52,3 @@ Required correction: implement a journaled repair-head preparation/commit transi
 - Focused publication contract/provider/recovery/repair/exact-SHA suites: **24 tests passed** in 54.167 seconds. The passing integration fixture itself supplies the caller-authored evidence and unrelated reusable scope described above.
 - `engine-command.schema.json` parses successfully.
 - `git diff --check`: **PASS** (line-ending warnings only).
-

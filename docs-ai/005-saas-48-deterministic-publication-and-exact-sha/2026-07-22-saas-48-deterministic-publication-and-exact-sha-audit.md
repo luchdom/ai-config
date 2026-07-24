@@ -76,4 +76,3 @@ Required correction: the planner must define one counter model explicitly (initi
 - `src/skills/linear-delivery-loop/scripts/{contracts,control_plane,control_plane_records,operations,supervisor,worktrees}.py`
 - `tests/linear_delivery_supervisor/` and `tests/linear_delivery_control_plane/`
 - Installed `task-audit-breakdown` skill and independent audit checklist
-
