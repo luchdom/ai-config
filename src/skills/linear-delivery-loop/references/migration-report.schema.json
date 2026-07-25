@@ -1,9 +1,0 @@
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://luchdom.local/schemas/linear-delivery-loop/migration-report-1.0.schema.json",
-  "title": "MigrationReport 1.0",
-  "type": "object", "additionalProperties": false,
-  "required": ["schemaVersion", "generatedAt", "mutationFree", "issues"],
-  "properties": {"schemaVersion": {"const": "1.0"}, "generatedAt": {"type": "string", "format": "date-time"}, "mutationFree": {"const": true}, "issues": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["issueId", "eligible", "rejectionReasons", "currentState", "currentLabels", "proposedState", "proposedLabels"], "properties": {"issueId": {"type": "string", "pattern": "^[A-Z][A-Z0-9]+-[0-9]+$"}, "eligible": {"type": "boolean"}, "rejectionReasons": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 128}}, "currentState": {"type": "string", "minLength": 1, "maxLength": 128}, "currentLabels": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 128}}, "proposedState": {"type": ["string", "null"]}, "proposedLabels": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 128}}}}}},
-  "x-luchdom-runtimeParity": {"version": "1.0", "runtimeValidator": "scripts.contracts.validate_contract", "constraints": [{"id": "mutation-free-report-shape"}, {"id": "no-secret-like-material"}]}
-}

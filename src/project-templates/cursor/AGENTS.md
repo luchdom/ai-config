@@ -27,7 +27,7 @@ For non-trivial work without an explicit entry, default to `$spec-driven-deliver
 - Resume only by exact registered workflow ID, exact artifact path, or unique external ID in a compatible physical worktree.
 - Existing numbered-and-dated folders and flat `docs-ai/*` files are historical read fallback only. Never rename, rewrite, renumber, or add synthetic descriptors to them.
 - Per-work evidence belongs in `docs-ai/`; durable how-tos, concepts, references, ADRs, runbooks, and troubleshooting belong in curated repository docs.
-- Follow the canonical artifact contract for workflow-managed Handoff: repository authority remains registry-bound and expected paths equal the observed Git-changed scope. Base-only transfer carries no reservation and is denied by every nonterminal (`live`, `handoff-pending`, `expired`, or `protected`) or unknown reservation state; use the shared supervisor's assembled Handoff to transfer reservation authority. Native Codex **Hand off** grants no workflow authority.
+- Follow the canonical artifact contract for workflow-managed Handoff: repository authority remains registry-bound, expected paths must equal the observed Git-changed scope, and the base transfer carries no reservation. Native Codex **Hand off** grants no workflow authority.
 
 ## Shared specialists and quality
 
@@ -39,7 +39,7 @@ For non-trivial work without an explicit entry, default to `$spec-driven-deliver
 ## Authority and Git safety
 
 - Read-only repository inspection is allowed unless local guidance is stricter.
-- Manual `Implement` and the default semi-autonomous boundary authorize scoped edits and local validation only after deterministic Reserve/AuthorizeMutation. They do not authorize branch/stage/commit/push/PR/merge actions.
+- Manual `Implement` and the default semi-autonomous boundary authorize scoped edits and local validation, not branch/stage/commit/push/PR/merge actions.
 - Semi-autonomous publication requires an explicit completion boundary or later grant. Manual publication requires each named action.
 - Autonomous external and Git mutation belongs only to deterministic adapter code while its prepared capability is valid; specialists return structured proposals and real-file manifests.
 - Before any attended state-changing Git/provider action, summarize the exact action and file scope and preserve unrelated user work.

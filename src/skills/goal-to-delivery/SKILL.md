@@ -41,7 +41,7 @@ These references are the sole canonical cross-tool delivery protocol. Repository
 5. Record safe assumptions. Ask one focused question only when a material decision cannot be resolved safely from user requirements, repository evidence, or conservative precedent.
 6. Stop exactly at the declared completion boundary and never infer additional Git, provider, or tracking authority.
 
-Acquire the repository editing reservation through the deterministic supervisor before automatically changing repository deliverables. Planning evidence isolated to the workflow folder may defer that reservation. Before each bounded deliverable mutation, call `AuthorizeMutation`; use `RenewReservation` during long work, and derive status/release/recovery from the supervisor rather than prose. Preserve dirty or unmerged work and its reservation when a material clarification blocks progress.
+Acquire the repository editing reservation before automatically changing repository deliverables. Planning evidence isolated to the workflow folder may defer that reservation. Preserve dirty or unmerged work and its reservation when a material clarification blocks progress.
 
 ## Authority boundary
 
@@ -66,5 +66,3 @@ python <installed-goal-to-delivery-skill>/scripts/cli.py handoff --source-root <
 Do not pass a work key to `init`; only the helper allocator or a later trusted provider adapter may supply one. `repository-key` is repository configuration, not the artifact work key, and is bound to the repository's state home. Use `attach` only after explicit tracking authority, and `handoff` only after explicit workflow-managed Handoff authorization.
 
 For `handoff`, repeat `--expected-path` once for every intended Git-changed user path. The set must match the observed change scope exactly. Do not list the selected workflow's `workflow.json`; the helper includes that internal descriptor itself. See [artifact-contract.md](./references/artifact-contract.md) for the fail-closed scope, destination, evidence, and authority rules.
-
-When any nonterminal reservation exists (`live`, `handoff-pending`, `expired`, or `protected`), the registry-only command above intentionally refuses transfer; unknown reservation state also fails closed. Use the assembled structured supervisor `Handoff` operation from the sibling `$linear-delivery-loop` engine; it prepares a one-shot internal authorization, invokes the canonical base transfer, moves the reservation/capability, and revokes the source. The public base CLI never accepts that internal authorization.

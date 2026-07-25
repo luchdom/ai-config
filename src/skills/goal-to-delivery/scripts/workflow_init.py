@@ -391,19 +391,9 @@ class WorkflowManager:
         workflow_id: str,
         destination_root: str | Path,
         expected_paths: list[str],
-        _reservation_authorization: object | None = None,
-        _editing_source_root: str | Path | None = None,
     ) -> dict[str, Any]:
         self._assert_manager_repository_key()
-        if _editing_source_root is None:
-            self._preflight_authority(workflow_id=workflow_id)
-        else:
-            from .reservation_interlock import InternalHandoffAuthorization
-
-            if type(_reservation_authorization) is not InternalHandoffAuthorization:
-                raise ValidationError(
-                    "An editing-source override requires exact internal Handoff authorization"
-                )
+        self._preflight_authority(workflow_id=workflow_id)
         from .handoff import workflow_managed_handoff
 
         return workflow_managed_handoff(
@@ -411,8 +401,6 @@ class WorkflowManager:
             workflow_id=workflow_id,
             destination_root=destination_root,
             expected_paths=expected_paths,
-            reservation_authorization=_reservation_authorization,
-            editing_source_root=_editing_source_root,
         )
 
     def _paired_commit(

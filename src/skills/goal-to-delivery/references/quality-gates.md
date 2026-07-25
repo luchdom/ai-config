@@ -28,6 +28,4 @@ Record the observed source/head identity, exact commands and arguments, exit cod
 
 For a `merge` boundary, run exact-head local validation/review/applicable QA before squash merge and rerun the repository aggregate from a separate clean worktree at the exact returned merge SHA. Repository guidance owns the actual commands and any stricter requirements.
 
-Before staging a publication manifest, run the trusted aggregate in the registered issue worktree as early feedback. After provider readback, the later exact-head gate remains mandatory in a fresh clean worktree. Required delivery drafts include conditional design evidence or an explicit validated not-required record. Only a proven evidence-only delta may receive one classifier-scoped finalization commit; reread the provider head and rerun final-head docs, aggregate, and review, plus QA or an explicit named safe two-SHA reuse attestation. Persist terminal identities externally without another branch commit.
-
 Secrets never appear in artifacts, command arguments, logs, patches, manifests, comments, or notifications. State what remains unverified and why when a gate cannot run; do not report completion.
