@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "enabled": false,
+  "repositoryKey": "my-project",
+  "linear": {
+    "team": "TEAM",
+    "project": "Project name",
+    "autonomousLabel": "autonomous",
+    "needsHumanLabel": "needs-human",
+    "states": {
+      "backlog": "Backlog",
+      "active": "In Progress",
+      "done": "Done",
+      "canceled": "Canceled"
+    },
+    "owner": null
+  },
+  "git": {
+    "defaultBranch": "main",
+    "usePullRequests": true,
+    "mergeMethod": "squash"
+  },
+  "limits": {
+    "maxRunMinutes": 45,
+    "maxFiles": 15,
+    "maxChangedLines": 800,
+    "maxTestMinutes": 15
+  },
+  "notifications": {
+    "linearComments": true,
+    "ntfy": false,
+    "ntfyTopicEnv": "NTFY_TOPIC"
+  }
+}

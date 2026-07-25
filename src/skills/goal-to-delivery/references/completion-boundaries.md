@@ -1,35 +1,19 @@
 # Completion Boundaries
 
-Protocol version: `2.0`
-
-Completion and publication are separate. Stop exactly at the active entry's declared boundary.
+Stop at the boundary authorized by the active entry.
 
 | Boundary | Required outcome |
 |---|---|
-| `artifact` | The accepted non-code/spec/document output exists and its acceptance checks pass. |
-| `working-tree` | Scoped implementation, tests, review, applicable QA, and docs are complete in the current worktree; no Git mutation is implied. |
-| `commit` | Working-tree gates pass and an explicitly authorized scoped local commit exists. |
-| `pr` | Commit gates pass, the branch is pushed, one PR exists, and linked tracking may enter review. |
-| `merge` | Exact-head gates pass, authorized squash merge occurs, and the exact returned merge SHA passes the repository clean local post-merge gate. |
+| `artifact` | The requested non-code artifact exists and its acceptance checks pass. |
+| `working-tree` | Scoped changes and required local checks are complete; no Git publication is implied. |
+| `commit` | Working-tree requirements pass and an authorized scoped commit exists. |
+| `pr` | The branch is pushed and one pull request exists. |
+| `merge` | Required local checks, one code review, and applicable QA pass; the authorized PR is merged into the configured default branch. |
 
-A failed exact returned-merge-SHA gate is not completion. Keep the same work identity and protected publication state, and follow the repository's bounded repair policy. Every repair reruns all applicable exact-head, review, QA, docs/evidence, merge-readback, and exact-merge-SHA gates; repair exhaustion requires attended recovery and never authorizes auto-revert.
+`$goal-to-delivery` defaults to `working-tree`. `$spec-driven-delivery` requires a separate named stage for Commit, PR, and Merge. `$linear-delivery-loop` targets `merge` for code and `artifact` for non-code work.
 
-`$goal-to-delivery` defaults to `working-tree`; a later explicit grant resumes the same work rather than recreating it. `$spec-driven-delivery` never infers stages from a boundary: `Commit`, `PR`, and `Merge` remain separate invocations. Autonomous code always targets `merge`; manual operational evidence never creates an artificial branch or PR.
+Read-only Git inspection is allowed unless repository guidance is stricter. Implementation authority does not imply commit, push, PR, merge, provider settings, force-push, history rewrite, direct default-branch push, unrelated changes, or destructive cleanup.
 
-## Authority
+For `merge`, validate the PR head locally before merging and verify the provider reports the PR merged into the configured default branch. A second full validation in a clean post-merge worktree is not required unless repository-specific rules explicitly require it.
 
-Read-only Git inspection is allowed unless repository guidance is stricter. Repository edits require the active entry/stage and a valid editing reservation. Branch, stage, commit, push, PR, merge, provider settings, or tracking mutations are not implied by implementation.
-
-Semi-autonomous publication requires an explicit boundary or later grant. Manual publication requires each named action. Autonomous Git/provider mutation belongs only to deterministic adapter code while its prepared capability remains valid; specialists return proposals and manifests.
-
-Never infer force-push, history rewrite, direct default-branch push, unrelated changes, tags/releases, provider-setting changes, bypass/admin merge, destructive cleanup, or automatic revert.
-
-## Linked tracking and reservation
-
-- Planning-only stages preserve backlog/todo tracking and may defer an editing reservation while writing only isolated workflow artifacts.
-- Working-tree or commit code remains active and retains its repository reservation until explicit Release, valid workflow-managed Handoff, publication/merge progression, or reconciled abandon.
-- A PR-linked issue remains in review and retains repository/tracking WIP through merge or deterministic release.
-- Validated merge may complete linked code only after exact-merge-SHA evidence is durably recorded.
-- Explicit Release never discards dirty, unmerged, open-PR, inaccessible, or ambiguous work and never silently restores autonomous eligibility.
-
-Reservation expiry alone never releases protected work. Native Codex **Hand off** does not transfer a reservation or workflow authority.
+A linked issue remains active through implementation and in review while its PR is open. Move it to Done only after its actual completion boundary is observed. A checkpoint, notification, or passing hosted check is not completion.

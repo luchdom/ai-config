@@ -1,33 +1,65 @@
 ---
 name: linear-delivery-loop
-description: Execute one unattended autonomous delivery iteration from a schema-valid capability prepared by the deterministic Linear adapter. Use only when explicitly invoked as `$linear-delivery-loop` by the versioned scheduled prompt or an attended pilot; never accept a raw goal, choose queue work, or implement Linear mutations in model policy.
+description: Run one lightweight autonomous delivery iteration from a repository's Linear backlog. Use only when explicitly invoked as `$linear-delivery-loop` by a Codex scheduled task or attended pilot; select or resume at most one labeled issue, work within local budgets, request decisions in Linear, and stop after merge or checkpoint.
 ---
 
 # Linear Delivery Loop
 
-Apply autonomous advancement policy to one adapter-prepared issue. This skill is a thin policy entry; deterministic code owns selection, WIP, authority, state, retry, external mutation, and checkpoints.
+Complete at most one Linear issue using Linear as the durable queue and checkpoint store. Do not build or require a separate supervisor, lease database, memory service, telemetry pipeline, or CI system.
 
-## Invocation
+## Setup
 
-Require an explicit invocation with exactly one schema-valid `PreparedIteration` file/capability:
+Read `.ai/loop.json` from the target repository and [project-config.example.json](./references/project-config.example.json). Stop without mutation when the file is missing, invalid, or `enabled` is false. Read the canonical shared protocol:
 
-```text
-$linear-delivery-loop <adapter-prepared-iteration>
-```
+- [delivery-stages.md](../goal-to-delivery/references/delivery-stages.md)
+- [artifact-contract.md](../goal-to-delivery/references/artifact-contract.md)
+- [clarification-policy.md](../goal-to-delivery/references/clarification-policy.md)
+- [quality-gates.md](../goal-to-delivery/references/quality-gates.md)
+- [completion-boundaries.md](../goal-to-delivery/references/completion-boundaries.md)
+- [work-descriptor.schema.json](../goal-to-delivery/references/work-descriptor.schema.json)
 
-Fail without repository or external mutation when the capability is missing, invalid, expired, replayed, mismatched to the observed repository/worktree, or contains more than one issue. A raw issue key, goal, label, or prompt is not a capability.
+Repository-specific commands and stricter safety rules take precedence. Never expose API keys or notification topics.
 
-Read and follow the sole healthy-run policy reference: [autonomous-runtime-contract.md](../goal-to-delivery/references/autonomous-runtime-contract.md). Keep diagnostic architecture, detailed protocol references, schemas, and scripts out of routine context; deterministic validation owns their enforcement. Apply stricter repository rules first and fail closed on conflict.
+The normal state mapping is Backlog for eligible intake, In Progress for the single active issue, and Done only after the configured completion boundary.
 
-## Policy
+## Select or resume one issue
 
-1. Accept only the issue and authority already prepared by the deterministic adapter after its preflight, lease, reservation, authorization, eligibility, WIP, and issue-contract checks.
-2. Use the same planner, optional product designer, tasker, independent auditor, implementers, code reviewer, runtime QA, and documentation skills used by the other entries.
-3. Continue routine stages during the current invocation while the prepared capability remains valid.
-4. Return structured stage results, proposed external transitions, and a real-file change manifest to the adapter. Renew authority and apply checkpoints only through the adapter; model output is never authority.
-5. Stop on completion, pause, external wait, retry exhaustion, non-retryable failure, capability/lease loss, interruption, or any material decision requiring a human.
-6. Never select again after the prepared issue completes or pauses, and never start a second issue in the same invocation.
+Query the configured Linear team/project and re-read the result immediately before claiming:
 
-Safe assumptions may be recorded. A material decision becomes a structured pause proposal; the deterministic adapter owns the durable Linear request and attention notification. This skill does not implement GraphQL, queue-selection, label/state mutation, notification, Git publication, merge, or provider-retry behavior.
+1. If more than one issue is in the active state, comment on none and stop with a human-attention result.
+2. If one active issue lacks the configured autonomous label, assume attended work is in progress and stop.
+3. If one active autonomous issue has the configured human-decision label, resume only after a newer owner comment exactly matching `DECIDE <ISSUE> <OPTION>` answers the latest open question. Acknowledge the decision, remove the label, and continue. Otherwise stop.
+4. If one eligible active autonomous issue exists, resume it.
+5. Otherwise select the highest-priority backlog issue with the autonomous label and without the human-decision label. Break ties by oldest creation time. Select no work when none is eligible.
 
-Autonomous code targets the `merge` boundary and is complete only after all exact-head local gates, independent code review, applicable runtime QA, documentation checks, authorized squash merge, and clean validation of the exact returned merge SHA. Hosted provider status is neither queried nor accepted as quality evidence.
+Before claiming new work, confirm the issue states one achievable, bounded, locally testable goal with acceptance criteria. External-only setup, unclear product behavior, and oversized work are not eligible. Move one eligible issue to the active state, assign it to the configured owner when present, and add a short claim comment. Re-query active work; if the one-issue invariant no longer holds, stop.
+
+## Deliver within the MVP budget
+
+Use the lightest applicable stages. Plan and task inline for routine work; create a concise work note only when useful. Use specialists selectively based on risk, not as a mandatory chain.
+
+- Prefer one branch and pull request per issue.
+- Run focused checks first and one repository-owned local validation command before merge.
+- Perform one independent code review and applicable runtime QA. Use HTTP, CLI, or browser behavior only when acceptance criteria require it.
+- Update durable documentation only when behavior, setup, architecture, or operations changed.
+- Keep total validation within `maxTestMinutes`, the run within `maxRunMinutes`, and the normal change within `maxFiles` and `maxChangedLines`.
+- When a limit would be exceeded, split a genuinely independent prerequisite into a child issue or request a human decision. Do not silently expand scope.
+
+For safe interruptions or the run-time limit, commit and push coherent work when safe, add a concise Linear checkpoint with branch/PR, completed checks, and next action, leave the issue active, and stop. After bounded repair attempts, treat a technical blocker as a human decision instead of looping indefinitely.
+
+## Ask for a decision
+
+Keep the issue active, add the configured human-decision label, and comment with:
+
+- the blocked decision;
+- two or three concrete options and consequences;
+- one recommendation;
+- the exact reply syntax `DECIDE <ISSUE> <OPTION>`.
+
+Send at most one best-effort ntfy notification when enabled. The Linear comment is authoritative; notification failure must not create retries or duplicate comments. Stop after requesting the decision.
+
+## Complete
+
+For code, target the `merge` boundary: validate locally, open the PR, complete one review and applicable QA, squash merge when authorized by this entry and repository policy, verify the provider reports the PR merged into the configured default branch, then move the issue to Done with a short result comment. Do not rerun the full suite in a clean post-merge worktree.
+
+For a non-code artifact, use the `artifact` boundary and close the issue only after its acceptance checks pass. Never select a second issue in the same invocation.

@@ -15,4 +15,4 @@ The caller entry policy controls advancement and authority throughout.
 
 Hand back a failed artifact to its owner. Do not silently let one specialist absorb another's independence contract.
 
-Specialists never mutate Linear independently. Under autonomous policy they also never perform state-changing Git/provider operations; they return structured proposals to deterministic code. Semi/manual authority remains limited by the explicit caller boundary/stage.
+Specialists never mutate Linear or perform state-changing Git/provider operations independently; they return results to the active entry. Semi/manual authority remains limited by the explicit caller boundary/stage.

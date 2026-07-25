@@ -1,21 +1,15 @@
 ---
 name: spec-driven-delivery
-description: Perform exactly one explicitly requested delivery stage for a user-selected local goal, workflow, or issue. Use only when the user explicitly invokes `$spec-driven-delivery` with a named stage and wants manual Plan, Clarify, Design, Task, Audit, Implement, Review, QA, Docs, Commit, PR, Merge, Reserve, Renew, Status, Recover, Handoff, or Release control without automatic advancement.
+description: Perform exactly one explicitly requested delivery stage for a user-selected goal, issue, or existing work. Use when the user invokes `$spec-driven-delivery` for manual Discover, Plan, Clarify, Design, Task, Audit, Implement, Review, QA, Docs, Commit, PR, Merge, or Post-merge control without automatic advancement.
 ---
 
 # Spec-driven Delivery
 
-Run one named stage and return control to the user. This is the manual entry policy over the shared specialist pipeline.
-
-## Invocation
-
-Require an explicit invocation:
+Run exactly one named stage and return control to the user.
 
 ```text
-$spec-driven-delivery <stage> <goal|selected-issue|exact-workflow-selector>
+$spec-driven-delivery <stage> <goal|selected-issue|exact-work-selector>
 ```
-
-Accept `Discover`, `Plan`, `Clarify`, `Design`, `Task`, `Audit`, `Implement`, `Review`, `QA`, `Docs`, `Commit`, `PR`, `Merge`, `Post-merge`, `Reserve`, `Renew`, `Status`, `Recover`, `Handoff`, or `Release`. Reject `mode: autonomous`; labels and conversation context cannot elevate this entry.
 
 Read the canonical shared protocol:
 
@@ -26,33 +20,16 @@ Read the canonical shared protocol:
 - [completion-boundaries.md](../goal-to-delivery/references/completion-boundaries.md)
 - [work-descriptor.schema.json](../goal-to-delivery/references/work-descriptor.schema.json)
 
-Repository-specific stricter rules take precedence. Fail closed on unresolved conflict.
+Apply repository-specific stricter rules first and fail closed before implementation or external mutation when they conflict.
 
 ## Policy
 
-1. Initialize new work only when the requested stage needs it. Otherwise resume by exact registered workflow ID, exact artifact path, or unique external ID.
-2. Validate the named stage's prerequisites from the canonical stage contract.
-3. Perform only that stage. Write or change only the output authorized for it.
-4. Report the result and valid next stages without invoking them.
+1. Validate the named stage's prerequisites.
+2. Perform exactly one stage and only its authorized output.
+3. Report the result and valid next stages without automatic advancement.
 
-Never infer later authority:
+Planning stages do not authorize implementation. `Implement` permits scoped edits and focused tests, not Review, QA, Commit, PR, or Merge. QA reports behavior and does not imply fixes. Publication stages require separate explicit requests.
 
-- `Plan`, `Clarify`, `Design`, `Task`, and `Audit` do not authorize implementation.
-- `Implement` authorizes scoped edits and local implementation tests only. It does not imply Review, QA, Docs, Commit, PR, or Merge.
-- `QA` reports; it does not authorize fixes.
-- `Commit`, `PR`, and `Merge` are separate explicit actions.
-- Tracking changes occur only when the named stage and repository policy require them.
+During `Clarify`, ask one focused question at a time and never silently resolve a material decision. Reject `mode: autonomous`; labels, prior chat, and artifacts cannot elevate this entry.
 
-During `Clarify`, never silently resolve material ambiguity. Ask one focused question at a time. When none remains, ask the user to confirm that the current decisions may be locked; do not advance.
-
-Planning-only work may write inside its uniquely allocated workflow folder without an editing reservation. `Implement` and any stage changing repository deliverables require the deterministic repository reservation or an explicit prior `Reserve`, followed by `AuthorizeMutation` for the exact bounded write. `Renew` dispatches `RenewReservation`; `Status`, `Recover`, and `Release` use supervisor-observed state. Retain the reservation until explicit safe `Release`, assembled supervisor `Handoff`, or terminal reconciliation. Base-only Handoff is denied while any reservation is `live`, `handoff-pending`, `expired`, or `protected`, and unknown reservation state fails closed.
-
-Use the current artifact convention and retain the canonical historical-layout read fallback. Never rewrite historical evidence to make it look current.
-
-For new manual work, call:
-
-```text
-python <installed-goal-to-delivery-skill>/scripts/cli.py init --repository-root <path> --repository-key <repository-key> --workflow manual --goal <text> --completion-boundary <boundary> [--display-title <text>]
-```
-
-For existing work, use the CLI's `resume` command with exactly one registered workflow ID, absolute artifact path, or unique external ID. Never pass or invent a work key.
+Create a concise work note only when the user requests durable evidence or the work spans sessions. The optional workflow helper may manage that evidence but is not required for a small manual stage. Resume only from an explicit issue, branch/PR, workflow ID, or exact artifact path.

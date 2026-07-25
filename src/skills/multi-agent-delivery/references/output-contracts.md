@@ -11,7 +11,7 @@
 
 - Passing independent audit
 - Bounded tasks, likely files/modules, acceptance criteria, tests, docs impact, and dependencies
-- Active entry authority and required repository reservation
+- Active entry authority and intended repository scope
 
 ## Review prerequisite
 
@@ -28,7 +28,7 @@
 ## Completion prerequisite
 
 - Required review, QA, docs, and local gates pass at the declared boundary
-- External/Git actions have separate explicit or deterministic authority
+- External/Git actions have separate explicit or autonomous-entry authority
 - Evidence identifies the exact target and anything still unverified
 
 Every producer uses the descriptor's registered current path. An explicitly supplied historical layout is readable fallback only and remains unchanged.

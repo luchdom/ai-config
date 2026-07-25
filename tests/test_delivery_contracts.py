@@ -22,17 +22,13 @@ def load_aggregate_validation():
 aggregate_validation = load_aggregate_validation()
 
 from validation.delivery_contracts import (
-    AUTONOMOUS_PROMPT_BUDGET_BYTES,
-    AUTONOMOUS_RUNTIME_REFERENCE,
     CANONICAL_REFERENCES,
-    check_autonomous_prompt_surface,
     check_artifact_layout,
     check_canonical_references,
     check_entry_policies,
     check_forbidden_operational_terms,
     check_projection_manifest,
     check_shared_specialists_and_routing,
-    check_supervisor_core,
     validate_repository,
 )
 
@@ -84,45 +80,16 @@ def canonical_fixture(root: Path) -> None:
     for name in CANONICAL_REFERENCES:
         content = valid_schema() if name.endswith(".json") else f"# {name}\n"
         write(root, f"{references}/{name}", content)
-    write(
-        root,
-        f"{references}/{AUTONOMOUS_RUNTIME_REFERENCE}",
-        "adapter-prepared exactly one issue fail closed repository rules planner product designer tasker "
-        "independent auditor implementer independent code reviewer runtime QA documentation structured pause "
-        "material decision adapter owns checkpoint external mutation stop merge SHA",
-    )
-    for skill in ("goal-to-delivery", "spec-driven-delivery"):
+    for skill in ("goal-to-delivery", "spec-driven-delivery", "linear-delivery-loop"):
         if skill == "goal-to-delivery":
             prefix = "references"
         else:
             prefix = "../goal-to-delivery/references"
         links = "\n".join(f"- [{name}]({prefix}/{name})" for name in CANONICAL_REFERENCES)
         write(root, f"src/skills/{skill}/SKILL.md", links)
-    write(
-        root,
-        "src/skills/linear-delivery-loop/SKILL.md",
-        f"[{AUTONOMOUS_RUNTIME_REFERENCE}]"
-        f"(../goal-to-delivery/references/{AUTONOMOUS_RUNTIME_REFERENCE})",
-    )
 
 
 class DeliveryContractTests(unittest.TestCase):
-    def test_repository_autonomous_prompt_surface_is_compact(self) -> None:
-        self.assertEqual([], check_autonomous_prompt_surface(ROOT))
-        entry = ROOT / "src/skills/linear-delivery-loop/SKILL.md"
-        contract = (
-            ROOT
-            / "src/skills/goal-to-delivery/references"
-            / AUTONOMOUS_RUNTIME_REFERENCE
-        )
-        self.assertLessEqual(
-            len(entry.read_bytes()) + len(contract.read_bytes()),
-            AUTONOMOUS_PROMPT_BUDGET_BYTES,
-        )
-
-    def test_repository_supervisor_core_contract_is_complete(self) -> None:
-        self.assertEqual([], check_supervisor_core(ROOT))
-
     def test_repository_satisfies_delivery_contracts(self) -> None:
         self.assertEqual([], validate_repository(ROOT))
 
@@ -157,147 +124,6 @@ class DeliveryContractTests(unittest.TestCase):
             self.assertTrue(any("Missing canonical" in finding for finding in findings))
             self.assertTrue(any("Competing delivery reference" in finding for finding in findings))
             self.assertTrue(any("broken local reference" in finding for finding in findings))
-
-    def test_entry_specific_canonical_links_are_enforced(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            canonical_fixture(root)
-            self.assertEqual([], check_canonical_references(root))
-            goal = root / "src/skills/goal-to-delivery/SKILL.md"
-            goal.write_text(
-                goal.read_text(encoding="utf-8").replace(
-                    "- [quality-gates.md](references/quality-gates.md)\n", ""
-                ),
-                encoding="utf-8",
-            )
-            findings = check_canonical_references(root)
-            self.assertTrue(any("quality-gates.md" in finding for finding in findings))
-
-    def test_autonomous_entry_rejects_detailed_schema_script_and_renamed_links(self) -> None:
-        cases = (
-            "../goal-to-delivery/references/delivery-stages.md",
-            "../goal-to-delivery/references/work-descriptor.schema.json",
-            "./scripts/cli.py",
-            "./references/supervisor-core.md",
-            "./references/renamed-policy.md",
-        )
-        for target in cases:
-            with self.subTest(target=target), tempfile.TemporaryDirectory() as directory:
-                root = Path(directory)
-                canonical_fixture(root)
-                skill = root / "src/skills/linear-delivery-loop/SKILL.md"
-                destination = (skill.parent / target).resolve()
-                if not destination.exists():
-                    destination.parent.mkdir(parents=True, exist_ok=True)
-                    destination.write_text("diagnostic", encoding="utf-8")
-                skill.write_text(
-                    skill.read_text(encoding="utf-8") + f"\n[extra]({target})\n",
-                    encoding="utf-8",
-                )
-                findings = check_autonomous_prompt_surface(root)
-                self.assertTrue(any("must link directly only" in finding for finding in findings))
-
-    def test_supported_local_reference_forms_resolve_the_same_compact_contract(self) -> None:
-        target = f"../goal-to-delivery/references/{AUTONOMOUS_RUNTIME_REFERENCE}"
-        forms = (
-            f"[runtime][contract]\n\n[contract]: {target}\n",
-            f'[runtime][contract]\n\n[contract]:\n  {target}\n  "runtime title"\n',
-            f"[runtime][contract]\n\n[contract]:\n  <{target}>\n  'runtime title'\n",
-            f"[runtime][contract]\n\n[contract]: <{target}> (runtime title)\n",
-            f"[runtime][]\n\n[runtime]: {target}\n",
-            f"[runtime]\n\n[runtime]: {target}\n",
-            f"[runtime](<{target}>)\n",
-            f'<a href="{target}">runtime</a>\n',
-        )
-        for content in forms:
-            with self.subTest(content=content), tempfile.TemporaryDirectory() as directory:
-                root = Path(directory)
-                canonical_fixture(root)
-                write(root, "src/skills/linear-delivery-loop/SKILL.md", content)
-                self.assertEqual([], check_autonomous_prompt_surface(root))
-
-    def test_external_and_fragment_references_are_excluded_from_local_closure(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            canonical_fixture(root)
-            skill = root / "src/skills/linear-delivery-loop/SKILL.md"
-            skill.write_text(
-                skill.read_text(encoding="utf-8")
-                + "\n[web][external]\n[external]:\n  <https://example.invalid/policy>\n"
-                + "[section](#policy)\n<a href='mailto:owner@example.invalid'>owner</a>\n",
-                encoding="utf-8",
-            )
-            self.assertEqual([], check_autonomous_prompt_surface(root))
-
-    def test_alternate_local_reference_forms_cannot_bypass_entry_closure(self) -> None:
-        target = "../goal-to-delivery/references/delivery-stages.md"
-        forms = (
-            f"[details][protocol]\n\n[protocol]: {target}\n",
-            f'[details][protocol]\n\n[protocol]:\n  {target}\n  "protocol title"\n',
-            f"[details][protocol]\n\n[protocol]:\n  <{target}>\n  'protocol title'\n",
-            f"[details][protocol]\n\n[protocol]: <{target}> (protocol title)\n",
-            f"[details][]\n\n[details]: {target}\n",
-            f"[details]\n\n[details]: {target}\n",
-            f"[details](<{target}>)\n",
-            f"<a href='{target}'>details</a>\n",
-        )
-        for extra in forms:
-            with self.subTest(extra=extra), tempfile.TemporaryDirectory() as directory:
-                root = Path(directory)
-                canonical_fixture(root)
-                skill = root / "src/skills/linear-delivery-loop/SKILL.md"
-                skill.write_text(skill.read_text(encoding="utf-8") + "\n" + extra, encoding="utf-8")
-                findings = check_autonomous_prompt_surface(root)
-                self.assertTrue(any("must link directly only" in finding for finding in findings))
-
-    def test_autonomous_compact_contract_rejects_indirect_local_links(self) -> None:
-        forms = (
-            "[details](delivery-stages.md)",
-            "[details][protocol]\n\n[protocol]: <delivery-stages.md>",
-            '[details][protocol]\n\n[protocol]:\n  delivery-stages.md\n  "protocol title"',
-            "[details][protocol]\n\n[protocol]:\n  <delivery-stages.md>\n  'protocol title'",
-            "[details][protocol]\n\n[protocol]: <delivery-stages.md> (protocol title)",
-            "[details][]\n\n[details]: delivery-stages.md",
-            "[details]\n\n[details]: delivery-stages.md",
-            "[details](<delivery-stages.md>)",
-            '<a href="delivery-stages.md">details</a>',
-        )
-        for extra in forms:
-            with self.subTest(extra=extra), tempfile.TemporaryDirectory() as directory:
-                root = Path(directory)
-                canonical_fixture(root)
-                contract = (
-                    root
-                    / "src/skills/goal-to-delivery/references"
-                    / AUTONOMOUS_RUNTIME_REFERENCE
-                )
-                contract.write_text(
-                    contract.read_text(encoding="utf-8") + "\n" + extra + "\n",
-                    encoding="utf-8",
-                )
-                findings = check_autonomous_prompt_surface(root)
-                self.assertTrue(any("indirect local prompt references" in finding for finding in findings))
-
-    def test_autonomous_prompt_budget_and_semantic_anchors_are_enforced(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            canonical_fixture(root)
-            contract = (
-                root
-                / "src/skills/goal-to-delivery/references"
-                / AUTONOMOUS_RUNTIME_REFERENCE
-            )
-            contract.write_text("# Compact\n", encoding="utf-8")
-            findings = check_autonomous_prompt_surface(root)
-            self.assertTrue(any("missing semantic anchors" in finding for finding in findings))
-
-            contract.write_text(
-                contract.read_text(encoding="utf-8")
-                + ("x" * (AUTONOMOUS_PROMPT_BUDGET_BYTES + 1)),
-                encoding="utf-8",
-            )
-            findings = check_autonomous_prompt_surface(root)
-            self.assertTrue(any("exceeds 8192 UTF-8 bytes" in finding for finding in findings))
 
     def test_renamed_normative_protocol_copy_fails(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -352,8 +178,8 @@ class DeliveryContractTests(unittest.TestCase):
             linear = write(
                 root,
                 "src/skills/linear-delivery-loop/SKILL.md",
-                "autonomous PreparedIteration capability deterministic adapter queue-selection "
-                "does not implement selection or mutation",
+                "autonomous .ai/loop.json autonomous label human-decision label at most one "
+                "In Progress Backlog Done",
             )
             self.assertEqual([], check_entry_policies(root))
             linear.write_text("autonomous helper", encoding="utf-8")
