@@ -1,6 +1,6 @@
 interface:
   display_name: "Linear Delivery Loop"
-  short_description: "Run one prepared autonomous Linear iteration"
-  default_prompt: "Use $linear-delivery-loop with this adapter-prepared iteration capability."
+  short_description: "Run one MVP autonomous Linear iteration"
+  default_prompt: "Use $linear-delivery-loop to run one autonomous iteration for this repository."
 policy:
   allow_implicit_invocation: false

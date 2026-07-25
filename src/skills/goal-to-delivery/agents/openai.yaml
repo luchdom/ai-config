@@ -1,6 +1,6 @@
 interface:
   display_name: "Goal to Delivery"
-  short_description: "Deliver one selected goal to a declared boundary"
-  default_prompt: "Use $goal-to-delivery to deliver this goal to tested working-tree changes."
+  short_description: "Deliver one selected goal semi-autonomously"
+  default_prompt: "Use $goal-to-delivery to deliver this selected goal to the requested completion boundary."
 policy:
   allow_implicit_invocation: false
