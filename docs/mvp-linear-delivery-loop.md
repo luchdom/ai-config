@@ -11,12 +11,15 @@ This is a small, local-first loop for one developer completing a repository back
 
 ## Linear contract
 
-Use ordinary workflow states such as `Backlog`, `In Progress`, and `Done` plus two labels:
+Use ordinary workflow states such as `Backlog`, `In Progress`, and `Done` plus labels with distinct responsibilities:
 
 - `autonomous`: the issue may be selected by the scheduled loop.
+- `needs-decision`: the backlog issue needs one owner choice before it can be refined or made autonomous.
 - `needs-human`: the active issue is paused for an owner decision.
 
 An eligible issue describes one bounded, achievable, locally testable goal with acceptance criteria. Keep external-only infrastructure work out of the autonomous queue until the locally runnable product foundation is complete.
+
+`needs-decision` is optional backlog-curation metadata, not loop state and not a fourth delivery entry. Use it only when a specific owner choice blocks readiness. Ordinary issue cleanup—comparing a description with current code, splitting stale scope, or adding acceptance criteria—can happen collaboratively without a formal delivery workflow or another label. Record the material decision in Linear, remove `needs-decision` after it is resolved, and add `autonomous` only when the issue is actually eligible.
 
 The one-issue rule is intentionally visible: at most one issue may be in `In Progress`. An active issue without `autonomous` belongs to the attended workflow, so the scheduled loop stops without claiming anything.
 
@@ -55,4 +58,4 @@ If time or test budgets expire, the loop pushes coherent work when safe, adds a 
 
 ## Porting to another project
 
-Sync the shared skills and project instructions, add a project-specific `.ai/loop.json`, create the two labels, and document that repository's local validation command. No shared service or copied supervisor code is required.
+Sync the shared skills and project instructions, add a project-specific `.ai/loop.json`, create the `autonomous` and `needs-human` runtime labels, optionally add `needs-decision` for backlog curation, and document that repository's local validation command. No shared service or copied supervisor code is required.

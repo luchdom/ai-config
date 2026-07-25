@@ -26,6 +26,14 @@ The MVP deliberately uses existing systems instead of a separate orchestration s
 
 The loop handles one issue at a time. It resumes eligible autonomous work, does nothing while attended work is active, and selects a new labeled backlog issue only when no work is active. Code is Done only after required local checks, one review, applicable QA, and merge into the default branch.
 
+Linear labels have separate responsibilities:
+
+- `autonomous` grants the scheduled loop permission to select a refined backlog issue.
+- `needs-decision` marks backlog work that needs one owner choice before it can be refined or made autonomous. It is a lightweight curation label, not another delivery workflow.
+- `needs-human` pauses an issue that is already active in the autonomous loop.
+
+Unlabeled backlog issues may be reviewed and refined collaboratively without starting a full delivery workflow. Record any material owner decision in Linear, remove `needs-decision` when resolved, and add `autonomous` only after the goal and acceptance criteria are bounded and locally testable.
+
 See [MVP Linear delivery loop](docs/mvp-linear-delivery-loop.md) for setup and operation.
 
 ## Harness coverage
@@ -40,7 +48,7 @@ A useful engineering harness needs seven capabilities. The MVP covers all seven 
 | Verification | Focused tests, one local project gate, one code review, and acceptance-driven runtime QA check the work. |
 | Memory | Linear comments/issues, Git/PR history, curated docs, and an optional concise `docs-ai` note persist useful knowledge. |
 | Sandboxes | Codex repository/worktree isolation and repository-owned disposable test data constrain execution. |
-| Human hooks | A `needs-human` label, structured Linear decision comment, Codex task inbox, and optional ntfy notification pause the loop safely. |
+| Human hooks | `needs-decision` marks pre-work owner choices; `needs-human`, a structured Linear decision comment, the Codex task inbox, and optional ntfy notification pause active work safely. |
 
 Memory curation and observability are intentionally modest: persist decisions and useful documentation, and rely on scheduled-task history plus Linear/Git records. Add more machinery only after the MVP exposes a concrete gap.
 
