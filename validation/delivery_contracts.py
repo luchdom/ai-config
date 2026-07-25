@@ -286,20 +286,19 @@ def check_entry_policies(root: Path) -> list[str]:
         _require_fragments(
             root,
             skills / "linear-delivery-loop" / "SKILL.md",
-            ("autonomous", "PreparedIteration", "capability", "deterministic adapter", "queue-selection"),
+            (
+                "autonomous",
+                ".ai/loop.json",
+                "autonomous label",
+                "human-decision label",
+                "at most one",
+                "In Progress",
+                "Backlog",
+                "Done",
+            ),
             "autonomous entry policy",
         )
     )
-
-    if (skills / "linear-delivery-loop" / "SKILL.md").is_file():
-        linear_text = _read(skills / "linear-delivery-loop" / "SKILL.md").casefold()
-        if not any(
-            phrase in linear_text
-            for phrase in ("does not implement", "does not contain", "must not implement", "never implements")
-        ):
-            findings.append(
-                "src/skills/linear-delivery-loop/SKILL.md: must deny independent selection/mutation implementation."
-            )
     return findings
 
 

@@ -1,27 +1,21 @@
 ---
 name: goal-to-delivery
-description: Deliver one user-selected local goal or explicitly selected issue through the shared specialist pipeline to a declared completion boundary. Use only when the user explicitly invokes `$goal-to-delivery` for semi-autonomous delivery; never select queue work or accept self-declared autonomous authority.
+description: Deliver one user-selected local goal or explicitly selected issue semi-autonomously to a declared completion boundary. Use only when the user explicitly invokes `$goal-to-delivery`; continue routine stages automatically, ask for material decisions, and never perform queue selection or self-declare autonomous mode.
 ---
 
 # Goal to Delivery
 
-Deliver one bounded goal automatically. This is the semi-autonomous entry policy, not a separate agent stack.
+Deliver one bounded goal using the lightest applicable workflow.
 
 ## Invocation
-
-Require an explicit invocation:
 
 ```text
 $goal-to-delivery <goal-or-selected-issue> [--completion artifact|working-tree|commit|pr|merge]
 ```
 
-Default to `workSource: local` and `completionBoundary: working-tree`. Use `artifact` for accepted non-code output. Accept an issue only when the user selected it explicitly; never search a queue or select a second item.
+Default to a local goal and the `working-tree` boundary. Accept a Linear issue only when the user selected it explicitly. Never perform queue selection, start a second goal, or accept `mode: autonomous`; backlog polling belongs to `$linear-delivery-loop`.
 
-Reject `mode: autonomous`, an `autonomous` label as a mode switch, or any caller-supplied capability that did not come through `$linear-delivery-loop`. An explicit prepared autonomous iteration belongs to that entry instead.
-
-## Canonical contract
-
-Before delivery, read and follow:
+Read the canonical shared protocol:
 
 - [delivery-stages.md](./references/delivery-stages.md)
 - [artifact-contract.md](./references/artifact-contract.md)
@@ -30,39 +24,18 @@ Before delivery, read and follow:
 - [completion-boundaries.md](./references/completion-boundaries.md)
 - [work-descriptor.schema.json](./references/work-descriptor.schema.json)
 
-These references are the sole canonical cross-tool delivery protocol. Repository guidance owns repository-specific commands, domain rules, definitions of done, and stricter safety constraints. Apply user/system requirements and stricter repository safety first, this entry policy second, then the shared contract. Fail closed on an unresolved conflict or attempted weakening.
+Repository-specific commands and stricter safety rules take precedence; unresolved conflicts fail closed before implementation or external mutation.
 
 ## Policy
 
-1. Initialize or exactly resume one schema-valid work descriptor with the bundled deterministic workflow helper. Never infer resume from chat history, similar goal text, a slug, or the latest folder.
-2. Discover repository instructions and relevant patterns.
-3. Advance through applicable Plan, Clarify, Design, Task, Audit, Implement, Review, QA, and Docs stages without routine approval.
-4. Return to planning/tasking for safely repairable audit findings. Return to implementation for scoped review or QA defects within the active retry budget.
-5. Record safe assumptions. Ask one focused question only when a material decision cannot be resolved safely from user requirements, repository evidence, or conservative precedent.
-6. Stop exactly at the declared completion boundary and never infer additional Git, provider, or tracking authority.
+1. Discover the repository and define a bounded outcome and acceptance criteria.
+2. Plan and task inline for routine work. Use a formal plan, design, task breakdown, or independent audit only when risk or complexity justifies it.
+3. Advance automatically through applicable implementation, one code review, runtime QA, and documentation checks.
+4. Repair scoped findings within a small retry budget. Ask one focused question when a material decision cannot be safely derived.
+5. Stop exactly at the declared completion boundary.
 
-Acquire the repository editing reservation before automatically changing repository deliverables. Planning evidence isolated to the workflow folder may defer that reservation. Preserve dirty or unmerged work and its reservation when a material clarification blocks progress.
+The invocation authorizes scoped repository edits and local validation through `working-tree`. `commit`, `pr`, and `merge` require the declared boundary or a later explicit grant. A selected Linear issue may be updated only when repository tracking policy allows it; a local goal performs no Linear mutation.
 
-## Authority boundary
+Use the optional workflow helper when durable multi-session evidence is valuable. It is not required for a small goal. Resume explicit work by issue, branch/PR, workflow ID, or exact artifact path; never guess from the newest folder or similar goal text.
 
-The user's invocation authorizes scoped repository edits and local validation through `working-tree` unless a different boundary is explicit. It does not authorize queue selection, autonomous mode, unrelated work, or broader external mutation.
-
-- `commit`, `pr`, and `merge` require the declared boundary or a later explicit grant.
-- Linear is optional. A selected linked issue follows repository tracking policy; a local goal performs no Linear mutation.
-- Specialists do not independently mutate Linear. Autonomous Git/provider mutation is never routed through this entry.
-- Stop after one goal, including after completion or pause.
-
-Report the achieved boundary, artifacts, validation evidence, assumptions, and any exact decision or authority still required.
-
-Use the installed skill's deterministic CLI for local/semi work:
-
-```text
-python <installed-goal-to-delivery-skill>/scripts/cli.py init --repository-root <path> --repository-key <repository-key> --workflow semi-autonomous --goal <text> --completion-boundary <boundary> [--display-title <text>]
-python <installed-goal-to-delivery-skill>/scripts/cli.py resume --repository-root <path> --repository-key <repository-key> (--workflow-id <uuid>|--artifact-path <absolute-path>|--external-id <canonical-id>)
-python <installed-goal-to-delivery-skill>/scripts/cli.py attach --repository-root <path> --repository-key <repository-key> --workflow-id <uuid> --provider linear --external-id <canonical-id>
-python <installed-goal-to-delivery-skill>/scripts/cli.py handoff --source-root <path> --destination-root <path> --repository-key <repository-key> --workflow-id <uuid> --expected-path <repo-relative-path> [--expected-path <repo-relative-path> ...]
-```
-
-Do not pass a work key to `init`; only the helper allocator or a later trusted provider adapter may supply one. `repository-key` is repository configuration, not the artifact work key, and is bound to the repository's state home. Use `attach` only after explicit tracking authority, and `handoff` only after explicit workflow-managed Handoff authorization.
-
-For `handoff`, repeat `--expected-path` once for every intended Git-changed user path. The set must match the observed change scope exactly. Do not list the selected workflow's `workflow.json`; the helper includes that internal descriptor itself. See [artifact-contract.md](./references/artifact-contract.md) for the fail-closed scope, destination, evidence, and authority rules.
+Report the achieved boundary, changed scope, validation, assumptions, and any remaining decision.

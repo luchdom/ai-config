@@ -1,31 +1,27 @@
 # Delivery Stages
 
-Protocol version: `2.0`
+These stages and specialists are reusable capabilities, not a mandatory nine-agent chain. The active entry decides which stages apply and whether to advance.
 
-This is the canonical cross-tool stage and ownership contract. Entry policy determines advancement; specialists do not.
+| Stage | Typical owner | Minimum useful outcome |
+|---|---|---|
+| `discover` | active agent with `$repo-discovery` | Relevant instructions, patterns, and commands |
+| `plan` | planner or active agent | Bounded approach, acceptance criteria, risks, and tests |
+| `clarify` | planner or active agent | Safe assumptions recorded or one material question raised |
+| `design` | product-designer when a material UI/UX choice exists | Implementer-ready direction |
+| `task` | tasker or active agent | Ordered implementation steps when decomposition helps |
+| `audit` | independent auditor for risky or complex plans | Pre-implementation gaps and verdict |
+| `implement` | matching implementer or active agent | Scoped changes and focused tests |
+| `review` | code-reviewer | One independent exact-diff review |
+| `qa` | qa with `$qa-verification` | Applicable real-behavior evidence |
+| `docs` | `$docs-as-code`; `$luchdom-docs` where applicable | Durable docs update or concrete no-impact result |
+| `publish` | authorized active agent | Requested commit or PR boundary |
+| `merge` | user or autonomous entry | Authorized merge after required local gates |
+| `post_merge` | explicit manual stage | Optional verification requested by the user or repository |
 
-| Stage | Primary owner | Required output or gate | Minimum prerequisite |
-|---|---|---|---|
-| `discover` | active orchestrator with `$repo-discovery` | Exact instructions, sources, patterns, tests, and conflicts | Goal or selected issue |
-| `plan` | `planner` | Goal/non-goals, approach/contracts, risks, tests, rollout, sources | Discovery evidence |
-| `clarify` | `planner` plus entry policy | Recorded assumptions and resolved or paused material decisions | Plan or focused ambiguity |
-| `design` | `product-designer` when required | Implementer-ready design artifact, or explicit not-required reason | Plan and current UI evidence |
-| `task` | `tasker` | Ordered tasks with acceptance, likely files, tests, and dependencies | Plan and required design |
-| `audit` | independent `auditor` | Adversarial verdict against source requirements and task readiness | Plan, tasks, required design |
-| `implement` | matching implementer | Scoped changes, tests, and real-file manifest | Passing audit and entry authority |
-| `review` | `code-reviewer` | Exact-diff findings against acceptance, security, tenancy, and conventions | Implemented diff and target identity |
-| `qa` | `qa` with `$qa-verification` | Real behavior evidence mapped to acceptance criteria | Review-ready implementation |
-| `docs` | `$docs-as-code`; `$luchdom-docs` where applicable | Durable docs update or explicit no-impact reason | Actual change and docs-impact declaration |
-| `publish` | authorized root or deterministic adapter | Requested commit/PR boundary with exact identities | Required local gates and explicit authority |
-| `merge` | user or deterministic adapter | Authorized squash merge after exact-head gates | Approved exact PR head |
-| `post_merge` | deterministic adapter or explicit manual stage | Clean repository gate at the exact returned merge SHA | Observed merge identity |
+The auditor evaluates a plan before implementation; the code reviewer examines implemented changes; QA exercises behavior. Use each when its distinct evidence is valuable. Low-risk routine work may plan and task inline, but autonomous code still requires one code review and applicable QA before merge.
 
-The auditor validates the plan before implementation. The code reviewer inspects what was implemented. QA exercises actual behavior. Documentation maintains durable guidance. Passing one contract never substitutes for another.
+- Semi-autonomous: continue applicable stages automatically, repair scoped findings within a small retry budget, and stop at its boundary.
+- Manual: perform exactly the named stage and never auto-advance.
+- Autonomous: select or resume at most one eligible Linear issue, checkpoint or request a decision when blocked, and stop after that issue completes or pauses.
 
-## Advancement
-
-- Semi-autonomous: continue safe applicable stages, loop back for scoped fixes, stop at the declared boundary, and never select another item.
-- Manual: validate prerequisites, execute exactly the named stage, report valid next stages, and never auto-advance.
-- Autonomous: accept one adapter-prepared capability, checkpoint through deterministic code, and stop on completion, pause, external wait, retry exhaustion, authority loss, or interruption.
-
-Design is required for a material user-facing screen, flow, interaction, or visual direction change. Record `design: not required` with a reason for backend-only, documentation-only, configuration-only, or purely mechanical UI work.
+Design is required only for a material user-facing flow, interaction, or visual direction change. Documentation-only, backend-only, configuration-only, and mechanical UI work may record that design is not required.

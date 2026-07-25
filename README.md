@@ -1,143 +1,83 @@
 # ai-config
 
-Central AI configuration for Codex, Claude Code, GitHub Copilot CLI, and Cursor.
+Reusable AI agents, skills, and project instruction templates for Codex, Claude Code, GitHub Copilot CLI, and Cursor.
 
-## Purpose
+## Delivery workflows
 
-- Keep reusable workflow policy and specialist skills in one canonical `src/` tree.
-- Reuse one agent set across autonomous, semi-autonomous, and manual delivery.
-- Generate tool-specific adapters instead of maintaining divergent copies.
-- Sync shared agents, skills, and small project-local routing instructions.
-- Keep delivery evidence local and repository-specific guidance close to the code it governs.
+There are exactly three user-facing entries:
 
-## Three delivery entries
+- `$linear-delivery-loop`: autonomous. A Codex scheduled task resumes or claims one eligible Linear issue, delivers it within small local budgets, and merges or checkpoints it.
+- `$goal-to-delivery <goal-or-selected-issue>`: semi-autonomous. The user chooses one goal; Codex advances applicable stages and stops at the declared boundary.
+- `$spec-driven-delivery <stage> <goal-or-selector>`: manual. Codex performs exactly one requested stage and returns control.
 
-These are the only user-facing workflow entries:
+For non-trivial work without an explicit entry, use manual `$spec-driven-delivery`. All entries share the canonical cross-tool protocol under [`src/skills/goal-to-delivery/references/`](src/skills/goal-to-delivery/references/) while repositories own their commands, domain rules, and stricter safety requirements. Unresolved conflicts fail closed before implementation or external mutation.
 
-- `$goal-to-delivery <goal-or-selected-issue>` delivers one user-selected goal semi-autonomously. It defaults to local work and tested `working-tree` output, never selects backlog work, and stops at the declared boundary.
-- `$spec-driven-delivery <stage> <goal-or-selector>` performs exactly one requested stage and returns control. It is the default for non-trivial work when no entry was explicitly chosen.
-- `$linear-delivery-loop <adapter-prepared-iteration>` applies autonomous policy to one capability prepared by deterministic adapter code. It does not accept a raw goal or implement queue selection in model instructions.
+The workflows reuse the same specialist skills, but they do not require every specialist for every issue. Routine work plans inline; risky work can add design, tasking, audit, runtime QA, or documentation stages as needed.
 
-`feature-driver` remains only as a deprecated one-migration-cycle alias to `$goal-to-delivery`; it never routes autonomous work.
+## MVP autonomous loop
 
-The entries reuse the same planner, optional product designer, tasker, independent auditor, implementers, code reviewer, runtime QA verifier, and documentation skills. Their difference is advancement and authority policy, not separate agent stacks.
+The MVP deliberately uses existing systems instead of a separate orchestration service:
 
-## Canonical protocol
+- Linear stores queue state, checkpoints, decisions, and completion.
+- `.ai/loop.json` stores the repository-specific team, labels, states, Git policy, and budgets.
+- A Codex scheduled task invokes `$linear-delivery-loop` every 15 minutes from one dedicated chat/project context.
+- Git branches and pull requests store implementation history and review.
+- Linear comments are the authoritative human-decision channel; ntfy is optional best-effort attention only.
 
-The sole cross-tool delivery protocol lives in [`src/skills/goal-to-delivery/references/`](src/skills/goal-to-delivery/references/):
+The loop handles one issue at a time. It resumes eligible autonomous work, does nothing while attended work is active, and selects a new labeled backlog issue only when no work is active. Code is Done only after required local checks, one review, applicable QA, and merge into the default branch.
 
-- delivery stages and role ownership;
-- artifact identity/layout and historical fallback;
-- clarification policy;
-- distinct quality gates;
-- completion/publication boundaries;
-- the work-descriptor schema.
+See [MVP Linear delivery loop](docs/mvp-linear-delivery-loop.md) for setup and operation.
 
-Other workflow skills and project templates link to these files instead of copying the protocol. Repository `AGENTS.md` files and curated docs continue to own repository-specific commands, domain rules, definitions of done, and stricter safety requirements.
+## Harness coverage
 
-Precedence is user/system requirements and repository-specific stricter safety, then the explicitly invoked entry policy, then the canonical shared contract. An unresolved conflict fails closed before implementation or external mutation.
+A useful engineering harness needs seven capabilities. The MVP covers all seven without turning each one into a service:
 
-## Work artifacts
+| Component | MVP coverage |
+|---|---|
+| System prompt | Repository instructions plus the three explicit entry skills define behavior and authority. |
+| Tools | Codex local tools, Linear, Git/GitHub, and optional browser/HTTP checks provide only the needed capabilities. |
+| Context management | Skills load progressively; `.ai/loop.json`, the selected issue, repository instructions, and relevant code form the working set. |
+| Verification | Focused tests, one local project gate, one code review, and acceptance-driven runtime QA check the work. |
+| Memory | Linear comments/issues, Git/PR history, curated docs, and an optional concise `docs-ai` note persist useful knowledge. |
+| Sandboxes | Codex repository/worktree isolation and repository-owned disposable test data constrain execution. |
+| Human hooks | A `needs-human` label, structured Linear decision comment, Codex task inbox, and optional ntfy notification pause the loop safely. |
 
-New work is initialized by the deterministic helper into:
+Memory curation and observability are intentionally modest: persist decisions and useful documentation, and rely on scheduled-task history plus Linear/Git records. Add more machinery only after the MVP exposes a concrete gap.
 
-```text
-docs-ai/<work-key>-<slug>/
-  workflow.json
-  <date>-<slug>-plan.md
-  ...dated delivery evidence...
-```
-
-Work resumes only through an exact registered selector. Older numbered-and-dated workflow folders and flat `docs-ai/*` files remain readable historical evidence; current producers never rewrite or migrate them.
-
-Per-work evidence belongs in `docs-ai/`. Reusable how-tos, concepts, references, ADRs, runbooks, and troubleshooting belong in the repository's curated docs tree and may link to the shared protocol.
-
-The base helper binds `repositoryKey` to the normalized repository's state home; legacy unbound state requires attended reconciliation. Workflow-managed Handoff requires an exact repeated `--expected-path` scope, preserves the registry as authority, writes redacted hash-bound evidence, and transfers no reservation. See the canonical [artifact contract](src/skills/goal-to-delivery/references/artifact-contract.md) for the complete boundary and its distinction from native Codex **Hand off**.
-
-## Layout
+## Repository layout
 
 - `src/agents/`: canonical specialist agent definitions
 - `src/skills/`: canonical reusable skills and references
-- `src/project-templates/`: small project-local routing templates
+- `src/project-templates/`: project-local routing templates
 - `scripts/build.py`: generate tool adapters into `dist/`
-- `scripts/sync.py`: install generated output into user homes and optional project roots
-- `scripts/validate.py`: authoritative aggregate local validation
+- `scripts/sync.py`: install generated output into user homes and optional projects
+- `scripts/validate.py`: local repository validation
 - `dist/`: generated projections; never edit directly
 
-Agent frontmatter defines tool-specific model and sandbox metadata. The build generates Codex TOML agents, Claude and Copilot Markdown agents, Cursor rules, copied skills, and rendered project templates.
+Per-work evidence may live under `docs-ai/<work-key>-<slug>/`; durable reusable guidance belongs in the repository's curated docs. The optional workflow helper and descriptor remain available for multi-session work but are not required by the autonomous MVP.
 
-Each canonical agent uses YAML-like frontmatter:
-
-```md
----
-name: "planner"
-description: "Short agent description"
-codex_model: "gpt-5.6"
-codex_model_reasoning_effort: "high"
-codex_sandbox_mode: "workspace-write"
-claude_model: "opus"
-claude_effort: "high"
----
-```
-
-Planner, auditor, and code-reviewer use the deeper review profile. Product design, tasking, implementation, and QA use the repository's balanced profiles declared in their canonical files.
-
-Generated output includes:
-
-- `dist/codex/agents/*.toml` and `dist/codex/skills/*`
-- `dist/claude/agents/*.md` and `dist/claude/skills/*`
-- `dist/copilot/agents/*.agent.md` and `dist/copilot/skills/*`
-- `dist/cursor/rules/*.mdc`
-- tool-specific project templates under `dist/project-templates/`
-
-## Local workflow
-
-Validate all canonical sources and generated behavior:
-
-```powershell
-python .\scripts\validate.py
-```
-
-Generate adapters:
+## Build, validate, and install
 
 ```powershell
 python .\scripts\build.py
-```
-
-Bootstrap canonical sources from an existing global setup only when intentionally importing it:
-
-```powershell
-python .\scripts\bootstrap_existing.py
-```
-
-Install global outputs:
-
-```powershell
+python .\scripts\validate.py
 python .\scripts\sync.py --tool all
 ```
 
-Install project-local instruction files as well:
+Install project-local instruction files too:
 
 ```powershell
 python .\scripts\sync.py --tool all --project C:\path\to\repo
 ```
 
-Limit installation to one tool when needed:
+Use `--tool codex`, `claude`, `copilot`, or `cursor` to limit installation. `LUCHDOM_AI_CONFIG_DOCS` can override the shared curated-docs path rendered into project templates.
 
-```powershell
-python .\scripts\sync.py --tool codex
-python .\scripts\sync.py --tool claude
-python .\scripts\sync.py --tool copilot
-python .\scripts\sync.py --tool cursor --project C:\path\to\repo
-```
+Normal sync updates only marker-managed blocks in existing instruction files and preserves content outside them. Existing unmarked instruction files and generated skills remain untouched unless `--force` explicitly adopts or refreshes them.
 
-Set `LUCHDOM_AI_CONFIG_DOCS` before sync to override the shared curated-docs path rendered into project templates.
-
-Normal sync refreshes only marker-managed content in existing `AGENTS.md`, `CLAUDE.md`, and `.github/copilot-instructions.md`, preserving content outside the markers. Existing unmarked files remain untouched unless `--force` explicitly adopts them. Generated agents, skills, and Cursor rules remain skip-unless-`--force` where the sync contract says so.
-
-## Maintenance rules
+## Maintenance
 
 - Change `src/`, regenerate `dist/`, and validate; do not edit generated output.
-- Keep project templates concise routers, not copies of the canonical delivery protocol.
-- Use [`docs/external-tools.md`](docs/external-tools.md) for optional external tooling setup.
+- Keep project templates as concise routers rather than copies of the canonical protocol.
+- Keep credentials in environment variables, never repository files.
+- Use [external tools](docs/external-tools.md) only when optional tooling is requested.
 - Preserve unrelated user changes and historical `docs-ai` evidence.

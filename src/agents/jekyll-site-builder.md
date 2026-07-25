@@ -38,4 +38,4 @@ Verification:
 
 When finishing:
 - Report changed files, selected deployment mode, local build command, verification performed, and any remaining deployment or content assumptions.
-- Return a real-file change manifest to the caller. Do not mutate Linear independently. Under autonomous policy, do not perform state-changing Git/provider actions; the deterministic adapter owns them.
+- Return the changed-file scope to the caller. Do not mutate Linear or perform state-changing Git/provider actions independently; the active entry owns them.

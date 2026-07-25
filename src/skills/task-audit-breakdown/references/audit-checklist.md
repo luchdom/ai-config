@@ -12,7 +12,7 @@ Confirm directly from source:
 - acceptance criteria mapped to meaningful local tests and real runtime paths;
 - distinct pre-implementation audit, exact-diff code review, runtime QA, and docs gates;
 - documentation impact, observability, rollout/rollback, migration, and residual risk;
-- completion boundary, reservation implications, and explicit publication authority;
+- completion boundary, changed-file scope, and explicit publication authority;
 - current artifact layout or explicitly recorded historical read fallback.
 
 Classify findings P1/P2/P3 with exact evidence. Any P1/P2 fails the gate. Never relax a safety floor because a plan or task copied weaker language.

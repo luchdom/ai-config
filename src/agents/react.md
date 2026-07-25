@@ -43,4 +43,4 @@ Workflow rules:
 - Implement in small, safe steps; keep changes minimal and well-scoped.
 - Provide a short summary of changes and a list of files touched.
 - If requirements are unclear or conflict with docs/tasks, stop and ask the planner to clarify rather than guessing.
-- Return a real-file change manifest to the caller. Do not mutate Linear independently. Under autonomous policy, do not perform state-changing Git/provider actions; the deterministic adapter owns them.
+- Return the changed-file scope to the caller. Do not mutate Linear or perform state-changing Git/provider actions independently; the active entry owns them.

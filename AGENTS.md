@@ -11,9 +11,9 @@ Read [docs/external-tools.md](C:/dev/luchdom/ai-config/docs/external-tools.md) w
 - The sole canonical cross-tool protocol is under `src/skills/goal-to-delivery/references/`. Other entry skills and project templates link to it rather than copying it.
 - Repositories own their project-specific commands, domain rules, definitions of done, and stricter safety constraints.
 - Precedence is user/system requirements and repository-specific stricter safety, then the explicitly invoked entry policy, then the canonical shared contract. Unresolved conflict fails closed before implementation or external mutation.
-- New work uses the helper-registered `docs-ai/<work-key>-<slug>/` layout with dated artifacts. Existing numbered-and-dated folders and flat artifacts are historical read fallback only and must not be rewritten.
+- New work may use `docs-ai/<work-key>-<slug>/` for concise durable evidence. The helper is optional; existing historical artifacts must not be rewritten.
 - `feature-driver` is a deprecated one-migration-cycle semi-autonomous alias only. It never routes autonomous work.
-- Follow the canonical artifact contract for workflow-managed Handoff: repository authority stays registry-bound, the explicit expected-path scope must match observed Git changes, and the base transfer never moves a reservation. Native Codex **Hand off** grants no workflow authority.
+- The MVP autonomous entry uses Linear as its durable queue and `.ai/loop.json` as project configuration; it does not require a separate supervisor or memory service.
 
 ## When asked to install or sync AI config
 

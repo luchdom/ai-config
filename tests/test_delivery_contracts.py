@@ -178,8 +178,8 @@ class DeliveryContractTests(unittest.TestCase):
             linear = write(
                 root,
                 "src/skills/linear-delivery-loop/SKILL.md",
-                "autonomous PreparedIteration capability deterministic adapter queue-selection "
-                "does not implement selection or mutation",
+                "autonomous .ai/loop.json autonomous label human-decision label at most one "
+                "In Progress Backlog Done",
             )
             self.assertEqual([], check_entry_policies(root))
             linear.write_text("autonomous helper", encoding="utf-8")
