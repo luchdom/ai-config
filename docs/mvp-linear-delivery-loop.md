@@ -1,6 +1,6 @@
 # MVP Linear Delivery Loop
 
-This is a small, local-first loop for one developer completing a repository backlog. It has no CI dependency, supervisor service, lease database, or telemetry stack.
+This is a small, local-first loop for one developer completing a repository backlog. It has no CI dependency, supervisor service, lease database, or telemetry stack. A deterministic local lease file prevents overlapping scheduled invocations from working the same queue.
 
 ## Prerequisites
 
@@ -25,7 +25,7 @@ The one-issue rule is intentionally visible: at most one issue may be in `In Pro
 
 ## Repository configuration
 
-Copy the shape from [`project-config.example.json`](../src/skills/linear-delivery-loop/references/project-config.example.json) to `.ai/loop.json` in the target repository. Set the Linear team/project, default branch, and limits, then change `enabled` to `true` only for an attended pilot.
+Copy the shape from [`project-config.example.json`](../src/skills/linear-delivery-loop/references/project-config.example.json) to `.ai/loop.json` in the target repository. Set the Linear team/project, default branch, and limits, then change `enabled` to `true` for an attended pilot. Keep it enabled for scheduled runs only after that pilot passes.
 
 Recommended starting budgets are 45 minutes per invocation, 15 changed files, 800 changed lines, and 15 total test minutes. These are stop-and-split signals, not targets.
 
@@ -38,7 +38,11 @@ $linear-delivery-loop
 Run one MVP autonomous delivery iteration for this repository. Obey .ai/loop.json, select or resume at most one issue, and stop after completion, checkpoint, or a human-decision request.
 ```
 
-Start with an attended run. Confirm that the task can read Linear, find the repository configuration, leave a checkpoint, and stop cleanly. The current Codex task documentation does not promise overlap serialization, so do not reduce the interval unless observed runs reliably finish before the next invocation. If overlap becomes a real problem, add the smallest repository-local lock then.
+Start with an attended run. Confirm that the task can acquire and release the lease, read Linear, find the repository configuration, leave a checkpoint, and stop cleanly.
+
+Every invocation acquires a local lease before reading or mutating Linear, Git, notifications, or repository work. The lease is shared by worktrees and local checkouts configured for the same repository key plus Linear team/project. A concurrent invocation exits without mutation; the active owner may continue or checkpoint. The lease expires 15 minutes after the configured `maxRunMinutes`, allowing recovery after a killed process without permitting a normal in-budget run to overlap.
+
+Lock files live under the user state directory: `LUCHDOM_AI_STATE_HOME` when set, otherwise the platform-local Luchdom state folder. Valid expired locks recover automatically. Malformed lock state fails closed; verify that no invocation is active before moving that file aside for troubleshooting.
 
 ## Decisions and notifications
 

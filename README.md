@@ -20,6 +20,7 @@ The MVP deliberately uses existing systems instead of a separate orchestration s
 
 - Linear stores queue state, checkpoints, decisions, and completion.
 - `.ai/loop.json` stores the repository-specific team, labels, states, Git policy, and budgets.
+- A deterministic user-local lease prevents overlapping invocations from working the same Linear queue.
 - A Codex scheduled task invokes `$linear-delivery-loop` every 15 minutes from one dedicated chat/project context.
 - Git branches and pull requests store implementation history and review.
 - Linear comments are the authoritative human-decision channel; ntfy is optional best-effort attention only.

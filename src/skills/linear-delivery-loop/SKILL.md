@@ -22,6 +22,18 @@ Repository-specific commands and stricter safety rules take precedence. Never ex
 
 The normal state mapping is Backlog for eligible intake, In Progress for the single active issue, and Done only after the configured completion boundary.
 
+## Acquire the run lease
+
+After validating that `.ai/loop.json` exists and is enabled, acquire the deterministic cross-run lease before reading or mutating Linear, Git, notifications, or repository work. Run `python <this-skill-directory>/scripts/loop_lock.py acquire --repo-root <repository-root>` and retain the returned token only for release.
+
+- Exit `0` with `status: acquired`: continue this invocation.
+- Exit `3` with `status: busy`: another invocation owns this Linear queue; stop immediately without comments, notifications, or repository mutation.
+- Any other result: fail closed and report the local lock error without attempting delivery.
+
+The helper scopes the lock by repository key plus Linear team/project, so worktrees and separate local checkouts of the same queue contend. Its lease is `maxRunMinutes + 15` minutes. An expired valid lease is recovered atomically; malformed state is never overwritten.
+
+Before every return after acquisition—including completion, checkpoint, decision request, validation failure, or unexpected error—run `python <this-skill-directory>/scripts/loop_lock.py release --repo-root <repository-root> --token <token>`. Never store the token in Linear, Git, docs, or notifications. If the process is killed before release, a later invocation recovers the lease after expiry.
+
 ## Select or resume one issue
 
 Query the configured Linear team/project and re-read the result immediately before claiming:
