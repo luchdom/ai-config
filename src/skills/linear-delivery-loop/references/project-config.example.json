@@ -21,10 +21,10 @@
     "mergeMethod": "squash"
   },
   "limits": {
-    "maxRunMinutes": 45,
-    "maxFiles": 15,
-    "maxChangedLines": 800,
-    "maxTestMinutes": 15
+    "maxRunMinutes": 90,
+    "maxFiles": 30,
+    "maxChangedLines": 5000,
+    "maxTestMinutes": 30
   },
   "notifications": {
     "linearComments": true,

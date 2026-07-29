@@ -295,6 +295,9 @@ def check_entry_policies(root: Path) -> list[str]:
                 "In Progress",
                 "Backlog",
                 "Done",
+                "continuation issue",
+                "DECIDE <ISSUE> CUSTOM <SUGGESTION>",
+                "notification click target",
             ),
             "autonomous entry policy",
         )
