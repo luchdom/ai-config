@@ -179,11 +179,28 @@ class DeliveryContractTests(unittest.TestCase):
                 root,
                 "src/skills/linear-delivery-loop/SKILL.md",
                 "autonomous .ai/loop.json autonomous label human-decision label at most one "
-                "In Progress Backlog Done",
+                "In Progress Backlog Done continuation issue "
+                "DECIDE <ISSUE> CUSTOM <SUGGESTION> notification click target",
             )
             self.assertEqual([], check_entry_policies(root))
             linear.write_text("autonomous helper", encoding="utf-8")
             self.assertTrue(check_entry_policies(root))
+
+    def test_linear_loop_recommends_larger_implementation_budgets(self) -> None:
+        config = json.loads(
+            (ROOT / "src/skills/linear-delivery-loop/references/project-config.example.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertEqual(
+            {
+                "maxRunMinutes": 90,
+                "maxFiles": 30,
+                "maxChangedLines": 5000,
+                "maxTestMinutes": 30,
+            },
+            config["limits"],
+        )
 
     def test_feature_driver_routing_drift_fails(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

@@ -27,7 +27,7 @@ The one-issue rule is intentionally visible: at most one issue may be in `In Pro
 
 Copy the shape from [`project-config.example.json`](../src/skills/linear-delivery-loop/references/project-config.example.json) to `.ai/loop.json` in the target repository. Set the Linear team/project, default branch, and limits, then change `enabled` to `true` for an attended pilot. Keep it enabled for scheduled runs only after that pilot passes.
 
-Recommended starting budgets are 45 minutes per invocation, 15 changed files, 800 changed lines, and 15 total test minutes. These are stop-and-split signals, not targets.
+Recommended starting budgets are 90 minutes per invocation, 30 changed files, 5,000 changed lines, and 30 total test minutes. These are configurable planning thresholds and stop-and-split signals, not targets or reasons to abandon a coherent edit midway.
 
 ## Codex scheduled task
 
@@ -46,19 +46,25 @@ Lock files live under the user state directory: `LUCHDOM_AI_STATE_HOME` when set
 
 ## Decisions and notifications
 
-When product input is required, the loop keeps the issue active, adds `needs-human`, and posts options plus a recommendation. Reply in Linear with:
+When product input is required, the loop keeps the issue active, adds `needs-human`, and posts options plus a recommendation. Choose a listed option in Linear with:
 
 ```text
 DECIDE SAAS-123 B
 ```
 
-The next run acknowledges the latest matching owner decision, removes `needs-human`, and resumes. Linear is authoritative. The Codex scheduled-task inbox provides task visibility; ntfy may send one best-effort alert when enabled through `NTFY_TOPIC`, but notification delivery never controls workflow state.
+Or propose your own direction with:
+
+```text
+DECIDE SAAS-123 CUSTOM Keep the existing API and adapt only the client.
+```
+
+The next run acknowledges the latest matching owner decision and resumes when the selected option or custom direction resolves the question safely. If a custom suggestion is still ambiguous, the loop asks one focused follow-up and remains paused. Ordinary comments do not authorize work. Linear is authoritative. The Codex scheduled-task inbox provides task visibility; ntfy may send one best-effort alert when enabled through `NTFY_TOPIC`. The alert uses the Linear issue URL as its click target and includes the URL as a fallback, but notification delivery never controls workflow state.
 
 ## Completion and recovery
 
 For code, the loop runs focused checks, one standard local project gate, one review, and applicable behavior QA before squash merging the pull request. It verifies the provider reports the PR merged into the configured default branch, then moves the Linear issue to Done. It does not run a second full suite after merge.
 
-If time or test budgets expire, the loop pushes coherent work when safe, adds a concise checkpoint with the branch/PR and next action, leaves the issue active, and stops. Repeated technical failure becomes `needs-human`; create a child issue only for a genuinely separate prerequisite.
+If time or test budgets expire, the loop pushes coherent work when safe, adds a concise checkpoint with the branch/PR and next action, leaves the issue active, and stops. If a size limit is reached and the remaining scope is too large for another normal run, the loop creates at most one linked Linear continuation issue for a coherent, independently testable remainder. The parent and continuation acceptance criteria must preserve the original outcome without dropping scope; the continuation stays in Backlog and is not selected during the same invocation. When no safe boundary exists, the loop checkpoints the same issue or requests a decision instead. Repeated technical failure becomes `needs-human`; use a separate child issue only for a genuinely independent prerequisite or continuation.
 
 ## Porting to another project
 

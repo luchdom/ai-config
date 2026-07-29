@@ -40,7 +40,7 @@ Query the configured Linear team/project and re-read the result immediately befo
 
 1. If more than one issue is in the active state, comment on none and stop with a human-attention result.
 2. If one active issue lacks the configured autonomous label, assume attended work is in progress and stop.
-3. If one active autonomous issue has the configured human-decision label, resume only after a newer owner comment exactly matching `DECIDE <ISSUE> <OPTION>` answers the latest open question. Acknowledge the decision, remove the label, and continue. Otherwise stop.
+3. If one active autonomous issue has the configured human-decision label, inspect only newer owner comments that match `DECIDE <ISSUE> <OPTION>` or `DECIDE <ISSUE> CUSTOM <SUGGESTION>`. For a listed option, acknowledge the decision, remove the label, and continue. For `CUSTOM`, use the remaining non-empty text as the owner's proposed direction; continue only when it resolves the latest question safely, otherwise keep the label, post one focused follow-up, and stop. Ignore ordinary comments as authorization.
 4. If one eligible active autonomous issue exists, resume it.
 5. Otherwise select the highest-priority backlog issue with the autonomous label and without the human-decision label. Break ties by oldest creation time. Select no work when none is eligible.
 
@@ -54,8 +54,9 @@ Use the lightest applicable stages. Plan and task inline for routine work; creat
 - Run focused checks first and one repository-owned local validation command before merge.
 - Perform one independent code review and applicable runtime QA. Use HTTP, CLI, or browser behavior only when acceptance criteria require it.
 - Update durable documentation only when behavior, setup, architecture, or operations changed.
-- Keep total validation within `maxTestMinutes`, the run within `maxRunMinutes`, and the normal change within `maxFiles` and `maxChangedLines`.
-- When a limit would be exceeded, split a genuinely independent prerequisite into a child issue or request a human decision. Do not silently expand scope.
+- Keep total validation within `maxTestMinutes`, the run within `maxRunMinutes`, and the normal change within `maxFiles` and `maxChangedLines`. Treat the file and changed-line budgets as planning thresholds, not targets or reasons to abandon a coherent edit midway.
+- When a limit is reached and the remaining scope is still too large for one more normal run, create at most one linked Linear continuation issue for a coherent, independently testable remainder. Preserve the original outcome across the parent and continuation acceptance criteria, state what is complete and what remains, retain the same project and priority, and add the autonomous label only when the continuation is bounded and locally testable. Leave it in Backlog and never select it during the current invocation.
+- Complete the current issue before the continuation only when its retained acceptance criteria are satisfied at a reviewable boundary. If the work cannot be split without incomplete behavior, silently dropping an acceptance criterion, or making a product decision, do not create or close around a continuation; checkpoint the same issue or request a human decision instead.
 
 For safe interruptions or the run-time limit, commit and push coherent work when safe, add a concise Linear checkpoint with branch/PR, completed checks, and next action, leave the issue active, and stop. After bounded repair attempts, treat a technical blocker as a human decision instead of looping indefinitely.
 
@@ -66,9 +67,10 @@ Keep the issue active, add the configured human-decision label, and comment with
 - the blocked decision;
 - two or three concrete options and consequences;
 - one recommendation;
-- the exact reply syntax `DECIDE <ISSUE> <OPTION>`.
+- the listed-choice reply syntax `DECIDE <ISSUE> <OPTION>`;
+- the owner-suggestion reply syntax `DECIDE <ISSUE> CUSTOM <SUGGESTION>`.
 
-Send at most one best-effort ntfy notification when enabled. The Linear comment is authoritative; notification failure must not create retries or duplicate comments. Stop after requesting the decision.
+Send at most one best-effort ntfy notification when enabled. Use the Linear issue URL as the notification click target so opening the notification opens the decision, and include the URL in the message as a fallback when the transport cannot expose a click action. The Linear comment is authoritative; notification failure must not create retries or duplicate comments. Stop after requesting the decision.
 
 ## Complete
 

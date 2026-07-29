@@ -14,7 +14,7 @@ Use a separate pre-implementation auditor for high-risk, ambiguous, security-sen
 
 ## Budgets and failures
 
-Respect repository or `.ai/loop.json` budgets. For the MVP autonomous loop, focused checks should normally finish within five minutes and all validation within fifteen. Stop, checkpoint, and report the slow command when the budget is exceeded; do not keep retrying indefinitely.
+Respect repository or `.ai/loop.json` budgets. For the MVP autonomous loop, focused checks should normally finish within ten minutes and all validation within thirty. Stop, checkpoint, and report the slow command when the budget is exceeded; do not keep retrying indefinitely.
 
 Record exact commands, outcomes, and any unverified criterion in the Linear comment, pull request, or concise delivery note. Full raw logs, repeated aggregate runs, separate clean worktrees, and duplicate post-merge suites are unnecessary unless repository-specific rules demand them.
 
