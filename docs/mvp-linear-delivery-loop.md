@@ -27,7 +27,7 @@ The one-issue rule is intentionally visible: at most one issue may be in `In Pro
 
 Copy the shape from [`project-config.example.json`](../src/skills/linear-delivery-loop/references/project-config.example.json) to `.ai/loop.json` in the target repository. Set the Linear team/project, default branch, and limits, then change `enabled` to `true` for an attended pilot. Keep it enabled for scheduled runs only after that pilot passes.
 
-Recommended starting budgets are 90 minutes per invocation, 30 changed files, 5,000 changed lines, and 30 total test minutes. These are configurable planning thresholds and stop-and-split signals, not targets or reasons to abandon a coherent edit midway.
+Recommended starting budgets are 90 minutes per invocation, 30 changed files, 5,000 changed lines, and 30 total test minutes. Run and test limits are hard stops that require a checkpoint. File and changed-line limits are configurable planning thresholds and stop-and-split signals, not targets or reasons to abandon a coherent edit midway.
 
 ## Codex scheduled task
 
