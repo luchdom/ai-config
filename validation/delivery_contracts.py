@@ -298,6 +298,9 @@ def check_entry_policies(root: Path) -> list[str]:
                 "continuation issue",
                 "DECIDE <ISSUE> CUSTOM <SUGGESTION>",
                 "notification click target",
+                "quiet standalone scheduled run",
+                "set_thread_archived",
+                "raw archive directive",
             ),
             "autonomous entry policy",
         )

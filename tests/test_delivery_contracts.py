@@ -180,11 +180,28 @@ class DeliveryContractTests(unittest.TestCase):
                 "src/skills/linear-delivery-loop/SKILL.md",
                 "autonomous .ai/loop.json autonomous label human-decision label at most one "
                 "In Progress Backlog Done continuation issue "
-                "DECIDE <ISSUE> CUSTOM <SUGGESTION> notification click target",
+                "DECIDE <ISSUE> CUSTOM <SUGGESTION> notification click target "
+                "quiet standalone scheduled run set_thread_archived raw archive directive",
             )
             self.assertEqual([], check_entry_policies(root))
             linear.write_text("autonomous helper", encoding="utf-8")
             self.assertTrue(check_entry_policies(root))
+
+    def test_linear_loop_archives_only_quiet_standalone_runs(self) -> None:
+        skill = (ROOT / "src/skills/linear-delivery-loop/SKILL.md").read_text(encoding="utf-8")
+        guide = (ROOT / "docs/mvp-linear-delivery-loop.md").read_text(encoding="utf-8")
+
+        for fragment in (
+            "quiet standalone scheduled run",
+            "set_thread_archived",
+            "After releasing any acquired lease",
+            "Never archive an attended pilot",
+            "no newer valid owner decision",
+            "If native archiving is unavailable",
+        ):
+            self.assertIn(fragment, skill)
+        self.assertIn("Quiet-run cleanup", guide)
+        self.assertIn("Do not archive attended pilots", guide)
 
     def test_linear_loop_recommends_larger_implementation_budgets(self) -> None:
         config = json.loads(

@@ -48,6 +48,14 @@ Query the configured Linear team/project and re-read the result immediately befo
 
 Before claiming new work, confirm the issue states one achievable, bounded, locally testable goal with acceptance criteria. External-only setup, unclear product behavior, and oversized work are not eligible. Move one eligible issue to the active state, assign it to the configured owner when present, and add a short claim comment. Re-query active work; if the one-issue invariant no longer holds, stop.
 
+## Archive quiet standalone runs
+
+A quiet run is a standalone scheduled invocation that finds an expected no-work condition, produces no new actionable result, and makes no Linear, Git/GitHub, repository, pull-request, or notification mutation. Transient lease acquisition and release do not make a run non-quiet. Expected quiet outcomes are: the loop is disabled; the lease is busy; attended work is active; no eligible backlog issue exists; or an active `needs-human` issue has no newer valid owner decision and needs no new follow-up.
+
+After releasing any acquired lease, archive only the current quiet standalone scheduled run when the host exposes a native current-task archival capability. In Codex, call `set_thread_archived`; never emit a raw archive directive, automate the app UI, archive another task, or invent a filesystem workaround. If native archiving is unavailable, return one concise no-op result normally.
+
+Never archive an attended pilot, a scheduled task attached to an existing long-lived chat, or a run that claimed or resumed delivery work. Keep the run visible when it created or changed anything, requested or refined a decision, sent a notification, checkpointed work, encountered an error or invalid configuration, found multiple active issues, or discovered another condition that needs attention.
+
 ## Deliver within the MVP budget
 
 Use the lightest applicable stages. Plan and task inline for routine work; create a concise work note only when useful. Use specialists selectively based on risk, not as a mandatory chain.

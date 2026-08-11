@@ -25,7 +25,7 @@ The MVP deliberately uses existing systems instead of a separate orchestration s
 - Git branches and pull requests store implementation history and review.
 - Linear comments are the authoritative human-decision channel; listed choices and explicit custom suggestions are supported, while ntfy is optional best-effort attention that links directly to the issue.
 
-The loop handles one issue at a time. It resumes eligible autonomous work, does nothing while attended work is active, and selects a new labeled backlog issue only when no work is active. When configured size limits expose a larger remainder, it may create one linked, bounded continuation issue without selecting it in the same run. Code is Done only after required local checks, one review, applicable QA, and merge into the default branch.
+The loop handles one issue at a time. It resumes eligible autonomous work, does nothing while attended work is active, and selects a new labeled backlog issue only when no work is active. Quiet standalone scheduled runs archive their own chat when native task archiving is available; decision requests, checkpoints, errors, and runs with mutations remain visible. When configured size limits expose a larger remainder, the loop may create one linked, bounded continuation issue without selecting it in the same run. Code is Done only after required local checks, one review, applicable QA, and merge into the default branch.
 
 Linear labels have separate responsibilities:
 

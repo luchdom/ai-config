@@ -40,6 +40,12 @@ Run one MVP autonomous delivery iteration for this repository. Obey .ai/loop.jso
 
 Start with an attended run. Confirm that the task can acquire and release the lease, read Linear, find the repository configuration, leave a checkpoint, and stop cleanly.
 
+### Quiet-run cleanup
+
+For a standalone scheduled task that creates a separate chat per run, the loop archives its current chat when it only confirms an expected no-work condition and the host provides native task archiving. This includes a disabled loop, a busy lease, active attended work, an empty eligible queue, or an unchanged `needs-human` pause with no newer valid decision. The transient lease must be released first.
+
+Do not archive attended pilots, schedules attached to an existing long-lived chat, decision requests, checkpoints, errors, multi-active anomalies, or runs that changed Linear, Git/GitHub, repository files, pull requests, or notifications. If native archiving is unavailable, the run leaves one concise no-op result instead of using UI automation or a local-state workaround.
+
 Every invocation acquires a local lease before reading or mutating Linear, Git, notifications, or repository work. The lease is shared by worktrees and local checkouts configured for the same repository key plus Linear team/project. A concurrent invocation exits without mutation; the active owner may continue or checkpoint. The lease expires 15 minutes after the configured `maxRunMinutes`, allowing recovery after a killed process without permitting a normal in-budget run to overlap.
 
 Lock files live under the user state directory: `LUCHDOM_AI_STATE_HOME` when set, otherwise the platform-local Luchdom state folder. Valid expired locks recover automatically. Malformed lock state fails closed; verify that no invocation is active before moving that file aside for troubleshooting.
