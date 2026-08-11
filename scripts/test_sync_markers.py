@@ -4,12 +4,14 @@ from __future__ import annotations
 import sys
 import tempfile
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import sync  # noqa: E402
 
 
-BODY = "<!-- AI-CONFIG-LUCHDOM:START -->\r\n# Template\r\n<!-- AI-CONFIG-LUCHDOM:END -->\r\n"
+BODY = "<!-- AI-TOOLKIT-LUCHDOM:START -->\r\n# Template\r\n<!-- AI-TOOLKIT-LUCHDOM:END -->\r\n"
+LEGACY_BODY = "<!-- AI-CONFIG-LUCHDOM:START -->\r\n# Legacy\r\n<!-- AI-CONFIG-LUCHDOM:END -->\r\n"
 
 
 def write(path: Path, content: str) -> None:
@@ -50,20 +52,57 @@ def test_legacy_and_force() -> None:
         assert sync.write_or_splice_template(src, dest, False) == "skipped"
         assert sync.write_or_splice_template(src, dest, True) == "overwrote"
 
+        write(dest, LEGACY_BODY.rstrip("\r\n") + "\r\n@RTK.md\r\n")
+        assert sync.write_or_splice_template(src, dest, False) == "spliced"
+        result = read(dest)
+        assert sync.MARKER_START in result
+        assert "AI-CONFIG-LUCHDOM" not in result
+        assert result.endswith("\r\n@RTK.md\r\n")
+
 
 def test_malformed_and_newline_preservation() -> None:
     with tempfile.TemporaryDirectory() as directory:
         root = Path(directory)
         src, dest = source(root), root / "target.md"
-        write(dest, "<!-- AI-CONFIG-LUCHDOM:START -->\n")
+        write(dest, "<!-- AI-TOOLKIT-LUCHDOM:START -->\n")
         assert sync.write_or_splice_template(src, dest, False) == "warning"
         write(dest, BODY.rstrip("\r\n") + "\n@RTK.md\n")
         assert sync.write_or_splice_template(src, dest, False) == "spliced"
         assert read(dest).endswith("\n@RTK.md\n")
 
 
+def test_docs_override_prefers_toolkit_and_supports_legacy() -> None:
+    with tempfile.TemporaryDirectory() as directory:
+        root = Path(directory)
+        src = source(root, "{{LUCHDOM_AI_TOOLKIT_DOCS}}|{{LUCHDOM_AI_CONFIG_DOCS}}")
+        toolkit_docs = root / "toolkit-docs"
+        legacy_docs = root / "legacy-docs"
+
+        with mock.patch.dict(
+            "os.environ",
+            {
+                "LUCHDOM_AI_TOOLKIT_DOCS": str(toolkit_docs),
+                "LUCHDOM_AI_CONFIG_DOCS": str(legacy_docs),
+            },
+            clear=True,
+        ):
+            rendered = sync.render_template_text(src)
+            expected = toolkit_docs.resolve().as_posix()
+            assert rendered == f"{expected}|{expected}"
+
+        with mock.patch.dict("os.environ", {"LUCHDOM_AI_CONFIG_DOCS": str(legacy_docs)}, clear=True):
+            rendered = sync.render_template_text(src)
+            expected = legacy_docs.resolve().as_posix()
+            assert rendered == f"{expected}|{expected}"
+
+
 def main() -> int:
-    tests = (test_fresh_write_and_splice, test_legacy_and_force, test_malformed_and_newline_preservation)
+    tests = (
+        test_fresh_write_and_splice,
+        test_legacy_and_force,
+        test_malformed_and_newline_preservation,
+        test_docs_override_prefers_toolkit_and_supports_legacy,
+    )
     for test in tests:
         test()
         print(f"{test.__name__}: PASS")

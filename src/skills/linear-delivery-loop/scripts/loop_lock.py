@@ -18,6 +18,7 @@ from typing import Any
 
 LOCK_SCHEMA_VERSION = 1
 LEASE_GRACE_MINUTES = 15
+LEGACY_STATE_DIRECTORY_NAME = "ai-config"
 BUSY_EXIT = 3
 ERROR_EXIT = 4
 LOCK_FIELDS = {
@@ -106,7 +107,7 @@ def state_root() -> Path:
         return Path(configured).expanduser().resolve()
 
     if os.name == "nt" and os.environ.get("LOCALAPPDATA"):
-        return (Path(os.environ["LOCALAPPDATA"]) / "Luchdom" / "ai-config").resolve()
+        return (Path(os.environ["LOCALAPPDATA"]) / "Luchdom" / LEGACY_STATE_DIRECTORY_NAME).resolve()
 
     if os.environ.get("XDG_STATE_HOME"):
         return (Path(os.environ["XDG_STATE_HOME"]) / "luchdom-ai").resolve()

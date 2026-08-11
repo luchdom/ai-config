@@ -13,7 +13,7 @@ Recommended order:
 
 ## Install This Repo First
 
-From the `ai-config` repo root:
+From the `ai-toolkit` repo root:
 
 ```powershell
 python .\scripts\build.py

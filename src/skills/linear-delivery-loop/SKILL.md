@@ -32,6 +32,8 @@ After validating that `.ai/loop.json` exists and is enabled, acquire the determi
 
 The helper scopes the lock by repository key plus Linear team/project, so worktrees and separate local checkouts of the same queue contend. Its lease is `maxRunMinutes + 15` minutes. An expired valid lease is recovered atomically; malformed state is never overwritten.
 
+The `ai-toolkit` rename does not change the platform-local lease namespace: the helper deliberately retains the legacy `ai-config` state-directory name so installed old and new skill versions contend on the same lock. Do not rename that state directory independently.
+
 Before every return after acquisition—including completion, checkpoint, decision request, validation failure, or unexpected error—run `python <this-skill-directory>/scripts/loop_lock.py release --repo-root <repository-root> --token <token>`. Never store the token in Linear, Git, docs, or notifications. If the process is killed before release, a later invocation recovers the lease after expiry.
 
 ## Select or resume one issue

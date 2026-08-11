@@ -11,8 +11,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DIST = ROOT / "dist"
-MARKER_START = "<!-- AI-CONFIG-LUCHDOM:START -->"
-MARKER_END = "<!-- AI-CONFIG-LUCHDOM:END -->"
+MARKER_START = "<!-- AI-TOOLKIT-LUCHDOM:START -->"
+MARKER_END = "<!-- AI-TOOLKIT-LUCHDOM:END -->"
+LEGACY_MARKER_PAIRS = (("<!-- AI-CONFIG-LUCHDOM:START -->", "<!-- AI-CONFIG-LUCHDOM:END -->"),)
 
 
 def run_build() -> None:
@@ -26,15 +27,20 @@ def sync_file(src: Path, dest: Path) -> None:
 
 
 def resolve_docs_root() -> str:
-    override = os.environ.get("LUCHDOM_AI_CONFIG_DOCS")
+    override = os.environ.get("LUCHDOM_AI_TOOLKIT_DOCS") or os.environ.get("LUCHDOM_AI_CONFIG_DOCS")
     if override:
         return Path(override).expanduser().resolve().as_posix()
     return (ROOT / "docs").resolve().as_posix()
 
 
 def render_template_text(src: Path) -> str:
+    docs_root = resolve_docs_root()
     with open(src, "r", encoding="utf-8", newline="") as file:
-        return file.read().replace("{{LUCHDOM_AI_CONFIG_DOCS}}", resolve_docs_root())
+        return (
+            file.read()
+            .replace("{{LUCHDOM_AI_TOOLKIT_DOCS}}", docs_root)
+            .replace("{{LUCHDOM_AI_CONFIG_DOCS}}", docs_root)
+        )
 
 
 def consume_newline(text: str, position: int) -> int:
@@ -65,25 +71,34 @@ def write_or_splice_template(src: Path, dest: Path, force: bool) -> str:
     with open(dest, "r", encoding="utf-8", newline="") as file:
         existing = file.read()
 
-    start_positions = [match.start() for match in re.finditer(re.escape(MARKER_START), existing)]
-    end_positions = [match.start() for match in re.finditer(re.escape(MARKER_END), existing)]
-    if not start_positions and not end_positions:
+    marker_spans: list[tuple[int, int, int, int]] = []
+    for start_marker, end_marker in ((MARKER_START, MARKER_END), *LEGACY_MARKER_PAIRS):
+        start_positions = [match.start() for match in re.finditer(re.escape(start_marker), existing)]
+        end_positions = [match.start() for match in re.finditer(re.escape(end_marker), existing)]
+        if not start_positions and not end_positions:
+            continue
+        if not start_positions or not end_positions:
+            print(f"Warning: malformed markers in {dest} (start/end mismatch), skipped")
+            return "warning"
+
+        first_start = min(start_positions)
+        last_end = max(end_positions)
+        if first_start >= last_end:
+            print(f"Warning: malformed markers in {dest} (markers out of order), skipped")
+            return "warning"
+        marker_spans.append((first_start, last_end + len(end_marker), len(start_positions), len(end_positions)))
+
+    if not marker_spans:
         print(f"Skipped existing {dest} (no markers; re-run with --force to adopt)")
         return "skipped"
-    if not start_positions or not end_positions:
-        print(f"Warning: malformed markers in {dest} (start/end mismatch), skipped")
-        return "warning"
 
-    first_start = min(start_positions)
-    last_end = max(end_positions)
-    if first_start >= last_end:
-        print(f"Warning: malformed markers in {dest} (markers out of order), skipped")
-        return "warning"
-    if len(start_positions) > 1 or len(end_positions) > 1:
+    first_start = min(span[0] for span in marker_spans)
+    last_end = max(span[1] for span in marker_spans)
+    if len(marker_spans) > 1 or any(starts > 1 or ends > 1 for _, _, starts, ends in marker_spans):
         print(f"Warning: multiple marker pairs found in {dest}, using outermost")
 
     prefix = existing[:first_start]
-    suffix = existing[consume_newline(existing, last_end + len(MARKER_END)):]
+    suffix = existing[consume_newline(existing, last_end):]
     with open(dest, "w", encoding="utf-8", newline="") as file:
         file.write(prefix + rendered + suffix)
     print(f"Spliced {dest} (preserved external content)")
