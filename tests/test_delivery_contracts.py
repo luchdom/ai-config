@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def load_aggregate_validation():
-    spec = importlib.util.spec_from_file_location("ai_config_aggregate_validation", ROOT / "scripts" / "validate.py")
+    spec = importlib.util.spec_from_file_location("ai_toolkit_aggregate_validation", ROOT / "scripts" / "validate.py")
     if spec is None or spec.loader is None:
         raise RuntimeError("Unable to load scripts/validate.py for contract tests.")
     module = importlib.util.module_from_spec(spec)

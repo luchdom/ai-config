@@ -84,28 +84,28 @@ def write_project_templates() -> None:
         codex_template: (
             "# Project AI Instructions\n\n"
             "- Keep project-specific rules here.\n"
-            "- Keep reusable workflows in the shared ai-config skills.\n"
+            "- Keep reusable workflows in the shared ai-toolkit skills.\n"
             "- Follow this repo's docs, architecture notes, and established patterns before coding.\n"
             "- Prefer existing components, abstractions, and tests over new ones.\n"
         ),
         claude_template: (
             "# Project AI Instructions\n\n"
             "- Keep project-specific rules here.\n"
-            "- Keep reusable workflows in the shared ai-config skills.\n"
+            "- Keep reusable workflows in the shared ai-toolkit skills.\n"
             "- Read this repo's docs, architecture notes, and established patterns before coding.\n"
             "- Prefer existing components, abstractions, and tests over new ones.\n"
         ),
         copilot_template: (
             "# Project AI Instructions\n\n"
             "- Keep project-specific rules here.\n"
-            "- Keep reusable workflows in the shared ai-config skills.\n"
+            "- Keep reusable workflows in the shared ai-toolkit skills.\n"
             "- Read this repo's docs, architecture notes, and established patterns before coding.\n"
             "- Prefer existing components, abstractions, and tests over new ones.\n"
         ),
         cursor_template: (
             "# Project AI Instructions\n\n"
             "- Keep project-specific rules here.\n"
-            "- Keep reusable workflows in the shared ai-config skills and generated Cursor rules.\n"
+            "- Keep reusable workflows in the shared ai-toolkit skills and generated Cursor rules.\n"
             "- Read this repo's docs, architecture notes, and established patterns before coding.\n"
             "- Prefer existing components, abstractions, and tests over new ones.\n"
         ),

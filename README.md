@@ -1,4 +1,4 @@
-# ai-config
+# ai-toolkit
 
 Reusable AI agents, skills, and project instruction templates for Codex, Claude Code, GitHub Copilot CLI, and Cursor.
 
@@ -79,7 +79,7 @@ Install project-local instruction files too:
 python .\scripts\sync.py --tool all --project C:\path\to\repo
 ```
 
-Use `--tool codex`, `claude`, `copilot`, or `cursor` to limit installation. `LUCHDOM_AI_CONFIG_DOCS` can override the shared curated-docs path rendered into project templates.
+Use `--tool codex`, `claude`, `copilot`, or `cursor` to limit installation. `LUCHDOM_AI_TOOLKIT_DOCS` can override the shared curated-docs path rendered into project templates; the legacy `LUCHDOM_AI_CONFIG_DOCS` name remains supported.
 
 Normal sync updates only marker-managed blocks in existing instruction files and preserves content outside them. Existing unmarked instruction files and generated skills remain untouched unless `--force` explicitly adopts or refreshes them.
 

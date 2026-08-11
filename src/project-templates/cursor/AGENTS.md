@@ -1,4 +1,4 @@
-<!-- AI-CONFIG-LUCHDOM:START -->
+<!-- AI-TOOLKIT-LUCHDOM:START -->
 # Project AI Instructions
 
 Use this file as the repository-specific router for shared delivery skills.
@@ -7,7 +7,7 @@ Use this file as the repository-specific router for shared delivery skills.
 
 - The canonical cross-tool protocol is under `goal-to-delivery/references`; project docs link to it instead of copying it.
 - This repository owns repository-specific commands, domain rules, definitions of done, and stricter safety constraints.
-- Additional curated docs path: `{{LUCHDOM_AI_CONFIG_DOCS}}`.
+- Additional curated docs path: `{{LUCHDOM_AI_TOOLKIT_DOCS}}`.
 - Precedence is user/system requirements and repository-specific stricter safety, then the explicit entry policy, then the shared contract. Unresolved conflict fails closed before implementation or external mutation.
 
 ## Three entries
@@ -34,4 +34,4 @@ Never infer a workflow from a label, branch, prior chat, or artifact folder.
 - Preserve unrelated work. Never infer force-push, history rewrite, direct default-branch push, destructive cleanup, provider-setting changes, or unrelated external mutation.
 
 Use `$pr-description` for pull request text and follow the repository template when present.
-<!-- AI-CONFIG-LUCHDOM:END -->
+<!-- AI-TOOLKIT-LUCHDOM:END -->
