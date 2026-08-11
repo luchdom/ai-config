@@ -77,6 +77,18 @@ class LinearLoopLockTests(unittest.TestCase):
             capture_output=True,
         )
 
+    @unittest.skipUnless(os.name == "nt", "Windows state-root default")
+    def test_windows_default_state_root_uses_ai_toolkit_directory(self) -> None:
+        local_app_data = self.root / "local-app-data"
+        with mock.patch.dict(
+            os.environ,
+            {"LOCALAPPDATA": os.fspath(local_app_data), "LUCHDOM_AI_STATE_HOME": ""},
+        ):
+            self.assertEqual(
+                (local_app_data / "Luchdom" / "ai-toolkit").resolve(),
+                loop_lock.state_root(),
+            )
+
     @staticmethod
     def result(process: subprocess.CompletedProcess[str]) -> dict[str, object]:
         return json.loads(process.stdout)
