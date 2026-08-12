@@ -34,4 +34,4 @@ Use `gh` as a local GitHub interface when connector data is unavailable, incompl
 
 ## Setup
 
-If `gh` is missing or unauthenticated, use `docs/external-tools.md` for install and login guidance. Do not invent install commands when the repo docs already define the supported path.
+If `gh` is missing or unauthenticated, use `EXTERNAL-TOOLS.md` for install and login guidance. Do not invent install commands when the repo docs already define the supported path.

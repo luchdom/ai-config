@@ -2,7 +2,7 @@
 
 Use this repo as the source of truth for shared AI agents, skills, project-local workflow templates, and generated tool adapters.
 
-Read [docs/external-tools.md](C:/dev/luchdom/ai-toolkit/docs/external-tools.md) when the user asks to install recommended external skills, MCP servers, agents, or supporting CLIs from the links tracked by this repo.
+Read [EXTERNAL-TOOLS.md](C:/dev/luchdom/ai-toolkit/EXTERNAL-TOOLS.md) when the user asks to install recommended external skills, MCP servers, agents, or supporting CLIs from the links tracked by this repo.
 
 ## Delivery workflow ownership
 
@@ -32,6 +32,6 @@ Read [docs/external-tools.md](C:/dev/luchdom/ai-toolkit/docs/external-tools.md) 
 - If changing shared agents or skills, update `src/` and regenerate `dist/` instead of editing generated files directly.
 - If changing shared project-local guidance, update the relevant files under `src/project-templates/`.
 - Project-local templates route the three explicit entries into the canonical shared protocol and default unspecified non-trivial work to manual stage control.
-- When asked to install external tools referenced by this repo, follow `docs/external-tools.md` in the listed order and prefer official install commands from the linked sources.
+- When asked to install external tools referenced by this repo, follow `EXTERNAL-TOOLS.md` in the listed order and prefer official install commands from the linked sources.
 - Copilot support in this repo uses user-level `~/.copilot/agents` and `~/.copilot/skills`, plus project-level `.github/agents`, `.github/skills`, and `.github/copilot-instructions.md`.
 - Cursor support in this repo is project-level only. Generate `AGENTS.md` plus `.cursor/rules/*.mdc` into the target repo when the user asks for Cursor support.
