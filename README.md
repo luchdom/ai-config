@@ -88,5 +88,5 @@ Normal sync updates only marker-managed blocks in existing instruction files and
 - Change `src/`, regenerate `dist/`, and validate; do not edit generated output.
 - Keep project templates as concise routers rather than copies of the canonical protocol.
 - Keep credentials in environment variables, never repository files.
-- Use [external tools](docs/external-tools.md) only when optional tooling is requested.
+- Use [external tools](EXTERNAL-TOOLS.md) only when optional tooling is requested.
 - Preserve unrelated user changes and historical `docs-ai` evidence.
