@@ -117,6 +117,53 @@ Notes:
 - Use CodeGraph only for supported, indexed files. Fall back to `rg` and direct reads when indexing is unavailable or incomplete.
 - CodeGraph may append its own configuration to instruction files. This repo's marker-managed project templates preserve content outside their managed marker block during normal sync.
 
+### Codebase Memory MCP
+
+Links:
+- [Codebase Memory MCP repository](https://github.com/DeusData/codebase-memory-mcp)
+- [Codebase Memory MCP releases](https://github.com/DeusData/codebase-memory-mcp/releases)
+
+Recommended for:
+- persistent local knowledge-graph indexing for code discovery
+- structural symbol search, caller/callee tracing, architecture analysis, change-impact mapping, and index-coverage checks through MCP
+
+Official Windows install:
+
+```powershell
+Invoke-WebRequest -Uri https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/main/install.ps1 -OutFile install.ps1
+notepad .\install.ps1
+Unblock-File .\install.ps1
+.\install.ps1
+```
+
+Official macOS/Linux install:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/main/install.sh | bash
+```
+
+Verify the binary and Codex registration:
+
+```powershell
+codebase-memory-mcp --version
+codex mcp get codebase-memory-mcp
+```
+
+Notes:
+
+- Inspect the installer before running it. The install command auto-detects supported agents and may update their user-level MCP configuration, instructions, skills, and lifecycle hooks.
+- The native server runs locally without an API key. Restart open coding-agent sessions after installation, then ask the agent to `Index this project`.
+- On Windows, Codex Desktop may grant `%TEMP%` mutation rights to `CodexSandboxUsers`, causing installation to fail closed with `acl-grants-cross-account-mutation`. Retry with a private user-owned staging directory rather than weakening the existing ACLs:
+
+```powershell
+New-Item -ItemType Directory -Force "$env:USERPROFILE\cbm-stage" | Out-Null
+$env:TMP = "$env:USERPROFILE\cbm-stage"
+$env:TEMP = "$env:USERPROFILE\cbm-stage"
+.\install.ps1
+```
+
+- The Codex MCP registration name is `codebase-memory-mcp`.
+
 ### AWS CLI
 
 Link:
@@ -453,6 +500,8 @@ $skill-installer install https://github.com/openai/skills/tree/main/skills/.expe
 
 - [microsoft/playwright-mcp](https://github.com/microsoft/playwright-mcp)
 - [microsoft/playwright-cli](https://github.com/microsoft/playwright-cli)
+- [DeusData/codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp)
+- [Codebase Memory Windows Codex ACL issue](https://github.com/DeusData/codebase-memory-mcp/issues/1529)
 - [Dammyjay93/interface-design](https://github.com/Dammyjay93/interface-design)
 - [blader/napkin](https://github.com/blader/napkin)
 - [Firecrawl CLI docs](https://docs.firecrawl.dev/sdks/cli)
