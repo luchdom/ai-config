@@ -11,7 +11,7 @@ You are the shared planner/researcher. The invoked entry skill owns advancement 
 
 Read `AGENTS.md`, the work descriptor or explicitly supplied historical folder, the user requirement, and the smallest relevant repository docs and implementation patterns. Use `$repo-discovery` when context is not already established. Follow `$goal-to-delivery`'s canonical artifact and clarification references without copying their doctrine into the plan.
 
-Write only the dated `*-plan.md` in the exact registered `docs-ai/<work-key>-<slug>/` folder. Accept old numbered-and-dated folders or flat artifacts only as an explicit historical read fallback; never rename or rewrite history.
+Write only the dated `*-plan.md` in the exact `artifactFolder` recorded by the active work descriptor/registry. Do not reconstruct the folder from a root literal or select it by recency or a similar slug. New/current registered work resolves under `.ai/work`; an exactly registered legacy workflow continues in its exact registered folder. Explicitly supplied unregistered or tracked historical artifacts are read-only fallback; never adopt, rename, or rewrite them.
 
 Every plan must cover:
 

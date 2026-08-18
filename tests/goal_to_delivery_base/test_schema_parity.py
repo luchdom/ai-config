@@ -43,7 +43,14 @@ def _base_descriptor() -> dict:
         "completionBoundary": "working-tree",
         "physicalWorktreeFingerprint": "sha256:" + "a" * 64,
         "riskFlags": [],
-        "artifactFolder": str((REPOSITORY_ROOT / "docs-ai" / "001-schema-parity").resolve()),
+        "artifactFolder": str(
+            (
+                REPOSITORY_ROOT
+                / ".ai"
+                / "work"
+                / "2026-08-18--local-001--schema-parity"
+            ).resolve()
+        ),
         "artifactInventory": ["workflow.json"],
         "currentArtifactStage": "initialized",
         "assumptionsDecisionRefs": [],
@@ -259,7 +266,7 @@ class WorkDescriptorSchemaParityTests(unittest.TestCase):
             ),
             "relative-repository-root": (lambda value: value.__setitem__("repositoryRoot", "relative/repo"), False),
             "relative-artifact-folder": (
-                lambda value: value.__setitem__("artifactFolder", "docs-ai/001-schema-parity"),
+                lambda value: value.__setitem__("artifactFolder", ".ai/work/schema-parity"),
                 False,
             ),
             "uppercase-uuid": (lambda value: value.__setitem__("workflowId", str(uuid.uuid4()).upper()), False),
@@ -270,7 +277,7 @@ class WorkDescriptorSchemaParityTests(unittest.TestCase):
             ),
             "safe-artifact-inventory": (
                 lambda value: value.__setitem__(
-                    "artifactInventory", ["workflow.json", "src/API/File.cs", "docs-ai/001-safe/plan.md"]
+                    "artifactInventory", ["workflow.json", "src/API/File.cs", ".ai/work/plan.md"]
                 ),
                 True,
             ),
@@ -290,7 +297,7 @@ class WorkDescriptorSchemaParityTests(unittest.TestCase):
         schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
         cases = (
             (["workflow.json"], True),
-            (["workflow.json", "src/Feature/File.cs", "docs-ai/001-safe/qa.md"], True),
+            (["workflow.json", "src/Feature/File.cs", ".ai/work/qa.md"], True),
             (["/absolute/file.md"], False),
             (["C:/absolute/file.md"], False),
             (["../escape.md"], False),

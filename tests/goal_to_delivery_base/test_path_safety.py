@@ -11,6 +11,7 @@ from scripts.path_safety import (
     ensure_safe_descendant,
     normalize_slug,
     reject_case_insensitive_collision,
+    validate_current_artifact_folder_name,
     validate_local_key,
     validate_provider_key,
     validate_slug,
@@ -51,8 +52,29 @@ class PathSafetyTests(RepositoryTestCase):
         with self.assertRaises(CollisionError):
             reject_case_insensitive_collision("001-pkce", {"001-PKCE"})
 
+    def test_current_folder_name_is_bound_to_descriptor_identity(self) -> None:
+        validate_current_artifact_folder_name(
+            "2026-08-18--local-001--pkce--02",
+            work_source="local",
+            work_key="001",
+            slug="pkce",
+        )
+        invalid = (
+            "2026-08-18--local-002--pkce",
+            "2026-02-30--local-001--pkce",
+            "2026-08-18--local-001--pkce--01",
+        )
+        for folder in invalid:
+            with self.subTest(folder=folder), self.assertRaises(ValidationError):
+                validate_current_artifact_folder_name(
+                    folder,
+                    work_source="local",
+                    work_key="001",
+                    slug="pkce",
+                )
+
     def test_strict_containment_rejects_traversal(self) -> None:
-        docs_root = self.repository / "docs-ai"
+        docs_root = self.repository / "artifact-root"
         docs_root.mkdir()
         with self.assertRaises(UnsafePathError):
             ensure_safe_descendant(docs_root, docs_root / ".." / "escape")
@@ -60,7 +82,7 @@ class PathSafetyTests(RepositoryTestCase):
             ensure_safe_descendant(docs_root, docs_root)
 
     def test_reparse_component_is_rejected_before_or_after_creation(self) -> None:
-        docs_root = self.repository / "docs-ai"
+        docs_root = self.repository / "artifact-root"
         docs_root.mkdir()
         candidate = docs_root / "001-safe"
         candidate.mkdir()
@@ -71,7 +93,7 @@ class PathSafetyTests(RepositoryTestCase):
     def test_actual_windows_junction_escape_is_rejected_when_os_permits_creation(self) -> None:
         if os.name != "nt":
             self.skipTest("Windows junction coverage applies only on Windows")
-        docs_root = self.repository / "docs-ai"
+        docs_root = self.repository / "artifact-root"
         docs_root.mkdir()
         outside = self.root / "junction-target"
         outside.mkdir()

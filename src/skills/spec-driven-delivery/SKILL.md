@@ -18,6 +18,7 @@ Read the canonical shared protocol:
 - [clarification-policy.md](../goal-to-delivery/references/clarification-policy.md)
 - [quality-gates.md](../goal-to-delivery/references/quality-gates.md)
 - [completion-boundaries.md](../goal-to-delivery/references/completion-boundaries.md)
+- [worktree-policy.md](../goal-to-delivery/references/worktree-policy.md)
 - [work-descriptor.schema.json](../goal-to-delivery/references/work-descriptor.schema.json)
 
 Apply repository-specific stricter rules first and fail closed before implementation or external mutation when they conflict.

@@ -16,6 +16,7 @@ Read `.ai/loop.json` from the target repository and [project-config.example.json
 - [clarification-policy.md](../goal-to-delivery/references/clarification-policy.md)
 - [quality-gates.md](../goal-to-delivery/references/quality-gates.md)
 - [completion-boundaries.md](../goal-to-delivery/references/completion-boundaries.md)
+- [worktree-policy.md](../goal-to-delivery/references/worktree-policy.md)
 - [work-descriptor.schema.json](../goal-to-delivery/references/work-descriptor.schema.json)
 
 Repository-specific commands and stricter safety rules take precedence. Never expose API keys or notification topics.

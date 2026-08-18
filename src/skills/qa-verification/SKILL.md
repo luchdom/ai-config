@@ -23,7 +23,7 @@ Verify the exact implementation target against observable acceptance criteria.
 
 ## Report, do not fix
 
-Write the dated `*-qa.md` in the exact registered `docs-ai/<work-key>-<slug>/` folder with target identity, commands/results, pass/fail counts, acceptance mapping, cleanup evidence, blockers, and residual risk. A historical numbered-and-dated folder or flat artifact may be read when explicitly selected, but must not be rewritten or migrated.
+Write the dated `*-qa.md` in the exact `artifactFolder` recorded by the active work descriptor/registry with target identity, commands/results, pass/fail counts, acceptance mapping, cleanup evidence, blockers, and residual risk. Do not reconstruct the folder from a root literal or select it by recency or a similar slug. New/current registered work resolves under `.ai/work`; an exactly registered legacy workflow continues in its exact registered folder. Explicitly supplied unregistered or tracked historical artifacts are read-only fallback; never adopt, rewrite, or migrate them.
 
 QA does not implement fixes, perform the pre-implementation audit, or replace exact-diff code review. Route defects to the caller for a separately authorized implementation pass. Do not mutate Linear or perform Git/provider actions.
 

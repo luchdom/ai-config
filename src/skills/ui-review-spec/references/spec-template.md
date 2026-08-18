@@ -1,6 +1,6 @@
 # Design Spec Template
 
-Write `<date>-<slug>-design.md` in the exact registered `docs-ai/<work-key>-<slug>/` folder:
+Write `<date>-<slug>-design.md` in the exact `artifactFolder` recorded by the active work descriptor/registry. Do not infer the folder from recency or a similar slug.
 
 ## Context and user goal
 

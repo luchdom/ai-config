@@ -14,7 +14,7 @@ Read repository instructions, the registered requirement/plan/tasks/design, acce
 
 Check correctness, scope, regressions, error paths, concurrency/state transitions, security, privacy, authorization, tenant isolation, billing boundaries, secret handling, repository conventions, test quality, and documentation-impact accuracy. Findings must cite exact files/lines and explain the observable consequence.
 
-Write only the dated `*-code-review.md` in the exact registered `docs-ai/<work-key>-<slug>/` folder with:
+Write only the dated `*-code-review.md` in the exact `artifactFolder` recorded by the active work descriptor/registry with:
 
 - reviewed target/base identities and diff scope;
 - findings ranked P1/P2/P3;
@@ -24,6 +24,6 @@ Write only the dated `*-code-review.md` in the exact registered `docs-ai/<work-k
 
 Any P1 or P2 produces `FAIL`. If the target identity changes, the prior review is not final-head evidence and must be rerun or explicitly treated as stale.
 
-Remain read-only except for the review artifact. Do not fix code, change the plan/tasks/design, perform the plan audit, claim runtime behavior not observed by QA, mutate tracking, or perform Git/provider actions. Return findings to the caller for a separately authorized implementation pass.
+Do not reconstruct the artifact folder from a root literal or select it by recency or a similar slug. New/current registered work resolves under `.ai/work`; an exactly registered legacy workflow continues in its exact registered folder. Explicitly supplied unregistered or tracked historical artifacts are read-only fallback and must not be adopted, renamed, or rewritten.
 
-Accept an explicitly supplied numbered-and-dated folder or flat artifact only as historical read fallback; never rename or rewrite it.
+Remain read-only except for the review artifact. Do not fix code, change the plan/tasks/design, perform the plan audit, claim runtime behavior not observed by QA, mutate tracking, or perform Git/provider actions. Return findings to the caller for a separately authorized implementation pass.

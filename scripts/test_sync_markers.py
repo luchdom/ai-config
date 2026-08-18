@@ -1,12 +1,14 @@
-"""Dependency-free regression tests for marker-managed project templates."""
+"""Dependency-free regression tests for marker-managed tool instructions."""
 from __future__ import annotations
 
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
 from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import bootstrap_existing  # noqa: E402
 import sync  # noqa: E402
 
 
@@ -96,12 +98,51 @@ def test_docs_override_prefers_toolkit_and_supports_legacy() -> None:
             assert rendered == f"{expected}|{expected}"
 
 
+def test_project_help_names_tool_instruction_destination() -> None:
+    result = subprocess.run(
+        [sys.executable, str(Path(sync.__file__)), "--help"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert "Destination project root to receive tool instructions." in result.stdout
+
+
+def test_sync_tool_instructions_reads_renamed_dist_root() -> None:
+    with tempfile.TemporaryDirectory() as directory:
+        root = Path(directory)
+        dist = root / "dist"
+        instruction = dist / "tool-instructions" / "codex" / "AGENTS.md"
+        write(instruction, BODY)
+        project = root / "project"
+        with mock.patch.object(sync, "DIST", dist):
+            sync.sync_tool_instructions(project, {"codex"}, False)
+        assert read(project / "AGENTS.md") == BODY
+
+
+def test_bootstrap_writes_tool_instruction_source_tree() -> None:
+    with tempfile.TemporaryDirectory() as directory:
+        source_root = Path(directory) / "src" / "tool-instructions"
+        with mock.patch.object(bootstrap_existing, "SRC_TOOL_INSTRUCTIONS", source_root):
+            bootstrap_existing.write_tool_instructions()
+        expected = (
+            source_root / "codex" / "AGENTS.md",
+            source_root / "claude" / "CLAUDE.md",
+            source_root / "copilot" / ".github" / "copilot-instructions.md",
+            source_root / "cursor" / "AGENTS.md",
+        )
+        assert all(path.is_file() for path in expected)
+
+
 def main() -> int:
     tests = (
         test_fresh_write_and_splice,
         test_legacy_and_force,
         test_malformed_and_newline_preservation,
         test_docs_override_prefers_toolkit_and_supports_legacy,
+        test_project_help_names_tool_instruction_destination,
+        test_sync_tool_instructions_reads_renamed_dist_root,
+        test_bootstrap_writes_tool_instruction_source_tree,
     )
     for test in tests:
         test()

@@ -20,7 +20,12 @@ from .errors import (
 )
 from .identity import observe_repository_identity
 from .mutex import AllocationMutex
-from .path_safety import ensure_safe_descendant, ensure_safe_relative_path
+from .path_safety import (
+    ensure_safe_relative_path,
+    registered_artifact_root,
+    repository_root_from_registered_artifact,
+    validate_current_artifact_folder_name,
+)
 from .state_paths import StatePathGuard
 
 REGISTRY_VERSION = "1.0"
@@ -101,6 +106,21 @@ def validate_descriptor_projection(entry: dict[str, Any], descriptor: dict[str, 
         "physicalWorktreeFingerprint"
     ]:
         raise ValidationError("Registry and descriptor authoritative projections differ")
+    try:
+        artifact_kind, _ = registered_artifact_root(
+            descriptor_root,
+            Path(descriptor["artifactFolder"]),
+            candidate_may_not_exist=False,
+        )
+    except UnsafePathError as exc:
+        raise ValidationError("Descriptor artifact folder is outside the managed roots") from exc
+    if artifact_kind == "current":
+        validate_current_artifact_folder_name(
+            Path(descriptor["artifactFolder"]).name,
+            work_source=descriptor["workSource"],
+            work_key=descriptor["workKey"],
+            slug=descriptor["slug"],
+        )
 
 
 class WorkflowRegistry:
@@ -279,24 +299,29 @@ class WorkflowRegistry:
         if not isinstance(entry["handoffs"], list):
             raise ValidationError("Registry handoffs must be an array")
         artifact_folder = Path(entry["artifactPath"])
-        docs_root = artifact_folder.parent
-        if docs_root.name.casefold() != "docs-ai":
-            raise ValidationError("Registry artifact path must be a direct docs-ai child")
-        root_key = _normalized_path(docs_root.parent)
+        try:
+            repository_root = repository_root_from_registered_artifact(artifact_folder)
+            registered_artifact_root(
+                repository_root,
+                artifact_folder,
+                candidate_may_not_exist=False,
+            )
+        except UnsafePathError as exc:
+            raise ValidationError("Registry artifact path is outside the managed roots") from exc
+        root_key = _normalized_path(repository_root)
         observed = identity_cache.get(root_key)
         if observed is None:
             try:
-                observed = observe_repository_identity(docs_root.parent)
+                observed = observe_repository_identity(repository_root)
             except RepositoryIdentityError as exc:
                 raise ValidationError("Registry artifact path is not an observed Git worktree") from exc
             identity_cache[root_key] = observed
-        if _normalized_path(observed.repository_root) != _normalized_path(docs_root.parent):
+        if _normalized_path(observed.repository_root) != _normalized_path(repository_root):
             raise ValidationError("Registry artifact path is not rooted at the observed worktree root")
         if observed.repository_id != self.repository_id or entry["repositoryId"] != self.repository_id:
             raise ValidationError("Registry entry belongs to another Git common directory")
         if entry["physicalWorktreeFingerprint"] != observed.physical_worktree_fingerprint:
             raise ValidationError("Registry artifact path and physical-worktree fingerprint disagree")
-        ensure_safe_descendant(docs_root, artifact_folder)
         self._validate_handoffs(workflow_id, entry)
 
     def _validate_handoffs(self, workflow_id: str, entry: dict[str, Any]) -> None:
@@ -340,6 +365,19 @@ class WorkflowRegistry:
             destination_artifact = handoff["destinationArtifactPath"]
             if not isinstance(destination_artifact, str) or not os.path.isabs(destination_artifact):
                 raise ValidationError("Registry handoff destination artifact path is invalid")
+            try:
+                destination_root = repository_root_from_registered_artifact(
+                    Path(destination_artifact)
+                )
+                registered_artifact_root(
+                    destination_root,
+                    Path(destination_artifact),
+                    candidate_may_not_exist=True,
+                )
+            except UnsafePathError as exc:
+                raise ValidationError(
+                    "Registry handoff destination artifact path is outside the managed roots"
+                ) from exc
             evidence_path = Path(handoff["evidencePath"])
             expected = self.state_home / "handoffs" / workflow_id / handoff_id
             if _lexical_path(evidence_path) != _lexical_path(expected):
@@ -402,9 +440,16 @@ class WorkflowRegistry:
             seen.add(path.casefold())
             if operation == "delete":
                 valid = set(change) == {"path", "operation"}
-            elif operation == "write" and change.get("contentEvidence") == "redacted-sensitive-path":
+            elif operation == "write" and change.get("contentEvidence") in {
+                "redacted-sensitive-path",
+                "redacted-sensitive-content",
+            }:
                 valid = (
-                    redacted_path
+                    (
+                        redacted_path
+                        if change["contentEvidence"] == "redacted-sensitive-path"
+                        else not redacted_path
+                    )
                     and set(change) == {"path", "operation", "contentEvidence"}
                 )
             elif operation == "write":

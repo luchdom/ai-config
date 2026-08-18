@@ -1,6 +1,6 @@
 # ai-toolkit
 
-Reusable AI agents, skills, and project instruction templates for Codex, Claude Code, GitHub Copilot CLI, and Cursor.
+Reusable AI agents, skills, and project-local tool instructions for Codex, Claude Code, GitHub Copilot CLI, and Cursor.
 
 ## Delivery workflows
 
@@ -10,7 +10,7 @@ There are exactly three user-facing entries:
 - `$goal-to-delivery <goal-or-selected-issue>`: semi-autonomous. The user chooses one goal; Codex advances applicable stages and stops at the declared boundary.
 - `$spec-driven-delivery <stage> <goal-or-selector>`: manual. Codex performs exactly one requested stage and returns control.
 
-For non-trivial work without an explicit entry, use manual `$spec-driven-delivery`. All entries share the canonical cross-tool protocol under [`src/skills/goal-to-delivery/references/`](src/skills/goal-to-delivery/references/) while repositories own their commands, domain rules, and stricter safety requirements. Unresolved conflicts fail closed before implementation or external mutation.
+For non-trivial work without an explicit entry, use manual `$spec-driven-delivery`. All entries share the canonical cross-tool protocol under [`src/skills/goal-to-delivery/references/`](src/skills/goal-to-delivery/references/), including the [linked-worktree policy](src/skills/goal-to-delivery/references/worktree-policy.md), while repositories own their commands, domain rules, and stricter safety requirements. Unresolved conflicts fail closed before implementation or external mutation.
 
 The workflows reuse the same specialist skills, but they do not require every specialist for every issue. Routine work plans inline; risky work can add design, tasking, audit, runtime QA, or documentation stages as needed.
 
@@ -47,7 +47,7 @@ A useful engineering harness needs seven capabilities. The MVP covers all seven 
 | Tools | Codex local tools, Linear, Git/GitHub, and optional browser/HTTP checks provide only the needed capabilities. |
 | Context management | Skills load progressively; `.ai/loop.json`, the selected issue, repository instructions, and relevant code form the working set. |
 | Verification | Focused tests, one local project gate, one code review, and acceptance-driven runtime QA check the work. |
-| Memory | Linear comments/issues, Git/PR history, curated docs, and an optional concise `docs-ai` note persist useful knowledge. |
+| Memory | Linear comments/issues, Git/PR history, curated docs, and optional concise notes in the exact registered `artifactFolder` persist useful knowledge. |
 | Sandboxes | Codex repository/worktree isolation and repository-owned disposable test data constrain execution. |
 | Human hooks | `needs-decision` marks pre-work owner choices; `needs-human`, a structured Linear choice or custom suggestion, the Codex task inbox, and an optional issue-linked ntfy notification pause active work safely. |
 
@@ -57,13 +57,14 @@ Memory curation and observability are intentionally modest: persist decisions an
 
 - `src/agents/`: canonical specialist agent definitions
 - `src/skills/`: canonical reusable skills and references
-- `src/project-templates/`: project-local routing templates
+- `src/tool-instructions/`: project-local routing instructions for each supported tool
 - `scripts/build.py`: generate tool adapters into `dist/`
 - `scripts/sync.py`: install generated output into user homes and optional projects
 - `scripts/validate.py`: local repository validation
+- `dist/tool-instructions/`: generated project-local projections for each supported tool
 - `dist/`: generated projections; never edit directly
 
-Per-work evidence may live under `docs-ai/<work-key>-<slug>/`; durable reusable guidance belongs in the repository's curated docs. The optional workflow helper and descriptor remain available for multi-session work but are not required by the autonomous MVP.
+Per-work evidence uses the workflow descriptor's exact registered `artifactFolder`. New/current workflows use `.ai/work`; an exact registered legacy workflow may continue at its exact `docs-ai` path, while unregistered or tracked historical `docs-ai` evidence remains read-only. Durable reusable guidance belongs in the repository's curated docs. The optional workflow helper and descriptor remain available for multi-session work but are not required by the autonomous MVP.
 
 ## Build, validate, and install
 
@@ -73,20 +74,21 @@ python .\scripts\validate.py
 python .\scripts\sync.py --tool all
 ```
 
-Install project-local instruction files too:
+Install project-local tool instructions too:
 
 ```powershell
 python .\scripts\sync.py --tool all --project C:\path\to\repo
 ```
 
-Use `--tool codex`, `claude`, `copilot`, or `cursor` to limit installation. `LUCHDOM_AI_TOOLKIT_DOCS` can override the shared curated-docs path rendered into project templates; the legacy `LUCHDOM_AI_CONFIG_DOCS` name remains supported.
+Use `--tool codex`, `claude`, `copilot`, or `cursor` to limit installation. `LUCHDOM_AI_TOOLKIT_DOCS` can override the shared curated-docs path rendered into tool instructions; the legacy `LUCHDOM_AI_CONFIG_DOCS` name remains supported.
 
 Normal sync updates only marker-managed blocks in existing instruction files and preserves content outside them. Existing unmarked instruction files and generated skills remain untouched unless `--force` explicitly adopts or refreshes them.
 
 ## Maintenance
 
 - Change `src/`, regenerate `dist/`, and validate; do not edit generated output.
-- Keep project templates as concise routers rather than copies of the canonical protocol.
+- Keep tool instructions as concise routers rather than copies of the canonical protocol.
+- Keep legacy artifact-root literals limited to the validator's reviewed path-and-purpose allowlist.
 - Keep credentials in environment variables, never repository files.
 - Use [external tools](EXTERNAL-TOOLS.md) only when optional tooling is requested.
-- Preserve unrelated user changes and historical `docs-ai` evidence.
+- Preserve unrelated user changes and historical artifact evidence.

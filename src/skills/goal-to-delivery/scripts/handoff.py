@@ -15,15 +15,21 @@ from .descriptor import read_descriptor, validate_descriptor
 from .errors import HandoffError, ResumeError, UnsafePathError, ValidationError
 from .identity import observe_repository_identity
 from .path_safety import (
+    assert_effective_artifact_ignore,
     ensure_safe_descendant,
     ensure_safe_relative_path,
     is_reparse_point,
+    registered_artifact_root,
     validate_expected_path_scope,
 )
 from .redaction import SENSITIVE_KEY, redact_patch, redact_text, redact_value
 
 if TYPE_CHECKING:
     from .workflow_init import WorkflowManager
+
+MAX_HANDOFF_FILE_COUNT = 512
+MAX_HANDOFF_FILE_BYTES = 16 * 1024 * 1024
+MAX_HANDOFF_TOTAL_BYTES = 64 * 1024 * 1024
 
 
 def _git_bytes(repository: Path, *arguments: str) -> bytes:
@@ -146,11 +152,45 @@ def _validate_destination_baseline_compatibility(
                 "Destination transfer-path baseline is not a compatible regular file; "
                 "source remains authoritative"
             )
+        if destination_path.stat().st_nlink != 1:
+            raise HandoffError(
+                "Destination transfer-path baseline is hardlinked; source remains authoritative"
+            )
         if _worktree_blob_id(destination_root, relative, destination_path) != object_id:
             raise HandoffError(
                 "Destination transfer-path bytes differ from its matching HEAD blob; "
                 "source remains authoritative"
             )
+
+
+def _validate_destination_artifact_collision(
+    *,
+    artifact_kind: str,
+    destination_root: Path,
+    destination_artifact: Path,
+    expected_artifact_paths: set[str],
+) -> None:
+    if not os.path.lexists(destination_artifact):
+        return
+    if artifact_kind == "current":
+        raise HandoffError(
+            "Destination already contains the registered current artifact folder; "
+            "source remains authoritative"
+        )
+    observed = {
+        path.as_posix()
+        for path in _registered_artifact_paths(destination_root, destination_artifact)
+    }
+    if not observed.issubset(expected_artifact_paths):
+        raise HandoffError(
+            "Destination legacy artifact folder contains unrelated content; "
+            "source remains authoritative"
+        )
+    if any(_head_entry(destination_root, Path(path)) is None for path in observed):
+        raise HandoffError(
+            "Destination legacy artifact folder contains an untracked overlap; "
+            "source remains authoritative"
+        )
 
 
 def _safe_evidence_path(path: Path) -> str:
@@ -186,6 +226,14 @@ def _manifest(snapshot: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
                     "contentEvidence": "redacted-sensitive-path",
                 }
             )
+        elif entry["operation"] == "write" and entry["sensitive"]:
+            result.append(
+                {
+                    "path": evidence_path,
+                    "operation": "write",
+                    "contentEvidence": "redacted-sensitive-content",
+                }
+            )
         elif entry["operation"] == "write":
             result.append(
                 {
@@ -200,8 +248,26 @@ def _manifest(snapshot: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
     return result
 
 
-def _content_snapshot(source_root: Path, relative_paths: list[Path]) -> dict[str, dict[str, Any]]:
+def _registered_artifact_content_is_sensitive(content: bytes) -> bool:
+    try:
+        decoded = content.decode("utf-8")
+    except UnicodeDecodeError:
+        return True
+    if any(ord(character) < 32 and character not in "\t\n\r" for character in decoded):
+        return True
+    return redact_text(decoded) != decoded
+
+
+def _content_snapshot(
+    source_root: Path,
+    relative_paths: list[Path],
+    *,
+    registered_artifact_paths: set[str],
+) -> dict[str, dict[str, Any]]:
+    if len(relative_paths) > MAX_HANDOFF_FILE_COUNT:
+        raise HandoffError("Handoff file-count limit exceeded")
     snapshot: dict[str, dict[str, Any]] = {}
+    total_bytes = 0
     for relative in relative_paths:
         source_path = ensure_safe_descendant(source_root, source_root / relative)
         key = relative.as_posix()
@@ -210,16 +276,105 @@ def _content_snapshot(source_root: Path, relative_paths: list[Path]) -> dict[str
                 raise UnsafePathError(
                     f"Handoff refuses directory/reparse content: {_safe_evidence_path(relative)}"
                 )
+            metadata = source_path.stat()
+            if metadata.st_nlink != 1:
+                raise UnsafePathError(
+                    f"Handoff refuses hardlinked content: {_safe_evidence_path(relative)}"
+                )
+            if metadata.st_size > MAX_HANDOFF_FILE_BYTES:
+                raise HandoffError("Handoff per-file byte limit exceeded")
             content = source_path.read_bytes()
+            if len(content) != metadata.st_size:
+                raise HandoffError("Handoff source size changed during snapshot")
+            total_bytes += len(content)
+            if total_bytes > MAX_HANDOFF_TOTAL_BYTES:
+                raise HandoffError("Handoff total byte limit exceeded")
+            try:
+                decoded = content.decode("utf-8")
+            except UnicodeDecodeError:
+                sensitive = False
+            else:
+                sensitive = redact_text(decoded) != decoded
+            if key in registered_artifact_paths and _registered_artifact_content_is_sensitive(content):
+                raise HandoffError(
+                    "Registered artifact contains private content and cannot be transferred"
+                )
             snapshot[key] = {
                 "operation": "write",
                 "size": len(content),
                 "sha256": hashlib.sha256(content).hexdigest(),
                 "content": content,
+                "sensitive": sensitive,
             }
         else:
             snapshot[key] = {"operation": "delete"}
     return snapshot
+
+
+def _registered_artifact_paths(source_root: Path, artifact_folder: Path) -> list[Path]:
+    """Enumerate files only below the exact registered folder, including ignored files."""
+
+    registered_artifact_root(
+        source_root,
+        artifact_folder,
+        candidate_may_not_exist=False,
+    )
+    if not artifact_folder.is_dir() or is_reparse_point(artifact_folder):
+        raise UnsafePathError("Registered artifact folder must be a non-reparse directory")
+    result: list[Path] = []
+    enumeration_error = "Registered artifact inventory could not be enumerated safely"
+
+    def reject_walk_error(_error: OSError) -> None:
+        raise HandoffError(enumeration_error) from None
+
+    try:
+        for directory, names, files in os.walk(
+            artifact_folder,
+            topdown=True,
+            onerror=reject_walk_error,
+            followlinks=False,
+        ):
+            current = Path(directory)
+            names.sort(key=str.casefold)
+            files.sort(key=str.casefold)
+            for name in names:
+                child = ensure_safe_descendant(
+                    artifact_folder,
+                    current / name,
+                    candidate_may_not_exist=False,
+                )
+                if not child.is_dir() or is_reparse_point(child):
+                    raise UnsafePathError("Registered artifact folder contains a reparse directory")
+            for name in files:
+                child = ensure_safe_descendant(
+                    artifact_folder,
+                    current / name,
+                    candidate_may_not_exist=False,
+                )
+                if not child.is_file() or is_reparse_point(child):
+                    raise UnsafePathError("Registered artifact folder contains non-file content")
+                result.append(child.relative_to(source_root))
+                if len(result) > MAX_HANDOFF_FILE_COUNT:
+                    raise HandoffError("Handoff artifact file-count limit exceeded")
+    except OSError:
+        raise HandoffError(enumeration_error) from None
+    return sorted(result, key=lambda item: item.as_posix().casefold())
+
+
+def _validate_registered_artifact_inventory(
+    source_root: Path,
+    artifact_folder: Path,
+    expected_paths: set[str],
+) -> None:
+    observed = {
+        path.as_posix() for path in _registered_artifact_paths(source_root, artifact_folder)
+    }
+    if observed != expected_paths:
+        raise HandoffError(
+            "Registered artifact inventory changed during workflow-managed Handoff "
+            f"(expected={len(expected_paths)}:{_path_set_digest(expected_paths)}, "
+            f"observed={len(observed)}:{_path_set_digest(observed)})"
+        )
 
 
 def _validate_transfer_content(
@@ -227,7 +382,14 @@ def _validate_transfer_content(
     destination_root: Path,
     snapshot: dict[str, dict[str, Any]],
     expected_git_paths: set[str],
+    artifact_folder: Path,
+    expected_artifact_paths: set[str],
 ) -> None:
+    _validate_registered_artifact_inventory(
+        source_root,
+        artifact_folder,
+        expected_artifact_paths,
+    )
     source_changed = {path.as_posix() for path in _changed_paths(source_root)}
     destination_changed = {path.as_posix() for path in _changed_paths(destination_root)}
     if source_changed != expected_git_paths:
@@ -295,6 +457,10 @@ def _apply_paths(
             if destination_path.is_dir():
                 raise UnsafePathError(
                     f"Destination file path is a directory: {_safe_evidence_path(relative)}"
+                )
+            if destination_path.stat().st_nlink != 1:
+                raise UnsafePathError(
+                    f"Destination hardlinked file rejected: {_safe_evidence_path(relative)}"
                 )
             backups[destination_path] = (
                 True,
@@ -424,16 +590,38 @@ def workflow_managed_handoff(
             if _git_bytes(destination, "status", "--porcelain=v1", "-z", "--untracked-files=all"):
                 raise HandoffError("Destination became dirty before transfer; source remains authoritative")
             changed_paths = _changed_paths(source.repository_root)
-            artifact_relative = Path(entry["artifactPath"]).relative_to(source.repository_root)
+            artifact_folder = Path(entry["artifactPath"])
+            artifact_kind, _ = registered_artifact_root(
+                source.repository_root,
+                artifact_folder,
+                candidate_may_not_exist=False,
+            )
+            artifact_relative = artifact_folder.relative_to(source.repository_root)
             descriptor_relative = artifact_relative / "workflow.json"
+            artifact_paths = _registered_artifact_paths(
+                source.repository_root,
+                artifact_folder,
+            )
+            artifact_path_set = {path.as_posix() for path in artifact_paths}
+            if descriptor_relative.as_posix() not in artifact_path_set:
+                raise HandoffError("Registered artifact folder is missing workflow.json")
+            destination_artifact = destination / artifact_relative
+            if artifact_kind == "current":
+                assert_effective_artifact_ignore(destination, destination_artifact)
+            _validate_destination_artifact_collision(
+                artifact_kind=artifact_kind,
+                destination_root=destination,
+                destination_artifact=destination_artifact,
+                expected_artifact_paths=artifact_path_set,
+            )
             observed_git_paths = {path.as_posix() for path in changed_paths}
             _validate_workflow_scope_isolation(
                 source=source,
                 registry=registry_before,
                 workflow_id=workflow_id,
-                paths=observed_git_paths | expected_scope_set,
+                paths=observed_git_paths | expected_scope_set | artifact_path_set,
             )
-            observed_user_paths = observed_git_paths - {descriptor_relative.as_posix()}
+            observed_user_paths = observed_git_paths - artifact_path_set
             if observed_user_paths != expected_scope_set:
                 raise HandoffError(
                     "Observed Git change set differs from explicit Handoff scope "
@@ -442,16 +630,20 @@ def workflow_managed_handoff(
                     "source remains authoritative"
                 )
             expected_git_paths = observed_git_paths
-            transfer_paths = list(changed_paths)
-            if descriptor_relative not in transfer_paths:
-                transfer_paths.append(descriptor_relative)
-                transfer_paths.sort(key=lambda item: item.as_posix().casefold())
+            transfer_paths = sorted(
+                {path.as_posix(): path for path in changed_paths + artifact_paths}.values(),
+                key=lambda item: item.as_posix().casefold(),
+            )
             _validate_destination_baseline_compatibility(
                 source.repository_root,
                 destination,
                 transfer_paths,
             )
-            content_snapshot = _content_snapshot(source.repository_root, transfer_paths)
+            content_snapshot = _content_snapshot(
+                source.repository_root,
+                transfer_paths,
+                registered_artifact_paths=artifact_path_set,
+            )
             manifest = _manifest(content_snapshot)
             raw_patch = _git_bytes(
                 source.repository_root,
@@ -478,6 +670,17 @@ def workflow_managed_handoff(
             )
 
             # Re-run immediately before apply and compare current destination bytes to HEAD.
+            _validate_registered_artifact_inventory(
+                source.repository_root,
+                artifact_folder,
+                artifact_path_set,
+            )
+            _validate_destination_artifact_collision(
+                artifact_kind=artifact_kind,
+                destination_root=destination,
+                destination_artifact=destination_artifact,
+                expected_artifact_paths=artifact_path_set,
+            )
             _validate_destination_baseline_compatibility(
                 source.repository_root,
                 destination,
@@ -507,6 +710,8 @@ def workflow_managed_handoff(
                 destination,
                 content_snapshot,
                 expected_git_paths,
+                artifact_folder,
+                artifact_path_set,
             )
             if _git_immutability_snapshot(source.repository_root) != source_before:
                 raise HandoffError("Source Git HEAD, branch, or index changed during Handoff")
@@ -531,6 +736,8 @@ def workflow_managed_handoff(
                 destination,
                 content_snapshot,
                 expected_git_paths,
+                artifact_folder,
+                artifact_path_set,
             )
             if _git_immutability_snapshot(source.repository_root) != source_before:
                 raise HandoffError("Source Git HEAD, branch, or index changed before authority commit")

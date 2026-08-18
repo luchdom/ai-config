@@ -42,7 +42,7 @@ Frontend requirement:
 
 Workflow rules:
 - Read AGENTS.md first and follow it.
-- Read the registered `docs-ai/<work-key>-<slug>/workflow.json`, plan, tasks, audit, and design when they exist for the current work. Accept an explicitly supplied numbered-and-dated folder or flat artifact only as historical read fallback; never rename or rewrite it.
+- Read `workflow.json`, the plan, tasks, audit, and design from the exact `artifactFolder` recorded by the active work descriptor/registry when they exist. Do not reconstruct the folder from a root literal or select it by recency or a similar slug. New/current registered work resolves under `.ai/work`; an exactly registered legacy workflow continues in its exact registered folder. Explicitly supplied unregistered or tracked historical artifacts are read-only fallback; never adopt, rename, or rewrite them.
 - For non-trivial UI work, read the design spec in that workflow folder when it exists and implement against it instead of redesigning the interface.
 - Before coding, locate and read relevant docs in /docs and existing UI patterns/components in the repo.
 - Update relevant docs when behavior, workflow, setup, or architecture changes.

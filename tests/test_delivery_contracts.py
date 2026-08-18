@@ -3,9 +3,11 @@ from __future__ import annotations
 
 import json
 import importlib.util
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -23,12 +25,16 @@ aggregate_validation = load_aggregate_validation()
 
 from validation.delivery_contracts import (
     CANONICAL_REFERENCES,
+    DOCS_AI_ALLOWLIST,
     check_artifact_layout,
     check_canonical_references,
+    check_docs_ai_allowlist,
     check_entry_policies,
     check_forbidden_operational_terms,
     check_projection_manifest,
     check_shared_specialists_and_routing,
+    check_tool_instruction_cutover,
+    check_worktree_policy,
     validate_repository,
 )
 
@@ -96,7 +102,8 @@ class DeliveryContractTests(unittest.TestCase):
     def test_historical_docs_ai_is_not_operational_doctrine(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            write(root, "docs-ai/history/old.md", "Ready for Codex used Slack for LUC-42")
+            legacy_root = "docs" + "-ai"
+            write(root, f"{legacy_root}/history/old.md", "Ready for Codex used Slack for LUC-42")
             self.assertEqual([], check_forbidden_operational_terms(root))
 
     def test_retired_operational_terms_fail(self) -> None:
@@ -153,14 +160,184 @@ class DeliveryContractTests(unittest.TestCase):
     def test_historical_layout_is_read_only_fallback(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
+            legacy_root = "docs" + "-ai"
             write(
                 root,
                 "src/skills/goal-to-delivery/references/artifact-contract.md",
-                "docs-ai/<work-key>-<slug>/ docs-ai/history historical read fallback never rename, rewrite",
+                f".ai/work/ artifactFolder exact registered legacy {legacy_root} historical read-only",
             )
-            write(root, "src/agents/planner.md", "Use docs-ai/<NNN>-<slug>-<YYYY-MM-DD>/")
+            write(root, "src/agents/planner.md", f"Use {legacy_root}/<NNN>-<slug>-<YYYY-MM-DD>/")
             findings = check_artifact_layout(root)
             self.assertTrue(any("active producer/consumer" in finding for finding in findings))
+
+    def test_legacy_literal_allowlist_is_path_and_purpose_specific(self) -> None:
+        literal = "docs" + "-ai"
+        readme_line = next(line for line in (ROOT / "README.md").read_text(encoding="utf-8").splitlines() if literal in line)
+        runtime_line = next(
+            line
+            for line in (
+                ROOT / "src/skills/goal-to-delivery/scripts/descriptor.py"
+            ).read_text(encoding="utf-8").splitlines()
+            if literal in line
+        )
+        tool_line = next(
+            line
+            for line in (ROOT / "src/tool-instructions/codex/AGENTS.md").read_text(encoding="utf-8").splitlines()
+            if literal in line
+        )
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            write(root, "README.md", readme_line)
+            write(root, "dist/tool-instructions/codex/AGENTS.md", tool_line)
+            self.assertEqual([], check_docs_ai_allowlist(root))
+
+            write(root, "README.md", readme_line + f"\nCreate current work in {literal}/new-work.\n")
+            self.assertTrue(check_docs_ai_allowlist(root), "stale current doctrine must fail in an allowlisted path")
+
+            write(root, "README.md", runtime_line)
+            self.assertTrue(check_docs_ai_allowlist(root), "an allowed line must fail under the wrong path/purpose")
+
+        for relative in (
+            "src/agents/unlisted.md",
+            "tests/unreviewed.py",
+            "dist/codex/agents/unlisted.toml",
+        ):
+            with self.subTest(relative=relative), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                write(root, relative, runtime_line)
+                self.assertTrue(check_docs_ai_allowlist(root), "active source, tests, and dist must all be scanned")
+
+        with tempfile.TemporaryDirectory() as directory:
+            with mock.patch.dict(
+                DOCS_AI_ALLOWLIST,
+                {"README.md": {"unsupported purpose": frozenset()}},
+                clear=True,
+            ):
+                self.assertTrue(check_docs_ai_allowlist(Path(directory)))
+
+    def test_tool_instruction_cutover_rejects_retired_path_and_name(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "src/tool-instructions").mkdir(parents=True)
+            self.assertEqual([], check_tool_instruction_cutover(root))
+
+            retired_leaf = "project" + "-templates"
+            (root / "src" / retired_leaf).mkdir()
+            self.assertTrue(check_tool_instruction_cutover(root))
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "src/tool-instructions").mkdir(parents=True)
+            retired_name = "Project" + " templates"
+            write(root, "README.md", f"Keep {retired_name} here.")
+            self.assertTrue(check_tool_instruction_cutover(root))
+
+    def test_tool_instruction_paths_and_identifiers_are_canonical(self) -> None:
+        expected = (
+            "src/tool-instructions/codex/AGENTS.md",
+            "src/tool-instructions/claude/CLAUDE.md",
+            "src/tool-instructions/copilot/.github/copilot-instructions.md",
+            "src/tool-instructions/cursor/AGENTS.md",
+        )
+        self.assertTrue(all((ROOT / relative).is_file() for relative in expected))
+        self.assertFalse((ROOT / "src" / ("project" + "-templates")).exists())
+
+        build = (ROOT / "scripts/build.py").read_text(encoding="utf-8")
+        sync = (ROOT / "scripts/sync.py").read_text(encoding="utf-8")
+        bootstrap = (ROOT / "scripts/bootstrap_existing.py").read_text(encoding="utf-8")
+        self.assertIn("def validate_tool_instruction_skills", build)
+        self.assertIn("def sync_tool_instructions", sync)
+        self.assertIn("SRC_TOOL_INSTRUCTIONS", bootstrap)
+        self.assertIn("def write_tool_instructions", bootstrap)
+
+    def test_worktree_policy_and_all_tool_routes_are_enforced(self) -> None:
+        self.assertEqual([], check_worktree_policy(ROOT))
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            relative_paths = (
+                "src/skills/goal-to-delivery/references/worktree-policy.md",
+                "src/tool-instructions/codex/AGENTS.md",
+                "src/tool-instructions/claude/CLAUDE.md",
+                "src/tool-instructions/copilot/.github/copilot-instructions.md",
+                "src/tool-instructions/cursor/AGENTS.md",
+            )
+            for relative in relative_paths:
+                write(root, relative, (ROOT / relative).read_text(encoding="utf-8"))
+            self.assertEqual([], check_worktree_policy(root))
+
+            codex = root / "src/tool-instructions/codex/AGENTS.md"
+            canonical_codex = codex.read_text(encoding="utf-8")
+            codex.write_text(
+                canonical_codex.replace(
+                    "goal-to-delivery/references/worktree-policy.md",
+                    "missing-worktree-policy.md",
+                ),
+                encoding="utf-8",
+            )
+            self.assertTrue(check_worktree_policy(root))
+
+            codex.write_text(canonical_codex, encoding="utf-8")
+            policy = root / "src/skills/goal-to-delivery/references/worktree-policy.md"
+            resolved_command = "git worktree add -b <branch> <exact-path> <resolved-base-commit>"
+            movable_command = "git worktree add -b <branch> <exact-path> <remote-ref>"
+            policy.write_text(
+                policy.read_text(encoding="utf-8").replace(resolved_command, movable_command),
+                encoding="utf-8",
+            )
+            findings = check_worktree_policy(root)
+            self.assertTrue(
+                any("never a movable remote ref" in finding for finding in findings),
+                "the policy validator must reject a movable-ref execution command",
+            )
+
+    def test_worktree_creation_pins_authorized_commit_when_remote_ref_moves(self) -> None:
+        def git(cwd: Path, *args: str) -> str:
+            return subprocess.run(
+                ["git", *args],
+                cwd=cwd,
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            repository = root / "repository"
+            repository.mkdir()
+            git(repository, "init")
+            git(repository, "config", "user.name", "Worktree Policy Fixture")
+            git(repository, "config", "user.email", "worktree-policy@example.invalid")
+
+            tracked = repository / "tracked.txt"
+            tracked.write_text("authorized\n", encoding="utf-8")
+            git(repository, "add", "tracked.txt")
+            git(repository, "commit", "-m", "authorized base")
+            authorized_commit = git(repository, "rev-parse", "HEAD")
+            git(repository, "update-ref", "refs/remotes/origin/main", authorized_commit)
+
+            tracked.write_text("advanced\n", encoding="utf-8")
+            git(repository, "commit", "-am", "advance movable ref")
+            advanced_commit = git(repository, "rev-parse", "HEAD")
+            git(repository, "update-ref", "refs/remotes/origin/main", advanced_commit)
+            self.assertNotEqual(authorized_commit, advanced_commit)
+            self.assertEqual(advanced_commit, git(repository, "rev-parse", "refs/remotes/origin/main"))
+
+            worktrees = root / "worktrees"
+            worktrees.mkdir()
+            destination = worktrees / "authorized"
+            git(
+                repository,
+                "worktree",
+                "add",
+                "-b",
+                "fixture-authorized",
+                str(destination),
+                authorized_commit,
+            )
+
+            self.assertEqual(authorized_commit, git(destination, "rev-parse", "HEAD"))
+            self.assertNotEqual(advanced_commit, git(destination, "rev-parse", "HEAD"))
 
     def test_entry_policy_drift_fails(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -276,7 +453,7 @@ class DeliveryContractTests(unittest.TestCase):
             source = write(root, "src/agents/example.md", "canonical")
             output = write(root, "dist/codex/agents/example.toml", "generated")
             (root / "src/skills").mkdir(parents=True)
-            (root / "src/project-templates").mkdir(parents=True)
+            (root / "src/tool-instructions").mkdir(parents=True)
 
             import hashlib
 

@@ -14,6 +14,7 @@ CANONICAL_REFERENCES = (
     "clarification-policy.md",
     "quality-gates.md",
     "completion-boundaries.md",
+    "worktree-policy.md",
     "work-descriptor.schema.json",
 )
 ENTRY_SKILLS = ("goal-to-delivery", "spec-driven-delivery", "linear-delivery-loop")
@@ -32,10 +33,10 @@ SPECIALIST_AGENTS = (
 GUIDANCE_FILES = (
     "AGENTS.md",
     "README.md",
-    "src/project-templates/codex/AGENTS.md",
-    "src/project-templates/claude/CLAUDE.md",
-    "src/project-templates/copilot/.github/copilot-instructions.md",
-    "src/project-templates/cursor/AGENTS.md",
+    "src/tool-instructions/codex/AGENTS.md",
+    "src/tool-instructions/claude/CLAUDE.md",
+    "src/tool-instructions/copilot/.github/copilot-instructions.md",
+    "src/tool-instructions/cursor/AGENTS.md",
 )
 FORBIDDEN_OPERATIONAL_PATTERNS = (
     ("retired state name", re.compile(r"\bReady for Codex\b", re.IGNORECASE)),
@@ -47,11 +48,96 @@ FORBIDDEN_OPERATIONAL_PATTERNS = (
     ),
 )
 OLD_LAYOUT_PATTERN = re.compile(
-    r"docs-ai/<(?:NNN|[Nn]{3})>-<(?:short-feature-name|slug)>-<YYYY-MM-DD>",
+    r"docs" + r"-ai/<(?:NNN|[Nn]{3})>-<(?:short-feature-name|slug)>-<YYYY-MM-DD>",
     re.IGNORECASE,
 )
 MARKDOWN_LINK_PATTERN = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
 DOCTRINE_BLOCK_MIN_LENGTH = 120
+TEXT_SUFFIXES = {".json", ".md", ".mdc", ".py", ".toml", ".txt", ".yaml", ".yml"}
+
+# Each digest identifies one exact stripped source line and its reviewed purpose.
+# Generated projections are mapped back to their canonical source before lookup.
+# Keep this narrow: adding or changing a legacy literal requires an explicit review here.
+DOCS_AI_ALLOWED_PURPOSES = frozenset(
+    ("legacy runtime compatibility", "intentional legacy test", "classified history")
+)
+DOCS_AI_ALLOWLIST: dict[str, dict[str, frozenset[str]]] = {
+    "AGENTS.md": {
+        "legacy runtime compatibility": frozenset(
+            {"e300897cfebba5099aec32422a44cff0e182353f3fc4caefa93978296ef36ceb"}
+        )
+    },
+    "README.md": {
+        "legacy runtime compatibility": frozenset(
+            {"6337098fc2e22c20f158434e04815e2c88bdf0f002a0a05ffaac3dff1909b08b"}
+        )
+    },
+    "src/skills/goal-to-delivery/references/artifact-contract.md": {
+        "legacy runtime compatibility": frozenset(
+            {"60b8e0b7d2829676c3a3f873556df074d82d9846fc55f663047b6a47adadf71d"}
+        ),
+        "classified history": frozenset(
+            {"0969aa7926b8f14f63757838691918d124f7535c55b4b88a39db1a4c17490b8b"}
+        ),
+    },
+    "src/skills/goal-to-delivery/scripts/descriptor.py": {
+        "classified history": frozenset(
+            {
+                "56481291618293162e3dbd91dcb66c0b447b3e468ecc31f77916d428ce54f37c",
+                "fd769173d8485ec017aaf25b1636ee4eacaa8c758ec6c4d9949d72599f4fd8ea",
+            }
+        )
+    },
+    "src/skills/goal-to-delivery/scripts/path_safety.py": {
+        "legacy runtime compatibility": frozenset(
+            {
+                "45375bba04c3d99ef61a3f54e35767ecf4b14d5e183b5d3a85f1f006dfa19854",
+                "ffda759438c1e0bed28f8e7b20abd0f9af285a31ca3d0934f294ebb3498ef19d",
+            }
+        )
+    },
+    "src/tool-instructions/codex/AGENTS.md": {
+        "legacy runtime compatibility": frozenset(
+            {"e300897cfebba5099aec32422a44cff0e182353f3fc4caefa93978296ef36ceb"}
+        )
+    },
+    "src/tool-instructions/claude/CLAUDE.md": {
+        "legacy runtime compatibility": frozenset(
+            {"e300897cfebba5099aec32422a44cff0e182353f3fc4caefa93978296ef36ceb"}
+        )
+    },
+    "src/tool-instructions/copilot/.github/copilot-instructions.md": {
+        "legacy runtime compatibility": frozenset(
+            {"e300897cfebba5099aec32422a44cff0e182353f3fc4caefa93978296ef36ceb"}
+        )
+    },
+    "src/tool-instructions/cursor/AGENTS.md": {
+        "legacy runtime compatibility": frozenset(
+            {"e300897cfebba5099aec32422a44cff0e182353f3fc4caefa93978296ef36ceb"}
+        )
+    },
+    "tests/goal_to_delivery_base/support.py": {
+        "intentional legacy test": frozenset(
+            {"5725b27b2810f1e6b917d5def3a9688aa0e6cde46090b424fc9f807a85738eef"}
+        )
+    },
+    "tests/goal_to_delivery_base/test_handoff.py": {
+        "intentional legacy test": frozenset(
+            {"f92233d0e872d0fd248317a6138ff4ca6b2dc2226c13884b593395c6340415b4"}
+        )
+    },
+    "tests/goal_to_delivery_base/test_workflow_lifecycle.py": {
+        "intentional legacy test": frozenset(
+            {
+                "0519abfbbeb17553767ec1dad639c2f75c459c074bd600c26fbc72dfd2c4f0cd",
+                "1d57e38d741202f07f761b8d3670ab6e3421faa23bde4230d382932ecf2e472d",
+                "33a78043fc1f82d300b3e62d9a97ebe9aad9cf83ebb6410804cb3375d85e345f",
+                "41c71090db3af355a55cc361d9e3f8f090d235357cd28dddcb5747e2907362cd",
+                "50e1d320827e3cc11f469152bbaaba196bf6dab57afbbc80e01a618d186a3624",
+            }
+        )
+    },
+}
 
 
 def _read(path: Path) -> str:
@@ -91,7 +177,7 @@ def _normalized_json(path: Path) -> str | None:
 
 
 def operational_markdown(root: Path) -> list[Path]:
-    """Return current operational doctrine, intentionally excluding docs-ai history."""
+    """Return current operational doctrine, intentionally excluding legacy evidence history."""
     paths = [root / "AGENTS.md", root / "README.md"]
     paths.extend((root / "docs").rglob("*.md"))
     paths.extend((root / "src").rglob("*.md"))
@@ -387,18 +473,20 @@ def check_shared_specialists_and_routing(root: Path) -> list[str]:
 def check_artifact_layout(root: Path) -> list[str]:
     findings: list[str] = []
     contract = root / "src" / "skills" / "goal-to-delivery" / "references" / "artifact-contract.md"
+    legacy_root = "docs" + "-ai"
     findings.extend(
         _require_fragments(
             root,
             contract,
             (
-                "docs-ai/<work-key>-<slug>/",
-                "docs-ai/history",
+                ".ai/work/",
+                "artifactFolder",
+                "registered legacy",
+                legacy_root,
                 "historical",
-                "read fallback",
-                "never rename, rewrite",
+                "read-only",
             ),
-            "artifact layout and historical fallback contract",
+            "artifact layout, registered legacy compatibility, and historical read-only contract",
         )
     )
 
@@ -410,6 +498,174 @@ def check_artifact_layout(root: Path) -> list[str]:
             findings.append(
                 f"{_relative(root, path)}: active producer/consumer retains historical folder layout: {match.group(0)}"
             )
+    return findings
+
+
+def _active_text_files(root: Path) -> list[Path]:
+    candidates = list(root.glob("*.md"))
+    for relative in ("docs", "src", "scripts", "validation", "tests", "dist"):
+        area = root / relative
+        if area.is_dir():
+            candidates.extend(area.rglob("*"))
+    return sorted(
+        {
+            path
+            for path in candidates
+            if path.is_file()
+            and path.suffix.casefold() in TEXT_SUFFIXES
+            and "__pycache__" not in path.parts
+            and path.suffix.casefold() != ".pyc"
+        }
+    )
+
+
+def _canonical_projection_source(relative: str) -> str:
+    parts = relative.split("/")
+    if len(parts) >= 3 and parts[0] == "dist" and parts[1] == "tool-instructions":
+        return "/".join(("src", "tool-instructions", *parts[2:]))
+
+    if len(parts) >= 5 and parts[0] == "dist" and parts[2] == "skills":
+        return "/".join(("src", "skills", *parts[3:]))
+
+    if len(parts) == 4 and parts[0] == "dist" and parts[2] == "agents":
+        name = parts[3]
+        if parts[1] == "codex" and name.endswith(".toml"):
+            stem = name.removesuffix(".toml")
+        elif parts[1] == "claude" and name.endswith(".md"):
+            stem = name.removesuffix(".md")
+        elif parts[1] == "copilot" and name.endswith(".agent.md"):
+            stem = name.removesuffix(".agent.md")
+        else:
+            return relative
+        return f"src/agents/{stem}.md"
+
+    if len(parts) == 4 and parts[:3] == ["dist", "cursor", "rules"] and parts[3].endswith(".mdc"):
+        return f"src/agents/{parts[3].removesuffix('.mdc')}.md"
+
+    return relative
+
+
+def _line_sha256(line: str) -> str:
+    return hashlib.sha256(line.strip().encode("utf-8")).hexdigest()
+
+
+def check_docs_ai_allowlist(root: Path) -> list[str]:
+    """Reject every unreviewed legacy-root literal in active source and projections."""
+    literal = "docs" + "-ai"
+    findings: list[str] = []
+    for source_relative, purpose_digests in DOCS_AI_ALLOWLIST.items():
+        unexpected = sorted(set(purpose_digests) - DOCS_AI_ALLOWED_PURPOSES)
+        if unexpected:
+            findings.append(
+                f"Legacy literal allowlist for {source_relative!r} has unsupported purposes: "
+                + ", ".join(unexpected)
+            )
+        for purpose, digests in purpose_digests.items():
+            invalid = sorted(digest for digest in digests if re.fullmatch(r"[0-9a-f]{64}", digest) is None)
+            if invalid:
+                findings.append(
+                    f"Legacy literal allowlist for {source_relative!r} purpose {purpose!r} "
+                    "contains an invalid line digest."
+                )
+    for path in _active_text_files(root):
+        relative = _relative(root, path)
+        source_relative = _canonical_projection_source(relative)
+        purpose_digests = DOCS_AI_ALLOWLIST.get(source_relative, {})
+        for line_number, line in enumerate(_read(path).splitlines(), start=1):
+            if literal.casefold() not in line.casefold():
+                continue
+            digest = _line_sha256(line)
+            purposes = sorted(purpose for purpose, digests in purpose_digests.items() if digest in digests)
+            if purposes:
+                continue
+            expected = ", ".join(sorted(purpose_digests)) or "no allowed purpose"
+            findings.append(
+                f"{relative}:{line_number}: unallowlisted legacy artifact-root literal; "
+                f"canonical source {source_relative!r} permits {expected}."
+            )
+    return findings
+
+
+def check_tool_instruction_cutover(root: Path) -> list[str]:
+    findings: list[str] = []
+    current_source = root / "src" / "tool-instructions"
+    retired_leaf = "project" + "-templates"
+    retired_source = root / "src" / retired_leaf
+    retired_generated = root / "dist" / retired_leaf
+    if not current_source.is_dir():
+        findings.append("Missing canonical tool-instructions directory: src/tool-instructions")
+    if retired_source.exists():
+        findings.append("Retired canonical instruction directory still exists under src/.")
+    if retired_generated.exists():
+        findings.append("Retired generated instruction directory still exists under dist/.")
+
+    retired_path_pattern = re.compile(re.escape(retired_leaf), re.IGNORECASE)
+    retired_name_pattern = re.compile(r"\bproject\s+templates?\b", re.IGNORECASE)
+    for path in _active_text_files(root):
+        text = _read(path)
+        match = retired_path_pattern.search(text) or retired_name_pattern.search(text)
+        if match:
+            line = text.count("\n", 0, match.start()) + 1
+            findings.append(f"{_relative(root, path)}:{line}: retains retired tool-instruction terminology.")
+    return findings
+
+
+def check_worktree_policy(root: Path) -> list[str]:
+    policy = root / "src" / "skills" / "goal-to-delivery" / "references" / "worktree-policy.md"
+    resolved_command = "git worktree add -b <branch> <exact-path> <resolved-base-commit>"
+    findings = _require_fragments(
+        root,
+        policy,
+        (
+            "direct owner instruction",
+            "explicitly invoked delivery entry",
+            "is not authority",
+            "git worktree list --porcelain -z",
+            ".ai/worktrees/<safe-worktree-name>",
+            "windows reserved names",
+            "reparse traversal",
+            "git check-ignore -v --no-index",
+            "remote ref is provenance only",
+            "bind the recorded full commit sha into the imminent command",
+            resolved_command,
+            "must never change the command operand",
+            "creation authority never implies removal authority",
+            "git worktree remove",
+            "git clean -x",
+            "never recursively delete",
+            "stricter repository-local",
+        ),
+        "canonical worktree authority and safety contract",
+    )
+
+    if policy.is_file():
+        command_lines = [
+            line.strip()
+            for line in _read(policy).splitlines()
+            if line.strip().casefold().startswith("git worktree add -b")
+        ]
+        unexpected_commands = [command for command in command_lines if command != resolved_command]
+        if unexpected_commands:
+            findings.append(
+                f"{_relative(root, policy)}: worktree creation must execute against the reconciled "
+                "resolved base commit, never a movable remote ref."
+            )
+
+    for relative in GUIDANCE_FILES[2:]:
+        findings.extend(
+            _require_fragments(
+                root,
+                root / relative,
+                (
+                    "goal-to-delivery/references/worktree-policy.md",
+                    "artifactFolder",
+                    ".ai/work",
+                    "exact registered legacy",
+                    "read-only",
+                ),
+                "tool-instruction artifact and worktree routing contract",
+            )
+        )
     return findings
 
 
@@ -457,7 +713,7 @@ def check_projection_manifest(root: Path) -> list[str]:
 
     expected_sources = {
         path.relative_to(root).as_posix()
-        for area in (root / "src" / "agents", root / "src" / "skills", root / "src" / "project-templates")
+        for area in (root / "src" / "agents", root / "src" / "skills", root / "src" / "tool-instructions")
         for path in area.rglob("*")
         if path.is_file() and "__pycache__" not in path.parts and path.suffix != ".pyc"
     }
@@ -508,6 +764,9 @@ def validate_repository(root: Path) -> list[str]:
         check_entry_policies,
         check_shared_specialists_and_routing,
         check_artifact_layout,
+        check_docs_ai_allowlist,
+        check_tool_instruction_cutover,
+        check_worktree_policy,
         check_guidance_alignment,
         check_projection_manifest,
     )

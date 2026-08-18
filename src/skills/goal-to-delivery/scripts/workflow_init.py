@@ -10,6 +10,7 @@ import shutil
 import time
 import uuid
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -18,11 +19,15 @@ from .descriptor import new_descriptor, read_descriptor, validate_descriptor
 from .errors import CollisionError, ResumeError, ValidationError
 from .identity import RepositoryIdentity, observe_repository_identity
 from .path_safety import (
+    assert_effective_artifact_ignore,
+    current_artifact_root,
     ensure_safe_descendant,
     existing_artifact_names,
     iter_safe_artifact_scan_locations,
+    legacy_artifact_root,
     normalize_slug,
-    reject_case_insensitive_collision,
+    registered_artifact_root,
+    validate_current_artifact_folder_name,
     validate_provider_key,
     validate_repository_key,
 )
@@ -60,7 +65,8 @@ class WorkflowManager:
         self.repository_key = validate_repository_key(repository_key)
         self.identity: RepositoryIdentity = observe_repository_identity(repository_root)
         self.repository_root = Path(self.identity.repository_root)
-        self.docs_root = self.repository_root / "docs-ai"
+        self.artifacts_root = current_artifact_root(self.repository_root)
+        self.legacy_docs_root = legacy_artifact_root(self.repository_root)
         self.home: StateHome = ensure_state_home(
             derive_state_home(
                 self.identity,
@@ -118,11 +124,16 @@ class WorkflowManager:
                     self.state_paths.write_json(self.registry.path, transaction["beforeRegistry"])
                     artifact_folder = Path(transaction["artifactFolder"])
                     if artifact_folder.exists():
+                        _, artifact_root = registered_artifact_root(
+                            Path(transaction["afterDescriptor"]["repositoryRoot"]),
+                            artifact_folder,
+                            candidate_may_not_exist=False,
+                        )
                         self._quarantine_partial(
                             artifact_folder,
                             transaction["workflowId"],
                             reason="recovered-incomplete-initialization",
-                            docs_root=Path(transaction["afterDescriptor"]["repositoryRoot"]) / "docs-ai",
+                            artifact_root=artifact_root,
                         )
                 else:
                     atomic_write_json(descriptor_path, transaction["beforeDescriptor"])
@@ -210,6 +221,7 @@ class WorkflowManager:
         self._assert_manager_repository_key()
         if max_attempts < 1:
             raise ValidationError("Allocation retry budget must be positive")
+        allocation_date = date.today().isoformat()
         with self.registry.mutex():
             registry_before = self._load_registry_unlocked()
             for attempt in range(max_attempts):
@@ -227,14 +239,16 @@ class WorkflowManager:
                         for entry in registry_before["workflows"].values()
                     ):
                         raise CollisionError(f"External work {external_id} is already registered")
-                folder_name = f"{work_key}-{slug}"
-                candidate = self.docs_root / folder_name
-                ensure_safe_descendant(self.docs_root, candidate)
+                work_token = f"local-{work_key}" if work_source == "local" else work_key
+                base_folder_name = f"{allocation_date}--{work_token}--{slug}"
                 names = existing_artifact_names(
-                    self.docs_root,
+                    self.artifacts_root,
                     (entry["artifactPath"] for entry in registry_before["workflows"].values()),
                 )
-                reject_case_insensitive_collision(folder_name, names)
+                folder_name = self._available_folder_name(base_folder_name, names)
+                candidate = self.artifacts_root / folder_name
+                ensure_safe_descendant(self.artifacts_root, candidate)
+                assert_effective_artifact_ignore(self.repository_root, candidate)
                 workflow_id = str(uuid.uuid4())
                 descriptor_path = candidate / "workflow.json"
                 transaction_path = self._transaction_path(workflow_id)
@@ -284,7 +298,11 @@ class WorkflowManager:
                         if work_source == "local" and attempt + 1 < max_attempts:
                             continue
                         raise CollisionError(f"Unable to allocate unique artifact folder {folder_name}")
-                    ensure_safe_descendant(self.docs_root, candidate, candidate_may_not_exist=False)
+                    ensure_safe_descendant(
+                        self.artifacts_root,
+                        candidate,
+                        candidate_may_not_exist=False,
+                    )
                     atomic_write_json(descriptor_path, descriptor)
                     if read_descriptor(descriptor_path) != descriptor:
                         raise ValidationError("Descriptor readback mismatch")
@@ -469,12 +487,16 @@ class WorkflowManager:
         workflow_id: str,
         *,
         reason: str,
-        docs_root: Path | None = None,
+        artifact_root: Path | None = None,
     ) -> None:
         quarantine = self.state_paths.directory(self.home.repository / "quarantine", create=True)
         record_path = self.state_paths.leaf(quarantine / f"{time.time_ns()}-{workflow_id}.json")
         try:
-            ensure_safe_descendant(docs_root or self.docs_root, candidate, candidate_may_not_exist=False)
+            ensure_safe_descendant(
+                artifact_root or self.artifacts_root,
+                candidate,
+                candidate_may_not_exist=False,
+            )
         except Exception as exc:
             self.state_paths.write_json(
                 record_path,
@@ -583,7 +605,14 @@ class WorkflowManager:
             raise ValidationError("Transaction target belongs to another Git common directory")
         if observed.physical_worktree_fingerprint != after_descriptor["physicalWorktreeFingerprint"]:
             raise ValidationError("Transaction target fingerprint disagrees with its repository root")
-        ensure_safe_descendant(repository_root / "docs-ai", artifact_folder)
+        artifact_kind, _ = registered_artifact_root(repository_root, artifact_folder)
+        if artifact_kind == "current":
+            validate_current_artifact_folder_name(
+                artifact_folder.name,
+                work_source=after_descriptor["workSource"],
+                work_key=after_descriptor["workKey"],
+                slug=after_descriptor["slug"],
+            )
         self._validate_registry_bindings(transaction["beforeRegistry"])
         self._validate_registry_bindings(transaction["afterRegistry"])
         before_entry = transaction["beforeRegistry"]["workflows"].get(transaction["workflowId"])
@@ -605,7 +634,7 @@ class WorkflowManager:
 
     def _next_local_key(self, registry: dict[str, Any]) -> str:
         observed: list[int] = []
-        for location in iter_safe_artifact_scan_locations(self.docs_root):
+        for location in iter_safe_artifact_scan_locations(self.legacy_docs_root):
             for child in location.iterdir():
                 prefix = child.name.split("-", 1)[0]
                 if prefix.isdigit() and len(prefix) >= 3:
@@ -615,6 +644,17 @@ class WorkflowManager:
                 observed.append(int(entry["workKey"]))
         sequence = max(observed, default=0) + 1
         return f"{sequence:03d}"
+
+    @staticmethod
+    def _available_folder_name(base_name: str, names: set[str]) -> str:
+        folded = {name.casefold() for name in names}
+        if base_name.casefold() not in folded:
+            return base_name
+        for sequence in range(2, 10_000):
+            candidate = f"{base_name}--{sequence:02d}"
+            if candidate.casefold() not in folded:
+                return candidate
+        raise CollisionError("Artifact collision sequence exhausted")
 
     def _assert_entry_context(self, entry: dict[str, Any]) -> None:
         if entry["repositoryKey"] != self.repository_key:

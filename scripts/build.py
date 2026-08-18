@@ -86,19 +86,19 @@ def render_cursor_rule(meta: dict[str, str], body: str) -> str:
     )
 
 
-def validate_project_template_skills() -> None:
+def validate_tool_instruction_skills() -> None:
     available_skills = {path.name for path in (SRC / "skills").iterdir() if path.is_dir()}
     errors: list[str] = []
 
-    for template_path in sorted((SRC / "project-templates").rglob("*")):
-        if not template_path.is_file():
+    for instruction_path in sorted((SRC / "tool-instructions").rglob("*")):
+        if not instruction_path.is_file():
             continue
-        for skill_id in sorted(set(SKILL_REF_PATTERN.findall(template_path.read_text(encoding="utf-8")))):
+        for skill_id in sorted(set(SKILL_REF_PATTERN.findall(instruction_path.read_text(encoding="utf-8")))):
             if skill_id not in available_skills:
-                errors.append(f"{template_path}: references unknown skill id ${skill_id}.")
+                errors.append(f"{instruction_path}: references unknown skill id ${skill_id}.")
 
     if errors:
-        raise ValueError("Project template skill validation failed:\n" + "\n".join(errors))
+        raise ValueError("Tool instruction skill validation failed:\n" + "\n".join(errors))
 
 
 def validate_agent_fields() -> None:
@@ -153,7 +153,7 @@ def write_projection_manifest(projections: dict[Path, list[Path]]) -> None:
 
 
 def rebuild_dist() -> None:
-    validate_project_template_skills()
+    validate_tool_instruction_skills()
     validate_agent_fields()
 
     if DIST.exists():
@@ -166,10 +166,10 @@ def rebuild_dist() -> None:
     (DIST / "copilot" / "agents").mkdir(parents=True, exist_ok=True)
     (DIST / "copilot" / "skills").mkdir(parents=True, exist_ok=True)
     (DIST / "cursor" / "rules").mkdir(parents=True, exist_ok=True)
-    (DIST / "project-templates" / "codex").mkdir(parents=True, exist_ok=True)
-    (DIST / "project-templates" / "claude").mkdir(parents=True, exist_ok=True)
-    (DIST / "project-templates" / "copilot" / ".github").mkdir(parents=True, exist_ok=True)
-    (DIST / "project-templates" / "cursor").mkdir(parents=True, exist_ok=True)
+    (DIST / "tool-instructions" / "codex").mkdir(parents=True, exist_ok=True)
+    (DIST / "tool-instructions" / "claude").mkdir(parents=True, exist_ok=True)
+    (DIST / "tool-instructions" / "copilot" / ".github").mkdir(parents=True, exist_ok=True)
+    (DIST / "tool-instructions" / "cursor").mkdir(parents=True, exist_ok=True)
 
     projections: dict[Path, list[Path]] = {}
 
@@ -206,26 +206,26 @@ def rebuild_dist() -> None:
                 relative = source.relative_to(skill_dir)
                 projections[source] = [destination / relative for destination in destinations]
 
-    codex_template = SRC / "project-templates" / "codex" / "AGENTS.md"
-    claude_template = SRC / "project-templates" / "claude" / "CLAUDE.md"
-    copilot_template = SRC / "project-templates" / "copilot" / ".github" / "copilot-instructions.md"
-    cursor_template = SRC / "project-templates" / "cursor" / "AGENTS.md"
-    if codex_template.exists():
-        output = DIST / "project-templates" / "codex" / "AGENTS.md"
-        shutil.copy2(codex_template, output)
-        projections[codex_template] = [output]
-    if claude_template.exists():
-        output = DIST / "project-templates" / "claude" / "CLAUDE.md"
-        shutil.copy2(claude_template, output)
-        projections[claude_template] = [output]
-    if copilot_template.exists():
-        output = DIST / "project-templates" / "copilot" / ".github" / "copilot-instructions.md"
-        shutil.copy2(copilot_template, output)
-        projections[copilot_template] = [output]
-    if cursor_template.exists():
-        output = DIST / "project-templates" / "cursor" / "AGENTS.md"
-        shutil.copy2(cursor_template, output)
-        projections[cursor_template] = [output]
+    codex_instruction = SRC / "tool-instructions" / "codex" / "AGENTS.md"
+    claude_instruction = SRC / "tool-instructions" / "claude" / "CLAUDE.md"
+    copilot_instruction = SRC / "tool-instructions" / "copilot" / ".github" / "copilot-instructions.md"
+    cursor_instruction = SRC / "tool-instructions" / "cursor" / "AGENTS.md"
+    if codex_instruction.exists():
+        output = DIST / "tool-instructions" / "codex" / "AGENTS.md"
+        shutil.copy2(codex_instruction, output)
+        projections[codex_instruction] = [output]
+    if claude_instruction.exists():
+        output = DIST / "tool-instructions" / "claude" / "CLAUDE.md"
+        shutil.copy2(claude_instruction, output)
+        projections[claude_instruction] = [output]
+    if copilot_instruction.exists():
+        output = DIST / "tool-instructions" / "copilot" / ".github" / "copilot-instructions.md"
+        shutil.copy2(copilot_instruction, output)
+        projections[copilot_instruction] = [output]
+    if cursor_instruction.exists():
+        output = DIST / "tool-instructions" / "cursor" / "AGENTS.md"
+        shutil.copy2(cursor_instruction, output)
+        projections[cursor_instruction] = [output]
 
     write_projection_manifest(projections)
 

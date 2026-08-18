@@ -13,16 +13,16 @@ Draft PR text that is easy for reviewers to scan and test.
 2. Use the repo template's headings and order exactly. Do not add extra sections.
 3. If the repo has no PR template, use: Overview, Changes, Security Impact, Testing, Related Work.
 4. Keep the PR title under 70 characters.
-5. Write `<date>-<slug>-pr-description.md` to the exact registered `docs-ai/<work-key>-<slug>/` workflow folder.
+5. Write `<date>-<slug>-pr-description.md` to the exact `artifactFolder` recorded by the active work descriptor/registry.
 
-Do not allocate a workflow folder or infer one from the latest directory. Accept an explicitly supplied numbered-and-dated folder or flat artifact only as historical read fallback and never rewrite or migrate it.
+Do not allocate or reconstruct a workflow folder, and do not select one by recency or a similar slug. New/current registered work resolves under `.ai/work`; an exactly registered legacy workflow continues in its exact registered folder. Explicitly supplied unregistered or tracked historical artifacts are read-only fallback; never adopt, rewrite, or migrate them.
 
 ## Writing Rules
 
 - Keep bullets short and concrete.
 - Lead with what changed and why.
 - Do not restate the diff line by line.
-- Omit internal narration, including audits, stash experiments, plan history, task history, and `docs-ai/` workflow artifacts.
+- Omit internal narration, including audits, stash experiments, plan history, task history, and workflow artifacts.
 - Mention pre-existing or unrelated test failures in one line.
 
 ## Testing Section
