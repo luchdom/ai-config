@@ -164,6 +164,102 @@ $env:TEMP = "$env:USERPROFILE\cbm-stage"
 
 - The Codex MCP registration name is `codebase-memory-mcp`.
 
+### Graphify
+
+Links:
+- [Graphify repository](https://github.com/Graphify-Labs/graphify)
+- [Graphify package on PyPI](https://pypi.org/project/graphifyy/)
+
+Recommended for:
+- supplementary local knowledge-graph extraction and queries
+- code-only AST indexing that does not require an API key
+- a portable JSON graph that can combine multiple repositories
+
+Install the official PyPI package in an isolated environment, then install its
+Codex-specific skill globally:
+
+```powershell
+uv tool install graphifyy
+graphify install --platform codex
+```
+
+Verify:
+
+```powershell
+graphify --version
+Test-Path "$HOME\.codex\skills\graphify\SKILL.md"
+```
+
+Codex parallel extraction also expects this existing feature setting:
+
+```toml
+[features]
+multi_agent = true
+```
+
+For the active Luchdom repositories, keep generated graphs outside the Git
+worktrees and use local AST-only extraction. `--code-only` skips docs, PDFs, and
+images and does not call an LLM:
+
+```powershell
+graphify extract C:\dev\luchdom\saas --code-only --out "$HOME\.codex\graphify-indexes\saas"
+graphify extract C:\dev\luchdom\my-finance --code-only --out "$HOME\.codex\graphify-indexes\my-finance"
+
+graphify global add "$HOME\.codex\graphify-indexes\saas\graphify-out\graph.json" --as saas
+graphify global add "$HOME\.codex\graphify-indexes\my-finance\graphify-out\graph.json" --as my-finance
+graphify global list
+graphify global path
+```
+
+Notes:
+
+- The PyPI distribution is `graphifyy`; the installed command is `graphify`.
+- Use `$graphify` in Codex to invoke the skill explicitly.
+- The global skill install above does not modify a repository. By contrast,
+  `graphify codex install` writes an always-on section to the current
+  `AGENTS.md` and registers `.codex/hooks.json`. Do not run that project command
+  automatically in Luchdom repositories, whose instruction files and primary
+  Codebase Memory policy are already repository-owned.
+- Full semantic extraction can process docs and media through an LLM backend.
+  Do not omit `--code-only` for private repositories unless the user has
+  explicitly approved the selected provider and data boundary.
+- Graphify and Codebase Memory are separate indexes. Neither index is proof of
+  exhaustive source coverage; use direct source reads for reported gaps.
+
+### Ponytail
+
+Link:
+- [DietrichGebert/ponytail](https://github.com/DietrichGebert/ponytail)
+
+Recommended for:
+- YAGNI and standard-library-first implementation guidance
+- diff and repository reviews focused on unnecessary complexity
+
+Install the native Codex plugin from its official marketplace:
+
+```powershell
+codex plugin marketplace add DietrichGebert/ponytail
+codex plugin add ponytail@ponytail
+```
+
+Verify:
+
+```powershell
+codex plugin list
+node --version
+```
+
+Notes:
+
+- The plugin uses small Node.js lifecycle hooks, so `node` must be on `PATH`.
+- Restart Codex after installation. Open `/hooks`, inspect the Ponytail hooks,
+  and trust them only after review.
+- Codex exposes the bundled commands as skills, such as `@ponytail`,
+  `@ponytail-review`, and `@ponytail-audit`.
+- The default mode is `full`; use `@ponytail off` when its always-on minimalism
+  is not appropriate for a task.
+- Uninstall with `codex plugin remove ponytail@ponytail`.
+
 ### AWS CLI
 
 Link:
@@ -256,6 +352,78 @@ Notes:
 - Restart Claude Code after installation.
 - The repo is plugin-oriented; do not treat it as a Codex skill unless you intentionally adapt it.
 
+### UI/UX Pro Max
+
+Link:
+- [nextlevelbuilder/ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill)
+
+Recommended for:
+- searchable UI/UX, accessibility, typography, color, chart, motion, and
+  stack-specific implementation guidance
+- global Codex design skills with bundled local datasets and Python search tools
+
+Install the official CLI and generate its Codex skill bundle globally:
+
+```powershell
+npm install -g ui-ux-pro-max-cli
+uipro init --ai codex --global
+```
+
+Verify:
+
+```powershell
+uipro --version
+Test-Path "$HOME\.agents\skills\ui-ux-pro-max\SKILL.md"
+```
+
+Notes:
+
+- The Codex target installs under `~/.agents/skills/`, including the
+  `ui-ux-pro-max` orchestrator and its bundled sibling design skills.
+- The bundled search scripts use Python 3 standard-library modules and do not
+  require a network connection.
+- Restart Codex after installation.
+- Update the CLI and regenerate the global bundle with:
+
+```powershell
+uipro update
+uipro init --ai codex --global --force
+```
+
+### Taste Skill
+
+Link:
+- [Leonxlnx/taste-skill](https://github.com/Leonxlnx/taste-skill)
+
+Recommended for:
+- opinionated anti-generic visual direction for frontend work
+- a stricter GPT/Codex-specific design and motion skill
+
+Install the upstream Codex-oriented `gpt-taste` skill with Codex's built-in
+GitHub skill installer:
+
+```powershell
+python "$HOME\.codex\skills\.system\skill-installer\scripts\install-skill-from-github.py" `
+  --repo Leonxlnx/taste-skill `
+  --path skills/gpt-tasteskill `
+  --name gpt-taste
+```
+
+Verify:
+
+```powershell
+Test-Path "$HOME\.codex\skills\gpt-taste\SKILL.md"
+```
+
+Notes:
+
+- This repository already ships a GPT/Codex-specific skill, so no Claude-only
+  conversion is needed.
+- The repository also contains separate skills for image generation, redesign,
+  minimalist, brutalist, and other styles. Install only the variant needed for
+  the task so overlapping auto-trigger descriptions do not compete.
+- Restart Codex after installation.
+
 ### Napkin
 
 Link:
@@ -274,6 +442,72 @@ git clone https://github.com/blader/napkin.git ~/.codex/skills/napkin
 Notes:
 - The repository states that the skill activates every session.
 - It writes a per-repo markdown file for accumulated working memory.
+
+### MemPalace
+
+Links:
+- [MemPalace repository](https://github.com/MemPalace/mempalace)
+- [MemPalace official documentation](https://mempalaceofficial.com/guide/getting-started.html)
+- [MemPalace MCP integration](https://mempalaceofficial.com/guide/mcp-integration.html)
+
+Recommended for:
+- local persistent semantic memory across projects and conversations
+- a writable MCP memory palace with project wings, rooms, entity relationships,
+  and agent diaries
+
+Install the official PyPI package in an isolated environment, then install the
+native Codex plugin:
+
+```powershell
+uv tool install mempalace
+codex plugin marketplace add MemPalace/mempalace
+codex plugin add mempalace@mempalace
+```
+
+Verify the CLI and the plugin-provided MCP server:
+
+```powershell
+mempalace --version
+codex plugin list
+codex mcp get mempalace
+mempalace status
+```
+
+Initialize and mine only an approved source directory. Use `--no-llm` when the
+initial entity scan must remain local:
+
+```powershell
+mempalace init C:\path\to\approved-source --no-llm --yes --auto-mine --lang en,pt-br
+```
+
+For dirty repositories or repositories with private untracked files, create a
+clean tracked-only local clone under `~/.mempalace/sources/` and mine that copy.
+This preserves the working tree and prevents unrelated untracked artifacts from
+entering the palace:
+
+```powershell
+git clone --no-hardlinks --single-branch --branch main C:\dev\luchdom\saas "$HOME\.mempalace\sources\saas"
+git clone --no-hardlinks --single-branch --branch main C:\dev\luchdom\my-finance "$HOME\.mempalace\sources\my-finance"
+
+mempalace init "$HOME\.mempalace\sources\saas" --no-llm --yes --auto-mine --lang en,pt-br
+mempalace init "$HOME\.mempalace\sources\my-finance" --no-llm --yes --auto-mine --lang en,pt-br
+```
+
+Notes:
+
+- MemPalace stores and returns mined text verbatim. Never mine secrets, raw
+  financial documents, provider payloads, private transcripts, or other content
+  that is outside the approved memory boundary.
+- Project mining respects `.gitignore` by default. A clean tracked-only clone is
+  still the safer boundary when the live checkout contains unrelated changes.
+- The default Chroma/ONNX embedding path is local and needs no API key. The first
+  mine downloads the embedding model and may take several minutes.
+- The plugin registers `mempalace-mcp` and includes writable memory tools and
+  auto-save hooks. Restart Codex and review the plugin hooks before trusting
+  automatic transcript saves.
+- The plugin and PyPI package can briefly publish at different versions. The
+  executable on `PATH` controls the MCP runtime; use `mempalace --version` and
+  `mempalace status` to verify it, then restart Codex after an upgrade.
 
 ### Firecrawl CLI + Skill
 
@@ -502,8 +736,14 @@ $skill-installer install https://github.com/openai/skills/tree/main/skills/.expe
 - [microsoft/playwright-cli](https://github.com/microsoft/playwright-cli)
 - [DeusData/codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp)
 - [Codebase Memory Windows Codex ACL issue](https://github.com/DeusData/codebase-memory-mcp/issues/1529)
+- [Graphify-Labs/graphify](https://github.com/Graphify-Labs/graphify)
+- [DietrichGebert/ponytail](https://github.com/DietrichGebert/ponytail)
 - [Dammyjay93/interface-design](https://github.com/Dammyjay93/interface-design)
+- [nextlevelbuilder/ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill)
+- [Leonxlnx/taste-skill](https://github.com/Leonxlnx/taste-skill)
 - [blader/napkin](https://github.com/blader/napkin)
+- [MemPalace/mempalace](https://github.com/MemPalace/mempalace)
+- [MemPalace official docs](https://mempalaceofficial.com/guide/getting-started.html)
 - [Firecrawl CLI docs](https://docs.firecrawl.dev/sdks/cli)
 - [PostHog CLI package](https://www.npmjs.com/package/@posthog/cli)
 - [PostHog CLI source map upload docs](https://posthog.com/docs/error-tracking/upload-source-maps/cli)
