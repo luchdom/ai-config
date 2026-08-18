@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 CODEX_HOME = Path.home() / ".codex"
 SRC_AGENTS = ROOT / "src" / "agents"
 SRC_SKILLS = ROOT / "src" / "skills"
-SRC_TEMPLATES = ROOT / "src" / "project-templates"
+SRC_TOOL_INSTRUCTIONS = ROOT / "src" / "tool-instructions"
 
 
 def ensure_clean_dir(path: Path) -> None:
@@ -65,44 +65,44 @@ def write_skill_sources() -> None:
         shutil.copytree(skill_dir, target)
 
 
-def write_project_templates() -> None:
-    codex_dir = SRC_TEMPLATES / "codex"
-    claude_dir = SRC_TEMPLATES / "claude"
-    copilot_dir = SRC_TEMPLATES / "copilot" / ".github"
-    cursor_dir = SRC_TEMPLATES / "cursor"
+def write_tool_instructions() -> None:
+    codex_dir = SRC_TOOL_INSTRUCTIONS / "codex"
+    claude_dir = SRC_TOOL_INSTRUCTIONS / "claude"
+    copilot_dir = SRC_TOOL_INSTRUCTIONS / "copilot" / ".github"
+    cursor_dir = SRC_TOOL_INSTRUCTIONS / "cursor"
     codex_dir.mkdir(parents=True, exist_ok=True)
     claude_dir.mkdir(parents=True, exist_ok=True)
     copilot_dir.mkdir(parents=True, exist_ok=True)
     cursor_dir.mkdir(parents=True, exist_ok=True)
 
-    codex_template = codex_dir / "AGENTS.md"
-    claude_template = claude_dir / "CLAUDE.md"
-    copilot_template = copilot_dir / "copilot-instructions.md"
-    cursor_template = cursor_dir / "AGENTS.md"
+    codex_instruction = codex_dir / "AGENTS.md"
+    claude_instruction = claude_dir / "CLAUDE.md"
+    copilot_instruction = copilot_dir / "copilot-instructions.md"
+    cursor_instruction = cursor_dir / "AGENTS.md"
 
     defaults = {
-        codex_template: (
+        codex_instruction: (
             "# Project AI Instructions\n\n"
             "- Keep project-specific rules here.\n"
             "- Keep reusable workflows in the shared ai-toolkit skills.\n"
             "- Follow this repo's docs, architecture notes, and established patterns before coding.\n"
             "- Prefer existing components, abstractions, and tests over new ones.\n"
         ),
-        claude_template: (
+        claude_instruction: (
             "# Project AI Instructions\n\n"
             "- Keep project-specific rules here.\n"
             "- Keep reusable workflows in the shared ai-toolkit skills.\n"
             "- Read this repo's docs, architecture notes, and established patterns before coding.\n"
             "- Prefer existing components, abstractions, and tests over new ones.\n"
         ),
-        copilot_template: (
+        copilot_instruction: (
             "# Project AI Instructions\n\n"
             "- Keep project-specific rules here.\n"
             "- Keep reusable workflows in the shared ai-toolkit skills.\n"
             "- Read this repo's docs, architecture notes, and established patterns before coding.\n"
             "- Prefer existing components, abstractions, and tests over new ones.\n"
         ),
-        cursor_template: (
+        cursor_instruction: (
             "# Project AI Instructions\n\n"
             "- Keep project-specific rules here.\n"
             "- Keep reusable workflows in the shared ai-toolkit skills and generated Cursor rules.\n"
@@ -111,18 +111,18 @@ def write_project_templates() -> None:
         ),
     }
 
-    for template, text in defaults.items():
-        if template.exists():
-            print(f"Skipped existing project template {template}")
+    for instruction, text in defaults.items():
+        if instruction.exists():
+            print(f"Skipped existing tool instruction {instruction}")
             continue
-        template.write_text(text, encoding="utf-8")
+        instruction.write_text(text, encoding="utf-8")
 
 
 def main() -> None:
     write_agent_sources()
     write_skill_sources()
-    write_project_templates()
-    print("Bootstrapped existing Codex agents, skills, and project templates into src/.")
+    write_tool_instructions()
+    print("Bootstrapped existing Codex agents, skills, and tool instructions into src/.")
 
 
 if __name__ == "__main__":

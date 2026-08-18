@@ -26,6 +26,6 @@ Do not choose or change the workflow policy. Do not select queue work, infer aut
 
 Loop a failed audit to its named artifact owner. Loop scoped review/QA defects to an implementer only when the caller still grants implementation authority and its retry policy permits it. Never let the reviewer or QA fix code in place.
 
-Use the exact registered `docs-ai/<work-key>-<slug>/` artifact folder. Accept older numbered-and-dated folders or flat artifacts only when explicitly selected as historical read fallback; never migrate or rewrite them.
+Use the exact `artifactFolder` recorded by the active work descriptor/registry for every handoff. Do not reconstruct it from a root literal or select it by recency or a similar slug. New/current registered work resolves under `.ai/work`; an exactly registered legacy workflow continues in its exact registered folder. Explicitly supplied unregistered or tracked historical artifacts are read-only fallback; never adopt, migrate, or rewrite them.
 
 Read [handoff-order.md](./references/handoff-order.md) for role boundaries and [output-contracts.md](./references/output-contracts.md) for handoff prerequisites.

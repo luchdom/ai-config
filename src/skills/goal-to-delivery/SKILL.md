@@ -22,6 +22,7 @@ Read the canonical shared protocol:
 - [clarification-policy.md](./references/clarification-policy.md)
 - [quality-gates.md](./references/quality-gates.md)
 - [completion-boundaries.md](./references/completion-boundaries.md)
+- [worktree-policy.md](./references/worktree-policy.md)
 - [work-descriptor.schema.json](./references/work-descriptor.schema.json)
 
 Repository-specific commands and stricter safety rules take precedence; unresolved conflicts fail closed before implementation or external mutation.

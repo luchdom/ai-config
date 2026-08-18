@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import copy
+import json
 import os
 import shutil
 import subprocess
@@ -62,6 +64,17 @@ class RepositoryTestCase(unittest.TestCase):
         git(self.repository, "init", "--initial-branch=main")
         git(self.repository, "config", "user.name", "Test User")
         git(self.repository, "config", "user.email", "test@example.invalid")
+        self.global_excludes = self.root / "global-excludes"
+        self.global_excludes.write_text(
+            "/.ai/work/\n/.ai/worktrees/\n",
+            encoding="utf-8",
+        )
+        git(
+            self.repository,
+            "config",
+            "core.excludesFile",
+            os.fspath(self.global_excludes),
+        )
         (self.repository / "README.md").write_text("base\n", encoding="utf-8")
         git(self.repository, "add", "README.md")
         git(self.repository, "commit", "-m", "initial")
@@ -78,3 +91,25 @@ class RepositoryTestCase(unittest.TestCase):
         destination = self.root / name
         git(self.repository, "worktree", "add", "-b", name, os.fspath(destination), "HEAD")
         return destination
+
+    def move_workflow_to_legacy(self, manager: WorkflowManager, descriptor: dict) -> dict:
+        """Build an exact old-runtime registry fixture without adding adoption behavior."""
+
+        source = Path(descriptor["artifactFolder"])
+        destination = self.repository / "docs-ai" / f"{descriptor['workKey']}-{descriptor['slug']}"
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(os.fspath(source), os.fspath(destination))
+        updated = copy.deepcopy(descriptor)
+        updated["artifactFolder"] = os.fspath(destination)
+        (destination / "workflow.json").write_text(
+            json.dumps(updated, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        registry = manager.registry.load_unlocked()
+        expected_revision = registry["revision"]
+        registry["revision"] += 1
+        registry["workflows"][descriptor["workflowId"]]["artifactPath"] = os.fspath(
+            destination
+        )
+        manager.registry.write_unlocked(registry, expected_revision=expected_revision)
+        return manager.resume(workflow_id=descriptor["workflowId"])

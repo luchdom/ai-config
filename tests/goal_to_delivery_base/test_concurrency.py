@@ -243,9 +243,10 @@ workflow_init.WorkflowManager(
         self.assertEqual(registry["workflows"], {})
         transactions = recovered.home.repository / "transactions"
         self.assertFalse(any(transactions.glob("*.json")))
+        artifacts_root = self.repository / ".ai" / "work"
         normal = [
-            path for path in (self.repository / "docs-ai").iterdir()
+            path for path in artifacts_root.iterdir()
             if not path.name.startswith(".quarantine-")
         ]
         self.assertEqual(normal, [])
-        self.assertEqual(len(list((self.repository / "docs-ai").glob(".quarantine-*"))), 1)
+        self.assertEqual(len(list(artifacts_root.glob(".quarantine-*"))), 1)

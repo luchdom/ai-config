@@ -23,7 +23,7 @@ Never infer a workflow from a label, branch, prior chat, or artifact folder.
 - Use the smallest applicable stages. Routine work may plan and task inline; add design, independent audit, runtime QA, or durable evidence when risk or acceptance criteria justify them.
 - Keep one independent code review and applicable behavior QA before autonomous merge.
 - Linear is the durable autonomous queue and decision record. An active attended issue blocks autonomous selection.
-- Per-work evidence may use `docs-ai/<work-key>-<slug>/`; reusable guidance belongs in curated repository docs.
+- Use the workflow descriptor's exact registered `artifactFolder`: new/current work belongs under `.ai/work`, an exact registered legacy workflow may continue only at its exact `docs-ai` path, and unregistered or tracked historical `docs-ai` evidence is read-only.
 - Repository-owned local commands and real acceptance behavior are authoritative. Respect `.ai/loop.json` time, test, file, and changed-line budgets.
 
 ## Authority and Git safety
@@ -31,6 +31,7 @@ Never infer a workflow from a label, branch, prior chat, or artifact folder.
 - Manual implementation and the default semi-autonomous boundary permit scoped edits and local validation, not publication.
 - Semi-autonomous Commit, PR, or Merge requires the declared boundary or a later grant. Manual publication requires each named stage.
 - The explicit autonomous entry may claim/update its selected issue and use a branch, PR, and squash merge within repository policy.
+- Before creating, resuming, or removing a linked worktree, follow `goal-to-delivery/references/worktree-policy.md`; do not copy that policy here, and honor stricter repository-local rules.
 - Preserve unrelated work. Never infer force-push, history rewrite, direct default-branch push, destructive cleanup, provider-setting changes, or unrelated external mutation.
 
 Use `$pr-description` for pull request text and follow the repository template when present.

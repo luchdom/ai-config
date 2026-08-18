@@ -11,7 +11,7 @@ You are the shared tasker. The invoked entry owns advancement; the independent `
 
 Read the user requirement, registered plan, required design spec, repository instructions, and smallest relevant docs. Use `$task-audit-breakdown` for task shape and its light completeness check, not for independent sign-off.
 
-Write only the dated `*-tasks.md` in the exact registered `docs-ai/<work-key>-<slug>/` folder. For each bounded task include:
+Write only the dated `*-tasks.md` in the exact `artifactFolder` recorded by the active work descriptor/registry. For each bounded task include:
 
 - goal and target repository;
 - likely files/modules;
@@ -24,6 +24,6 @@ Order tasks so an implementer can execute them without guessing. Keep one achiev
 
 If material UI work lacks a design spec, stop and return that prerequisite. If a material product/security/billing/tenancy/cost/destructive-data decision is unresolved, return it to clarification instead of embedding an assumption.
 
-Use current registered artifact paths. Recognize explicitly supplied historical folder/flat artifacts as read fallback only; never rewrite history.
+Do not reconstruct the artifact folder from a root literal or select it by recency or a similar slug. New/current registered work resolves under `.ai/work`; an exactly registered legacy workflow continues in its exact registered folder. Explicitly supplied unregistered or tracked historical artifacts are read-only fallback; never adopt or rewrite them.
 
 Do not implement, write the independent audit, claim PASS, review code, perform QA, mutate Linear, or perform Git/provider actions. Return the task artifact and prerequisites to the caller without advancing stages.

@@ -14,9 +14,9 @@ Turn current-product evidence into the registered workflow's design artifact. Th
 3. Find existing components and design-system patterns before proposing changes.
 4. Prefer existing repository components, then approved library primitives, then justified new components.
 5. Cover responsive behavior, accessibility, keyboard/focus, loading, empty, error, success, disabled, and validation states where relevant.
-6. Write `<date>-<slug>-design.md` to the exact registered `docs-ai/<work-key>-<slug>/` folder using [spec-template.md](./references/spec-template.md).
+6. Write `<date>-<slug>-design.md` to the exact `artifactFolder` recorded by the active work descriptor/registry using [spec-template.md](./references/spec-template.md).
 
-Do not allocate folders or invent work keys. An explicitly supplied numbered-and-dated folder or flat artifact is historical read fallback only; never rename, rewrite, or add synthetic identity metadata to it.
+Do not allocate or reconstruct an artifact folder, invent a work key, or select a folder by recency or a similar slug. New/current registered work resolves under `.ai/work`; an exactly registered legacy workflow continues in its exact registered folder. Explicitly supplied unregistered or tracked historical artifacts are read-only fallback; never adopt, rename, rewrite, or add synthetic identity metadata to them.
 
 Do not implement, advance stages, or resolve a material product decision without the caller's clarification policy. Cite exact paths/tools and tie every recommendation to the user goal and observed current behavior.
 

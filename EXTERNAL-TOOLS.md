@@ -20,7 +20,7 @@ python .\scripts\build.py
 python .\scripts\sync.py --tool all
 ```
 
-If project-local instruction files are also needed:
+If project-local tool instructions are also needed:
 
 ```powershell
 python .\scripts\sync.py --tool all --project C:\path\to\repo
@@ -115,7 +115,7 @@ Notes:
 
 - `codegraph init` creates the local `.codegraph/` index; do not commit it.
 - Use CodeGraph only for supported, indexed files. Fall back to `rg` and direct reads when indexing is unavailable or incomplete.
-- CodeGraph may append its own configuration to instruction files. This repo's marker-managed project templates preserve content outside their managed marker block during normal sync.
+- CodeGraph may append its own configuration to instruction files. This repo's marker-managed tool instructions preserve content outside their managed marker block during normal sync.
 
 ### Codebase Memory MCP
 

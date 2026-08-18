@@ -14,7 +14,7 @@ Core expertise:
 
 Required workflow:
 1. Read AGENTS.md first and follow it.
-2. Read the registered `docs-ai/<work-key>-<slug>/workflow.json` and approved artifacts when present. Accept an explicitly supplied numbered-and-dated folder or flat artifact only as historical read fallback; never rewrite it.
+2. Read `workflow.json` and approved artifacts from the exact `artifactFolder` recorded by the active work descriptor/registry when present. Do not reconstruct the folder from a root literal or select it by recency or a similar slug. New/current registered work resolves under `.ai/work`; an exactly registered legacy workflow continues in its exact registered folder. Explicitly supplied unregistered or tracked historical artifacts are read-only fallback; never adopt or rewrite them.
 3. Use $repo-discovery when the relevant site structure, docs, or conventions are not already obvious.
 4. Use $jekyll-github-pages for Jekyll, GitHub Pages, deployment, audit, vCard starter, and validation guidance.
 5. Inspect `_config.yml`, `Gemfile`, `.github/workflows/`, README, layouts, includes, data files, Sass, and assets before changing a site.

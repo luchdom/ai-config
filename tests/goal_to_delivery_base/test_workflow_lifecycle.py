@@ -6,6 +6,7 @@ import copy
 import errno
 import os
 import uuid
+from datetime import date
 from pathlib import Path
 from unittest import mock
 
@@ -13,6 +14,7 @@ from tests.goal_to_delivery_base.support import (
     RepositoryTestCase,
     create_windows_junction,
     file_tree_snapshot,
+    git,
 )
 from scripts.descriptor import inspect_historical_artifact, validate_descriptor
 from scripts.atomic_files import atomic_write_json
@@ -34,6 +36,11 @@ class WorkflowLifecycleTests(RepositoryTestCase):
 
         self.assertEqual(first["workKey"], "001")
         self.assertEqual(second["workKey"], "002")
+        self.assertEqual(Path(first["artifactFolder"]).parent, self.repository / ".ai" / "work")
+        self.assertEqual(
+            Path(first["artifactFolder"]).name,
+            f"{date.today().isoformat()}--local-001--pkce",
+        )
         self.assertNotEqual(first["workflowId"], second["workflowId"])
         self.assertNotEqual(first["artifactFolder"], second["artifactFolder"])
         self.assertEqual(first["completionBoundary"], "working-tree")
@@ -60,8 +67,70 @@ class WorkflowLifecycleTests(RepositoryTestCase):
             completion_boundary="artifact",
         )
         self.assertEqual(descriptor["workKey"], "SAAS-123")
+        self.assertEqual(
+            Path(descriptor["artifactFolder"]).name,
+            f"{date.today().isoformat()}--SAAS-123--issue-backed-work",
+        )
         with self.assertRaises(ValidationError):
             ProviderObservedWork("linear", "001", "linear-read-2")
+
+    def test_exact_registered_legacy_workflow_resumes_and_advances_in_place(self) -> None:
+        manager = self.manager()
+        current = manager.initialize_local(workflow="manual", goal="Legacy resume")
+        legacy = self.move_workflow_to_legacy(manager, current)
+        legacy_folder = Path(legacy["artifactFolder"])
+
+        self.assertEqual(legacy_folder.parent, self.repository / "docs-ai")
+        self.assertEqual(manager.resume(artifact_path=legacy_folder), legacy)
+        attached = manager.attach_linear(
+            workflow_id=legacy["workflowId"],
+            external_id="SAAS-123",
+        )
+        self.assertEqual(Path(attached["artifactFolder"]), legacy_folder)
+        self.assertFalse(Path(current["artifactFolder"]).exists())
+
+    def test_exact_collision_uses_deterministic_sequence_without_changing_work_key(self) -> None:
+        base = (
+            self.repository
+            / ".ai"
+            / "work"
+            / f"{date.today().isoformat()}--local-001--collision"
+        )
+        base.mkdir(parents=True)
+        (base.parent / f"{base.name}--02").mkdir()
+
+        descriptor = self.manager().initialize_local(
+            workflow="manual",
+            goal="Collision",
+        )
+
+        self.assertEqual(descriptor["workKey"], "001")
+        self.assertEqual(Path(descriptor["artifactFolder"]).name, f"{base.name}--03")
+
+    def test_missing_ignore_or_ignored_loop_config_fails_before_artifact_creation(self) -> None:
+        cases = {
+            "missing-work-rule": "",
+            "loop-hidden": "/.ai/\n",
+        }
+        for label, content in cases.items():
+            with self.subTest(label=label):
+                self.global_excludes.write_text(content, encoding="utf-8")
+                manager = self.manager()
+                with self.assertRaisesRegex(ValidationError, "ignored|visible"):
+                    manager.initialize_local(workflow="manual", goal=f"Ignore {label}")
+                self.assertFalse((self.repository / ".ai" / "work").exists())
+        self.global_excludes.write_text("/.ai/work/\n/.ai/worktrees/\n", encoding="utf-8")
+
+    def test_tracked_current_artifact_root_fails_before_new_folder_creation(self) -> None:
+        tracked = self.repository / ".ai" / "work" / "tracked.txt"
+        tracked.parent.mkdir(parents=True)
+        tracked.write_text("tracked\n", encoding="utf-8")
+        git(self.repository, "add", "-f", ".ai/work/tracked.txt")
+        git(self.repository, "commit", "-m", "track invalid artifact root")
+
+        with self.assertRaisesRegex(ValidationError, "tracked paths"):
+            self.manager().initialize_local(workflow="manual", goal="Tracked root")
+        self.assertEqual(list(tracked.parent.iterdir()), [tracked])
 
     def test_attach_is_atomic_preserves_folder_and_resumes_by_external_id(self) -> None:
         manager = self.manager()
@@ -172,7 +241,7 @@ class WorkflowLifecycleTests(RepositoryTestCase):
         quarantine = manager.home.repository / "quarantine"
         self.assertTrue(quarantine.exists())
         self.assertEqual(len(list(quarantine.iterdir())), 1)
-        in_place = list((self.repository / "docs-ai").glob(".quarantine-*"))
+        in_place = list((self.repository / ".ai" / "work").glob(".quarantine-*"))
         self.assertEqual(len(in_place), 1)
         self.assertTrue((in_place[0] / "workflow.json").exists())
 
@@ -184,8 +253,8 @@ class WorkflowLifecycleTests(RepositoryTestCase):
                 goal="api_key=must-not-be-written",
                 display_title="Invalid descriptor",
             )
-        docs_root = self.repository / "docs-ai"
-        self.assertFalse(docs_root.exists() and any(docs_root.iterdir()))
+        artifacts_root = self.repository / ".ai" / "work"
+        self.assertFalse(artifacts_root.exists() and any(artifacts_root.iterdir()))
         transactions = manager.home.repository / "transactions"
         self.assertFalse(transactions.exists() and any(transactions.glob("*.json")))
 
@@ -239,6 +308,7 @@ class WorkflowLifecycleTests(RepositoryTestCase):
         self.assertTrue(inspected.historical)
         descriptor = self.manager().initialize_local(workflow="manual", goal="New layout")
         self.assertEqual(descriptor["workKey"], "010")
+        self.assertEqual(Path(descriptor["artifactFolder"]).parent, self.repository / ".ai" / "work")
         self.assertEqual(artifact.read_text(encoding="utf-8"), "historical\n")
 
     def test_history_junction_scan_fails_closed_without_outside_write(self) -> None:

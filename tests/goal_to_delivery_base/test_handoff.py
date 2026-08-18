@@ -4,6 +4,7 @@ import json
 import hashlib
 import os
 from pathlib import Path
+import traceback
 from unittest import mock
 
 from tests.goal_to_delivery_base.support import (
@@ -17,6 +18,41 @@ from scripts import handoff as handoff_module
 
 
 class WorkflowManagedHandoffTests(RepositoryTestCase):
+    def _assert_private_registered_artifact_rejected(
+        self,
+        *,
+        filename: str,
+        content: bytes,
+        forbidden_content: str,
+    ) -> None:
+        source = self.manager()
+        descriptor = source.initialize_local(workflow="manual", goal="Private artifact rejection")
+        artifact = Path(descriptor["artifactFolder"])
+        private_artifact = artifact / filename
+        private_artifact.write_bytes(content)
+        (self.repository / "feature.txt").write_text("work\n", encoding="utf-8")
+        destination = self.linked_worktree()
+        destination_before = file_tree_snapshot(destination)
+
+        with self.assertRaisesRegex(HandoffError, "private content") as caught:
+            source.workflow_managed_handoff(
+                workflow_id=descriptor["workflowId"],
+                destination_root=destination,
+                expected_paths=["feature.txt"],
+            )
+
+        self.assertEqual(file_tree_snapshot(destination), destination_before)
+        self.assertFalse((destination / artifact.relative_to(self.repository)).exists())
+        self.assertEqual(source.resume(workflow_id=descriptor["workflowId"]), descriptor)
+        evidence_root = source.home.repository / "handoffs" / descriptor["workflowId"]
+        evidence = next(evidence_root.iterdir())
+        all_evidence = "\n".join(
+            path.read_text(encoding="utf-8") for path in evidence.iterdir() if path.is_file()
+        )
+        for forbidden in (filename, forbidden_content):
+            self.assertNotIn(forbidden, str(caught.exception))
+            self.assertNotIn(forbidden, all_evidence)
+
     def test_different_head_overlapping_transfer_path_fails_before_copy(self) -> None:
         source = self.manager()
         descriptor = source.initialize_local(workflow="manual", goal="Overlapping destination head")
@@ -66,15 +102,15 @@ class WorkflowManagedHandoffTests(RepositoryTestCase):
         with self.assertRaisesRegex(ResumeError, "native Codex Hand off"):
             source.resume(workflow_id=descriptor["workflowId"])
 
-    def test_tracked_clean_descriptor_with_feature_edit_and_deletion_handoffs_successfully(self) -> None:
+    def test_ignored_artifact_with_feature_edit_and_deletion_handoffs_successfully(self) -> None:
         deleted = self.repository / "delete-me.txt"
         deleted.write_text("tracked deletion baseline\n", encoding="utf-8")
         git(self.repository, "add", "delete-me.txt")
         git(self.repository, "commit", "-m", "add tracked deletion fixture")
         source = self.manager()
         descriptor = source.initialize_local(workflow="manual", goal="Tracked workflow descriptor")
-        git(self.repository, "add", "docs-ai")
-        git(self.repository, "commit", "-m", "track workflow artifacts")
+        plan = Path(descriptor["artifactFolder"]) / "plan.md"
+        plan.write_text("ignored workflow evidence\n", encoding="utf-8")
         destination = self.linked_worktree()
         (self.repository / "README.md").write_text("feature edit\n", encoding="utf-8")
         deleted.unlink()
@@ -88,6 +124,14 @@ class WorkflowManagedHandoffTests(RepositoryTestCase):
         self.assertEqual(result["status"], "completed")
         self.assertEqual((destination / "README.md").read_text(encoding="utf-8"), "feature edit\n")
         self.assertFalse((destination / "delete-me.txt").exists())
+        self.assertEqual(
+            (
+                destination
+                / Path(descriptor["artifactFolder"]).relative_to(self.repository)
+                / "plan.md"
+            ).read_text(encoding="utf-8"),
+            "ignored workflow evidence\n",
+        )
         destination_manager = self.manager(destination)
         destination_descriptor = destination_manager.resume(workflow_id=descriptor["workflowId"])
         self.assertEqual(
@@ -173,7 +217,175 @@ class WorkflowManagedHandoffTests(RepositoryTestCase):
             source.resume(workflow_id=descriptor["workflowId"])
         destination_manager = self.manager(destination)
         resumed = destination_manager.resume(workflow_id=descriptor["workflowId"])
-        self.assertEqual(Path(resumed["artifactFolder"]).parent.parent, destination)
+        self.assertEqual(Path(resumed["artifactFolder"]).parents[2], destination)
+
+    def test_exact_registered_artifact_inventory_excludes_other_ignored_roots(self) -> None:
+        source = self.manager()
+        descriptor = source.initialize_local(workflow="manual", goal="Exact ignored inventory")
+        artifact = Path(descriptor["artifactFolder"])
+        nested = artifact / "reviews" / "audit.md"
+        nested.parent.mkdir()
+        nested.write_text("nonsensitive workflow evidence\n", encoding="utf-8")
+        unrelated = self.repository / ".ai" / "worktrees" / "other" / "private.txt"
+        unrelated.parent.mkdir(parents=True)
+        unrelated.write_text("must-not-transfer\n", encoding="utf-8")
+        (self.repository / "feature.txt").write_text("work\n", encoding="utf-8")
+        destination = self.linked_worktree()
+
+        result = source.workflow_managed_handoff(
+            workflow_id=descriptor["workflowId"],
+            destination_root=destination,
+            expected_paths=["feature.txt"],
+        )
+
+        relative_artifact = artifact.relative_to(self.repository)
+        self.assertEqual(
+            (destination / relative_artifact / "reviews" / "audit.md").read_text(
+                encoding="utf-8"
+            ),
+            "nonsensitive workflow evidence\n",
+        )
+        self.assertFalse((destination / ".ai" / "worktrees").exists())
+        evidence = (
+            source.home.repository
+            / "handoffs"
+            / descriptor["workflowId"]
+            / result["handoffId"]
+        )
+        manifest_text = (evidence / "manifest.json").read_text(encoding="utf-8")
+        self.assertIn("reviews/audit.md", manifest_text)
+        self.assertNotIn("private.txt", manifest_text)
+
+    def test_sensitive_utf8_registered_artifact_fails_before_destination_write(self) -> None:
+        self._assert_private_registered_artifact_rejected(
+            filename="audit.md",
+            content=b"api_key=artifact-secret-sentinel\n",
+            forbidden_content="artifact-secret-sentinel",
+        )
+
+    def test_binary_registered_artifact_fails_before_destination_write(self) -> None:
+        self._assert_private_registered_artifact_rejected(
+            filename="payload.bin",
+            content=b"\xffprivate-binary-sentinel\x00",
+            forbidden_content="private-binary-sentinel",
+        )
+
+    def test_registered_legacy_artifact_handoffs_and_resumes_in_place(self) -> None:
+        source = self.manager()
+        current = source.initialize_local(workflow="manual", goal="Legacy Handoff")
+        legacy = self.move_workflow_to_legacy(source, current)
+        legacy_folder = Path(legacy["artifactFolder"])
+        (legacy_folder / "audit.md").write_text("legacy evidence\n", encoding="utf-8")
+        (self.repository / "feature.txt").write_text("work\n", encoding="utf-8")
+        destination = self.linked_worktree()
+
+        result = source.workflow_managed_handoff(
+            workflow_id=legacy["workflowId"],
+            destination_root=destination,
+            expected_paths=["feature.txt"],
+        )
+
+        self.assertEqual(result["status"], "completed")
+        destination_manager = self.manager(destination)
+        resumed = destination_manager.resume(workflow_id=legacy["workflowId"])
+        self.assertEqual(Path(resumed["artifactFolder"]).parent, destination / "docs-ai")
+        self.assertEqual(
+            (Path(resumed["artifactFolder"]) / "audit.md").read_text(encoding="utf-8"),
+            "legacy evidence\n",
+        )
+
+    def test_ignored_destination_artifact_collision_fails_without_overwrite(self) -> None:
+        source = self.manager()
+        descriptor = source.initialize_local(workflow="manual", goal="Destination collision")
+        destination = self.linked_worktree()
+        collision = destination / Path(descriptor["artifactFolder"]).relative_to(self.repository)
+        collision.mkdir(parents=True)
+        sentinel = collision / "sentinel.txt"
+        sentinel.write_text("unchanged\n", encoding="utf-8")
+        (self.repository / "feature.txt").write_text("work\n", encoding="utf-8")
+
+        with self.assertRaisesRegex(HandoffError, "already contains"):
+            source.workflow_managed_handoff(
+                workflow_id=descriptor["workflowId"],
+                destination_root=destination,
+                expected_paths=["feature.txt"],
+            )
+
+        self.assertEqual(sentinel.read_text(encoding="utf-8"), "unchanged\n")
+        self.assertFalse((destination / "feature.txt").exists())
+
+    def test_registered_artifact_hardlink_and_limits_fail_before_destination_write(self) -> None:
+        for label in ("hardlink", "file-count", "byte-size"):
+            with self.subTest(label=label):
+                source = self.manager()
+                descriptor = source.initialize_local(
+                    workflow="manual",
+                    goal=f"Artifact safety {label}",
+                )
+                artifact = Path(descriptor["artifactFolder"])
+                extra = artifact / "plan.md"
+                if label == "hardlink":
+                    outside = self.root / f"outside-{label}.txt"
+                    outside.write_text("outside unchanged\n", encoding="utf-8")
+                    os.link(outside, extra)
+                else:
+                    extra.write_text("evidence\n", encoding="utf-8")
+                (self.repository / "feature.txt").write_text("work\n", encoding="utf-8")
+                destination = self.linked_worktree(f"destination-{label}")
+                patches = []
+                if label == "file-count":
+                    patches.append(mock.patch("scripts.handoff.MAX_HANDOFF_FILE_COUNT", 1))
+                if label == "byte-size":
+                    patches.append(mock.patch("scripts.handoff.MAX_HANDOFF_FILE_BYTES", 1))
+                for patcher in patches:
+                    patcher.start()
+                    self.addCleanup(patcher.stop)
+                try:
+                    with self.assertRaises((HandoffError, UnsafePathError)):
+                        source.workflow_managed_handoff(
+                            workflow_id=descriptor["workflowId"],
+                            destination_root=destination,
+                            expected_paths=["feature.txt"],
+                        )
+                finally:
+                    for patcher in reversed(patches):
+                        patcher.stop()
+                self.assertFalse((destination / "feature.txt").exists())
+                self.assertFalse(
+                    (
+                        destination
+                        / Path(descriptor["artifactFolder"]).relative_to(self.repository)
+                    ).exists()
+                )
+
+    def test_registered_artifact_enumeration_error_fails_before_destination_write(self) -> None:
+        source = self.manager()
+        descriptor = source.initialize_local(workflow="manual", goal="Enumeration failure")
+        artifact = Path(descriptor["artifactFolder"])
+        (artifact / "plan.md").write_text("workflow evidence\n", encoding="utf-8")
+        (self.repository / "feature.txt").write_text("work\n", encoding="utf-8")
+        destination = self.linked_worktree()
+        destination_before = file_tree_snapshot(destination)
+        private_error = "scan failed at private-enumeration-sentinel"
+
+        with mock.patch("scripts.handoff.os.scandir", side_effect=OSError(private_error)):
+            with self.assertRaisesRegex(HandoffError, "could not be enumerated safely") as caught:
+                source.workflow_managed_handoff(
+                    workflow_id=descriptor["workflowId"],
+                    destination_root=destination,
+                    expected_paths=["feature.txt"],
+                )
+
+        self.assertEqual(file_tree_snapshot(destination), destination_before)
+        self.assertEqual(source.resume(workflow_id=descriptor["workflowId"]), descriptor)
+        evidence_root = source.home.repository / "handoffs" / descriptor["workflowId"]
+        evidence = next(evidence_root.iterdir())
+        all_evidence = "\n".join(
+            path.read_text(encoding="utf-8") for path in evidence.iterdir() if path.is_file()
+        )
+        self.assertNotIn(private_error, str(caught.exception))
+        self.assertNotIn(private_error, "".join(traceback.format_exception(caught.exception)))
+        self.assertNotIn(private_error, all_evidence)
 
     def test_dirty_destination_fails_before_transfer_and_source_stays_authoritative(self) -> None:
         source = self.manager()
@@ -208,6 +420,9 @@ class WorkflowManagedHandoffTests(RepositoryTestCase):
                     expected_paths=["feature.txt"],
                 )
         self.assertFalse((destination / "feature.txt").exists())
+        self.assertFalse(
+            (destination / Path(descriptor["artifactFolder"]).relative_to(self.repository)).exists()
+        )
         self.assertEqual(source.resume(workflow_id=descriptor["workflowId"]), descriptor)
 
     def test_concurrent_destination_write_fails_and_restores_clean_baseline(self) -> None:
@@ -273,6 +488,9 @@ class WorkflowManagedHandoffTests(RepositoryTestCase):
                 )
 
         self.assertFalse((destination / "feature.txt").exists())
+        self.assertFalse(
+            (destination / Path(descriptor["artifactFolder"]).relative_to(self.repository)).exists()
+        )
         self.assertEqual(source.resume(workflow_id=descriptor["workflowId"]), descriptor)
 
     def test_explicit_scope_rejects_unlisted_unrelated_dirty_path_before_copy(self) -> None:
@@ -292,22 +510,25 @@ class WorkflowManagedHandoffTests(RepositoryTestCase):
         self.assertFalse((destination / "unrelated.txt").exists())
         self.assertEqual(source.resume(workflow_id=descriptor["workflowId"]), descriptor)
 
-    def test_scope_rejects_another_registered_workflow_artifact(self) -> None:
+    def test_scope_excludes_another_registered_workflow_artifact(self) -> None:
         source = self.manager()
         selected = source.initialize_local(workflow="manual", goal="Selected workflow")
         other = source.initialize_local(workflow="manual", goal="Other workflow")
         destination = self.linked_worktree()
         (self.repository / "feature.txt").write_text("intended\n", encoding="utf-8")
 
-        with self.assertRaisesRegex(HandoffError, "another registered workflow"):
-            source.workflow_managed_handoff(
-                workflow_id=selected["workflowId"],
-                destination_root=destination,
-                expected_paths=["feature.txt"],
-            )
-        self.assertFalse((destination / "feature.txt").exists())
-        self.assertFalse(
+        result = source.workflow_managed_handoff(
+            workflow_id=selected["workflowId"],
+            destination_root=destination,
+            expected_paths=["feature.txt"],
+        )
+        self.assertEqual(result["status"], "completed")
+        self.assertTrue((destination / "feature.txt").exists())
+        self.assertTrue(
             (destination / Path(selected["artifactFolder"]).relative_to(self.repository)).exists()
+        )
+        self.assertFalse(
+            (destination / Path(other["artifactFolder"]).relative_to(self.repository)).exists()
         )
         self.assertEqual(source.resume(workflow_id=other["workflowId"]), other)
 
@@ -334,6 +555,27 @@ class WorkflowManagedHandoffTests(RepositoryTestCase):
                 apply.assert_not_called()
         self.assertEqual((destination / "README.md").read_text(encoding="utf-8"), "concurrent destination\n")
         self.assertEqual(source.resume(workflow_id=descriptor["workflowId"]), descriptor)
+
+    def test_destination_hardlink_baseline_fails_without_outside_write(self) -> None:
+        source = self.manager()
+        descriptor = source.initialize_local(workflow="manual", goal="Destination hardlink")
+        destination = self.linked_worktree()
+        destination_readme = destination / "README.md"
+        destination_readme.unlink()
+        outside = self.root / "outside-destination-readme.txt"
+        outside.write_text("base\n", encoding="utf-8")
+        os.link(outside, destination_readme)
+        (self.repository / "README.md").write_text("source change\n", encoding="utf-8")
+
+        with self.assertRaisesRegex(HandoffError, "hardlinked"):
+            source.workflow_managed_handoff(
+                workflow_id=descriptor["workflowId"],
+                destination_root=destination,
+                expected_paths=["README.md"],
+            )
+
+        self.assertEqual(outside.read_text(encoding="utf-8"), "base\n")
+        self.assertEqual(destination_readme.read_text(encoding="utf-8"), "base\n")
 
     def test_snapshot_evidence_and_applied_bytes_remain_consistent_under_source_mutation(self) -> None:
         source = self.manager()
@@ -519,7 +761,9 @@ class WorkflowManagedHandoffTests(RepositoryTestCase):
             source.registry.load_unlocked()
         self.assertEqual(outside.read_bytes(), original)
 
-    def test_multi_hop_handoff_history_validates_each_destination_and_evidence_hash(self) -> None:
+    def test_multi_hop_resume_survives_unavailable_superseded_destination_with_hash_validation(
+        self,
+    ) -> None:
         source = self.manager()
         descriptor = source.initialize_local(workflow="manual", goal="Multi-hop Handoff")
         destination = self.linked_worktree("destination-one")
@@ -536,6 +780,10 @@ class WorkflowManagedHandoffTests(RepositoryTestCase):
             destination_root=third,
             expected_paths=["feature.txt"],
         )
+        unavailable_destination = self.root / "retired-destination-one"
+        destination.rename(unavailable_destination)
+        self.assertFalse(destination.exists())
+
         third_manager = self.manager(third)
         resumed = third_manager.resume(workflow_id=descriptor["workflowId"])
         entry = third_manager.registry.resolve(workflow_id=descriptor["workflowId"])
@@ -543,6 +791,19 @@ class WorkflowManagedHandoffTests(RepositoryTestCase):
         self.assertEqual(entry["handoffs"][0]["handoffId"], first["handoffId"])
         self.assertEqual(entry["handoffs"][1]["handoffId"], second["handoffId"])
         self.assertEqual(entry["handoffs"][1]["destinationArtifactPath"], resumed["artifactFolder"])
+
+        first_manifest = Path(entry["handoffs"][0]["evidencePath"]) / "manifest.json"
+        original_manifest = first_manifest.read_bytes()
+        first_manifest.write_bytes(original_manifest + b"\n")
+        try:
+            with self.assertRaisesRegex(ValidationError, "manifest hash"):
+                third_manager.registry.load_unlocked()
+        finally:
+            first_manifest.write_bytes(original_manifest)
+        self.assertEqual(
+            third_manager.resume(workflow_id=descriptor["workflowId"]),
+            resumed,
+        )
 
     def test_superseded_source_operations_fail_with_zero_state_or_destination_writes(self) -> None:
         source = self.manager()
@@ -556,7 +817,7 @@ class WorkflowManagedHandoffTests(RepositoryTestCase):
         )
         third = self.linked_worktree("third-destination")
         state_before = file_tree_snapshot(source.home.repository)
-        source_artifacts_before = file_tree_snapshot(self.repository / "docs-ai")
+        source_artifacts_before = file_tree_snapshot(self.repository / ".ai" / "work")
         destination_before = file_tree_snapshot(destination)
         third_before = file_tree_snapshot(third)
 
@@ -571,7 +832,7 @@ class WorkflowManagedHandoffTests(RepositoryTestCase):
                 expected_paths=["feature.txt"],
             )
         self.assertEqual(file_tree_snapshot(source.home.repository), state_before)
-        self.assertEqual(file_tree_snapshot(self.repository / "docs-ai"), source_artifacts_before)
+        self.assertEqual(file_tree_snapshot(self.repository / ".ai" / "work"), source_artifacts_before)
         self.assertEqual(file_tree_snapshot(destination), destination_before)
         self.assertEqual(file_tree_snapshot(third), third_before)
 
