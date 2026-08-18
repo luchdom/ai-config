@@ -70,6 +70,42 @@ gh auth login
 gh auth status
 ```
 
+### yt-dlp
+
+Links:
+- [yt-dlp repository](https://github.com/yt-dlp/yt-dlp)
+- [Official installation guide](https://github.com/yt-dlp/yt-dlp/wiki/Installation)
+- [Official releases](https://github.com/yt-dlp/yt-dlp/releases)
+
+Recommended for:
+- downloading public or user-authorized video and audio
+- reading video metadata and available formats
+- preparing temporary audio for `$transcribe-videos`
+- processing direct, non-DRM media streams exposed by an authorized page
+
+Official Windows package-manager install:
+
+```powershell
+winget install yt-dlp
+```
+
+Update and verify:
+
+```powershell
+winget upgrade yt-dlp
+yt-dlp --version
+yt-dlp --help
+```
+
+Notes:
+
+- `ffmpeg` and `ffprobe` are strongly recommended by the yt-dlp project for merging separate audio/video formats and post-processing. Install the binaries, not the unrelated Python package named `ffmpeg`.
+- Use yt-dlp only for public content, user-provided files, or content the user is authorized to access. Do not bypass DRM, paywalls, or access controls.
+- Do not export cookies by default. `--cookies-from-browser` can read broad browser authentication state; require explicit approval and keep any authentication material out of repositories and logs.
+- Treat signed player and HLS URLs as temporary secrets. Never persist them in transcripts, summaries, Git, or PR evidence.
+- For text-only work, use a disposable media directory and delete it after validating `summary.md` and `transcript.md`.
+- Invoke `$transcribe-videos` for the repository-owned workflow covering YouTube, local media, authorized course pages, batch lesson enumeration, transcription, Markdown output, validation, and cleanup.
+
 ### RTK
 
 Links:
@@ -732,6 +768,9 @@ $skill-installer install https://github.com/openai/skills/tree/main/skills/.expe
 
 ## Sources
 
+- [yt-dlp](https://github.com/yt-dlp/yt-dlp)
+- [yt-dlp installation guide](https://github.com/yt-dlp/yt-dlp/wiki/Installation)
+- [yt-dlp FAQ](https://github.com/yt-dlp/yt-dlp/wiki/FAQ)
 - [microsoft/playwright-mcp](https://github.com/microsoft/playwright-mcp)
 - [microsoft/playwright-cli](https://github.com/microsoft/playwright-cli)
 - [DeusData/codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp)
