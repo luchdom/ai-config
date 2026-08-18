@@ -1,0 +1,4 @@
+interface:
+  display_name: "Video Transcription"
+  short_description: "Download videos and create summaries and transcripts"
+  default_prompt: "Use $transcribe-videos to process this video into a summary and timestamped transcript."
