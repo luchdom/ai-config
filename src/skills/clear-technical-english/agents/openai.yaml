@@ -1,0 +1,4 @@
+interface:
+  display_name: "Clear Technical English"
+  short_description: "Write clear, concise technical English"
+  default_prompt: "Use $clear-technical-english to rewrite this for a technical reader who prefers concise, concrete English."
