@@ -21,6 +21,7 @@ CURSOR_RULE_PATH_REPLACEMENTS = (
     ("./references/ui-audit-checklist.md", "./ui-audit-checklist.mdc"),
     ("./references/component-selection.md", "./ui-component-selection.mdc"),
     ("goal-to-delivery/references/design-gates.md", ".cursor/rules/ui-design-gates.mdc"),
+    ("`design-gates.md`", "`.cursor/rules/ui-design-gates.mdc`"),
 )
 
 

@@ -244,12 +244,15 @@ class DeliveryContractTests(unittest.TestCase):
         self.assertFalse((ROOT / "src" / ("project" + "-templates")).exists())
         for relative in expected:
             instruction = (ROOT / relative).read_text(encoding="utf-8")
-            if relative.endswith("cursor/AGENTS.md"):
-                self.assertIn(".cursor/rules/ui-design-gates.mdc", instruction)
-                self.assertIn(".cursor/rules/ui-review-spec.mdc", instruction)
-            else:
-                self.assertIn("goal-to-delivery/references/design-gates.md", instruction)
+            self.assertIn("canonical design-gate and UI-review contracts", instruction)
+            self.assertNotIn("goal-to-delivery/references/design-gates.md", instruction)
+            self.assertNotIn(".cursor/rules/ui-design-gates.mdc", instruction)
             self.assertIn("applicable UI design conformance", instruction)
+
+        self.assertEqual(
+            (ROOT / "src/tool-instructions/codex/AGENTS.md").read_text(encoding="utf-8"),
+            (ROOT / "src/tool-instructions/cursor/AGENTS.md").read_text(encoding="utf-8"),
+        )
 
         cursor_rules = ROOT / "dist" / "cursor" / "rules"
         expected_cursor_support = (
@@ -265,6 +268,10 @@ class DeliveryContractTests(unittest.TestCase):
             ".cursor/rules/ui-design-gates.mdc",
             (cursor_rules / "product-designer.mdc").read_text(encoding="utf-8"),
         )
+        for specialist in ("planner.mdc", "auditor.mdc"):
+            rule = (cursor_rules / specialist).read_text(encoding="utf-8")
+            self.assertIn(".cursor/rules/ui-design-gates.mdc", rule)
+            self.assertNotIn("`design-gates.md`", rule)
         self.assertIn(
             "./ui-design-review-template.mdc",
             (cursor_rules / "ui-review-spec.mdc").read_text(encoding="utf-8"),
