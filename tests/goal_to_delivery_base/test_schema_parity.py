@@ -269,6 +269,14 @@ class WorkDescriptorSchemaParityTests(unittest.TestCase):
                 lambda value: value.__setitem__("artifactFolder", ".ai/work/schema-parity"),
                 False,
             ),
+            "design-review-stage": (
+                lambda value: value.__setitem__("currentArtifactStage", "design_review"),
+                True,
+            ),
+            "unknown-artifact-stage": (
+                lambda value: value.__setitem__("currentArtifactStage", "visual_review"),
+                False,
+            ),
             "uppercase-uuid": (lambda value: value.__setitem__("workflowId", str(uuid.uuid4()).upper()), False),
             "windows-reserved-slug": (lambda value: value.__setitem__("slug", "con"), False),
             "secret-like-material": (

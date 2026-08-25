@@ -10,6 +10,7 @@ from typing import Iterable
 
 CANONICAL_REFERENCES = (
     "delivery-stages.md",
+    "design-gates.md",
     "artifact-contract.md",
     "clarification-policy.md",
     "quality-gates.md",
