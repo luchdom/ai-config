@@ -27,4 +27,6 @@ When naming a component choice, include:
 
 - Preferred component or primitive
 - Relevant repo path when it exists
+- Required theme or design tokens and their repo paths
 - Reason the choice is better than nearby alternatives
+- Any approved exception; do not create one-off styling to bypass the design system

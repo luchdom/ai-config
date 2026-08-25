@@ -10,6 +10,7 @@ from typing import Iterable
 
 CANONICAL_REFERENCES = (
     "delivery-stages.md",
+    "design-gates.md",
     "artifact-contract.md",
     "clarification-policy.md",
     "quality-gates.md",
@@ -69,7 +70,7 @@ DOCS_AI_ALLOWLIST: dict[str, dict[str, frozenset[str]]] = {
     },
     "README.md": {
         "legacy runtime compatibility": frozenset(
-            {"6337098fc2e22c20f158434e04815e2c88bdf0f002a0a05ffaac3dff1909b08b"}
+            {"c3024d51ad95cc2b6810d47eb0e85924f0e72da18ea53d2c4a8ce6f59a0cb68b"}
         )
     },
     "src/skills/goal-to-delivery/references/artifact-contract.md": {
@@ -356,7 +357,14 @@ def check_entry_policies(root: Path) -> list[str]:
         _require_fragments(
             root,
             skills / "goal-to-delivery" / "SKILL.md",
-            ("semi-autonomous", "automatic", "working-tree", "queue selection", "mode: autonomous"),
+            (
+                "semi-autonomous",
+                "automatic",
+                "working-tree",
+                "queue selection",
+                "mode: autonomous",
+                "registered `artifactFolder`",
+            ),
             "semi-autonomous entry policy",
         )
     )
@@ -364,7 +372,14 @@ def check_entry_policies(root: Path) -> list[str]:
         _require_fragments(
             root,
             skills / "spec-driven-delivery" / "SKILL.md",
-            ("manual", "exactly one", "automatic advancement", "one focused question", "mode: autonomous"),
+            (
+                "manual",
+                "exactly one",
+                "automatic advancement",
+                "one focused question",
+                "mode: autonomous",
+                "registered `artifactFolder`",
+            ),
             "manual entry policy",
         )
     )
@@ -387,6 +402,8 @@ def check_entry_policies(root: Path) -> list[str]:
                 "quiet standalone scheduled run",
                 "set_thread_archived",
                 "raw archive directive",
+                "applicable UI design conformance",
+                "registered `artifactFolder`",
             ),
             "autonomous entry policy",
         )
@@ -401,15 +418,124 @@ def check_shared_specialists_and_routing(root: Path) -> list[str]:
         _require_fragments(
             root,
             stages,
-            ("planner", "product-designer", "tasker", "auditor", "matching implementer", "code-reviewer", "qa"),
+            (
+                "planner",
+                "product-designer",
+                "tasker",
+                "auditor",
+                "matching implementer",
+                "design_review",
+                "code-reviewer",
+                "qa",
+                "proven not to affect rendered UI or interaction",
+            ),
             "shared specialist contract",
         )
     )
     findings.extend(_require_fragments(root, stages, ("docs-as-code",), "shared documentation owner"))
+    findings.extend(
+        _require_fragments(
+            root,
+            root / "src" / "skills" / "goal-to-delivery" / "references" / "completion-boundaries.md",
+            ("applicable UI design conformance", "one code review", "applicable QA"),
+            "merge UI design gate",
+        )
+    )
     for agent in SPECIALIST_AGENTS:
         path = root / "src" / "agents" / f"{agent}.md"
         if not path.is_file():
             findings.append(f"Missing shared specialist agent: {_relative(root, path)}")
+
+    design_gates = root / "src" / "skills" / "goal-to-delivery" / "references" / "design-gates.md"
+    findings.extend(
+        _require_fragments(
+            root,
+            design_gates,
+            (
+                "binding design sources",
+                "design specification",
+                "mechanical change",
+                "design conformance review",
+                "every change to rendered UI or interaction",
+                "real browser",
+                "PASS",
+                "FAIL",
+                "registered `artifactFolder`",
+                "reviewed state",
+                "`--02`",
+            ),
+            "frontend/UI design gate contract",
+        )
+    )
+    findings.extend(
+        _require_fragments(
+            root,
+            root / "src" / "agents" / "product-designer.md",
+            (
+                "two product-design operations",
+                "binding design sources",
+                "design specification",
+                "design conformance review",
+                "real-browser",
+                "PASS",
+                "FAIL",
+                "stale",
+                "reviewed state",
+                "`--02`",
+            ),
+            "product-designer design gate ownership",
+        )
+    )
+    findings.extend(
+        _require_fragments(
+            root,
+            root / "src" / "agents" / "planner.md",
+            ("design-gates.md", "binding design sources", "post-implementation design conformance review"),
+            "planner UI design routing",
+        )
+    )
+    findings.extend(
+        _require_fragments(
+            root,
+            root / "src" / "agents" / "tasker.md",
+            ("design-gates.md", "binding design-source paths", "product-designer conformance-review task"),
+            "tasker UI design routing",
+        )
+    )
+    for implementer in ("react", "nextjs-mui", "jekyll-site-builder"):
+        findings.extend(
+            _require_fragments(
+                root,
+                root / "src" / "agents" / f"{implementer}.md",
+                ("design-gates.md", "binding design sources", "required design spec", "design conformance review"),
+                f"{implementer} UI design gate",
+            )
+        )
+    for verifier in ("code-reviewer", "qa"):
+        findings.extend(
+            _require_fragments(
+                root,
+                root / "src" / "agents" / f"{verifier}.md",
+                ("product-designer", "design conformance", "missing", "stale", "failed"),
+                f"{verifier} design-review prerequisite",
+            )
+        )
+
+    ui_review = root / "src" / "skills" / "ui-review-spec" / "SKILL.md"
+    findings.extend(
+        _require_fragments(
+            root,
+            ui_review,
+            (
+                "binding design sources",
+                "exact implementation identity",
+                "design-review-template.md",
+                "real rendered evidence",
+                "`--02`",
+            ),
+            "UI review design-conformance operation",
+        )
+    )
 
     findings.extend(
         _require_fragments(
@@ -463,7 +589,14 @@ def check_shared_specialists_and_routing(root: Path) -> list[str]:
         _require_fragments(
             root,
             multi_agent,
-            ("$goal-to-delivery", "$spec-driven-delivery", "$linear-delivery-loop", "do not choose", "do not select"),
+            (
+                "$goal-to-delivery",
+                "$spec-driven-delivery",
+                "$linear-delivery-loop",
+                "do not choose",
+                "do not select",
+                "design conformance review",
+            ),
             "policy-neutral specialist handoff primitive",
         )
     )
@@ -540,7 +673,15 @@ def _canonical_projection_source(relative: str) -> str:
         return f"src/agents/{stem}.md"
 
     if len(parts) == 4 and parts[:3] == ["dist", "cursor", "rules"] and parts[3].endswith(".mdc"):
-        return f"src/agents/{parts[3].removesuffix('.mdc')}.md"
+        support_sources = {
+            "ui-design-gates.mdc": "src/skills/goal-to-delivery/references/design-gates.md",
+            "ui-review-spec.mdc": "src/skills/ui-review-spec/SKILL.md",
+            "ui-design-spec-template.mdc": "src/skills/ui-review-spec/references/spec-template.md",
+            "ui-design-review-template.mdc": "src/skills/ui-review-spec/references/design-review-template.md",
+            "ui-audit-checklist.mdc": "src/skills/ui-review-spec/references/ui-audit-checklist.md",
+            "ui-component-selection.mdc": "src/skills/ui-review-spec/references/component-selection.md",
+        }
+        return support_sources.get(parts[3], f"src/agents/{parts[3].removesuffix('.mdc')}.md")
 
     return relative
 

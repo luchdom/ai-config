@@ -6,9 +6,10 @@ Use repository-owned local commands and the smallest evidence that proves the ac
 
 1. Run focused tests for the changed area first.
 2. Run one standard repository-owned local validation command before code reaches `merge`.
-3. Perform one independent code review of the implemented diff.
-4. Run real HTTP, browser, CLI, or other runtime QA only when acceptance criteria are behavioral.
-5. Update the nearest durable documentation when behavior, architecture, setup, or operations changed.
+3. For changed rendered UI or interaction, obtain a current product-designer design conformance `PASS` using [design-gates.md](./design-gates.md).
+4. Perform one independent code review of the implemented diff.
+5. Run real HTTP, browser, CLI, or other runtime QA only when acceptance criteria are behavioral.
+6. Update the nearest durable documentation when behavior, architecture, setup, or operations changed.
 
 Use a separate pre-implementation auditor for high-risk, ambiguous, security-sensitive, tenancy-sensitive, billing, migration, or unusually large work. Routine small changes do not require a formal plan audit or an artifact for every gate.
 
@@ -18,4 +19,4 @@ Respect repository or `.ai/loop.json` budgets. For the MVP autonomous loop, focu
 
 Record exact commands, outcomes, and any unverified criterion in the Linear comment, pull request, or concise delivery note. Full raw logs, repeated aggregate runs, separate clean worktrees, and duplicate post-merge suites are unnecessary unless repository-specific rules demand them.
 
-Never expose secrets in commands, logs, artifacts, comments, commits, or notifications. Do not claim completion when a required local check, review, or applicable behavior path remains unverified.
+Never expose secrets in commands, logs, artifacts, comments, commits, or notifications. Do not claim completion when a required local check, design review, code review, or applicable behavior path remains unverified.

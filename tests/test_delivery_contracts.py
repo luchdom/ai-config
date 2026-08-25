@@ -125,8 +125,8 @@ class DeliveryContractTests(unittest.TestCase):
             root = Path(directory)
             canonical_fixture(root)
             self.assertEqual([], check_canonical_references(root))
-            (root / "src/skills/goal-to-delivery/references/quality-gates.md").unlink()
-            write(root, "src/skills/spec-driven-delivery/references/delivery-stages.md", "competing copy")
+            (root / "src/skills/goal-to-delivery/references/design-gates.md").unlink()
+            write(root, "src/skills/spec-driven-delivery/references/design-gates.md", "competing copy")
             findings = check_canonical_references(root)
             self.assertTrue(any("Missing canonical" in finding for finding in findings))
             self.assertTrue(any("Competing delivery reference" in finding for finding in findings))
@@ -242,6 +242,44 @@ class DeliveryContractTests(unittest.TestCase):
         )
         self.assertTrue(all((ROOT / relative).is_file() for relative in expected))
         self.assertFalse((ROOT / "src" / ("project" + "-templates")).exists())
+        for relative in expected:
+            instruction = (ROOT / relative).read_text(encoding="utf-8")
+            self.assertIn("canonical design-gate and UI-review contracts", instruction)
+            self.assertNotIn("goal-to-delivery/references/design-gates.md", instruction)
+            self.assertNotIn(".cursor/rules/ui-design-gates.mdc", instruction)
+            self.assertIn("applicable UI design conformance", instruction)
+
+        self.assertEqual(
+            (ROOT / "src/tool-instructions/codex/AGENTS.md").read_text(encoding="utf-8"),
+            (ROOT / "src/tool-instructions/cursor/AGENTS.md").read_text(encoding="utf-8"),
+        )
+
+        cursor_rules = ROOT / "dist" / "cursor" / "rules"
+        expected_cursor_support = (
+            "ui-design-gates.mdc",
+            "ui-review-spec.mdc",
+            "ui-design-spec-template.mdc",
+            "ui-design-review-template.mdc",
+            "ui-audit-checklist.mdc",
+            "ui-component-selection.mdc",
+        )
+        self.assertTrue(all((cursor_rules / name).is_file() for name in expected_cursor_support))
+        self.assertIn(
+            ".cursor/rules/ui-design-gates.mdc",
+            (cursor_rules / "product-designer.mdc").read_text(encoding="utf-8"),
+        )
+        for specialist in ("planner.mdc", "auditor.mdc"):
+            rule = (cursor_rules / specialist).read_text(encoding="utf-8")
+            self.assertIn(".cursor/rules/ui-design-gates.mdc", rule)
+            self.assertNotIn("`design-gates.md`", rule)
+        self.assertIn(
+            "./ui-design-review-template.mdc",
+            (cursor_rules / "ui-review-spec.mdc").read_text(encoding="utf-8"),
+        )
+        self.assertNotIn(
+            "./references/",
+            (cursor_rules / "ui-review-spec.mdc").read_text(encoding="utf-8"),
+        )
 
         build = (ROOT / "scripts/build.py").read_text(encoding="utf-8")
         sync = (ROOT / "scripts/sync.py").read_text(encoding="utf-8")
@@ -345,12 +383,14 @@ class DeliveryContractTests(unittest.TestCase):
             write(
                 root,
                 "src/skills/goal-to-delivery/SKILL.md",
-                "semi-autonomous automatic working-tree queue selection never mode: autonomous",
+                "semi-autonomous automatic working-tree queue selection never mode: autonomous "
+                "registered `artifactFolder`",
             )
             write(
                 root,
                 "src/skills/spec-driven-delivery/SKILL.md",
-                "manual exactly one without automatic advancement one focused question reject mode: autonomous",
+                "manual exactly one without automatic advancement one focused question reject mode: autonomous "
+                "registered `artifactFolder`",
             )
             linear = write(
                 root,
@@ -358,7 +398,8 @@ class DeliveryContractTests(unittest.TestCase):
                 "autonomous .ai/loop.json autonomous label human-decision label at most one "
                 "In Progress Backlog Done continuation issue "
                 "DECIDE <ISSUE> CUSTOM <SUGGESTION> notification click target "
-                "quiet standalone scheduled run set_thread_archived raw archive directive",
+                "quiet standalone scheduled run set_thread_archived raw archive directive "
+                "applicable UI design conformance registered `artifactFolder`",
             )
             self.assertEqual([], check_entry_policies(root))
             linear.write_text("autonomous helper", encoding="utf-8")
@@ -414,17 +455,55 @@ class DeliveryContractTests(unittest.TestCase):
             write(
                 root,
                 "src/skills/goal-to-delivery/references/delivery-stages.md",
-                "planner product-designer tasker auditor matching implementer code-reviewer qa docs-as-code",
+                "planner product-designer tasker auditor matching implementer design_review "
+                "code-reviewer qa docs-as-code proven not to affect rendered UI or interaction",
+            )
+            write(
+                root,
+                "src/skills/goal-to-delivery/references/completion-boundaries.md",
+                "merge applicable UI design conformance one code review applicable QA",
+            )
+            design_gates = write(
+                root,
+                "src/skills/goal-to-delivery/references/design-gates.md",
+                "binding design sources design specification mechanical change design conformance review "
+                "every change to rendered UI or interaction real browser PASS FAIL registered `artifactFolder` "
+                "reviewed state `--02`",
             )
             for agent in specialists:
                 anchors = ""
                 if agent == "auditor":
                     anchors = "independent pre-implementation read-only"
+                elif agent == "product-designer":
+                    anchors = (
+                        "two product-design operations binding design sources design specification "
+                        "design conformance review real-browser PASS FAIL stale reviewed state `--02`"
+                    )
+                elif agent == "planner":
+                    anchors = "design-gates.md binding design sources post-implementation design conformance review"
+                elif agent == "tasker":
+                    anchors = (
+                        "design-gates.md binding design-source paths product-designer conformance-review task"
+                    )
+                elif agent in ("react", "nextjs-mui", "jekyll-site-builder"):
+                    anchors = (
+                        "design-gates.md binding design sources required design spec design conformance review"
+                    )
                 elif agent == "code-reviewer":
-                    anchors = "exact diff review qa"
+                    anchors = (
+                        "exact diff review qa product-designer design conformance missing stale failed"
+                    )
                 elif agent == "qa":
-                    anchors = "real behavior do not fix defects"
+                    anchors = (
+                        "real behavior do not fix defects product-designer design conformance missing stale failed"
+                    )
                 write(root, f"src/agents/{agent}.md", anchors)
+            write(
+                root,
+                "src/skills/ui-review-spec/SKILL.md",
+                "binding design sources exact implementation identity design-review-template.md "
+                "real rendered evidence `--02`",
+            )
             feature = write(
                 root,
                 "src/agents/feature-driver.md",
@@ -435,9 +514,28 @@ class DeliveryContractTests(unittest.TestCase):
                 root,
                 "src/skills/multi-agent-delivery/SKILL.md",
                 "$goal-to-delivery $spec-driven-delivery $linear-delivery-loop; "
-                "do not choose a policy; do not select work",
+                "do not choose a policy; do not select work; design conformance review",
             )
             self.assertEqual([], check_shared_specialists_and_routing(root))
+
+            original_gates = design_gates.read_text(encoding="utf-8")
+            design_gates.write_text("binding design sources", encoding="utf-8")
+            self.assertTrue(
+                any("frontend/UI design gate contract" in item for item in check_shared_specialists_and_routing(root))
+            )
+            design_gates.write_text(original_gates, encoding="utf-8")
+
+            designer = root / "src/agents/product-designer.md"
+            original_designer = designer.read_text(encoding="utf-8")
+            designer.write_text("design specification only", encoding="utf-8")
+            self.assertTrue(
+                any(
+                    "product-designer design gate ownership" in item
+                    for item in check_shared_specialists_and_routing(root)
+                )
+            )
+            designer.write_text(original_designer, encoding="utf-8")
+
             feature.write_text(
                 "---\nname: feature-driver\n---\ncompatibility $goal-to-delivery never autonomous\n"
                 "Required workflow: copied orchestration",

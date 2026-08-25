@@ -1,6 +1,6 @@
 ---
 name: spec-driven-delivery
-description: Perform exactly one explicitly requested delivery stage for a user-selected goal, issue, or existing work. Use when the user invokes `$spec-driven-delivery` for manual Discover, Plan, Clarify, Design, Task, Audit, Implement, Review, QA, Docs, Commit, PR, Merge, or Post-merge control without automatic advancement.
+description: Perform exactly one explicitly requested delivery stage for a user-selected goal, issue, or existing work. Use when the user invokes `$spec-driven-delivery` for manual Discover, Plan, Clarify, Design, Task, Audit, Implement, Design Review, Review, QA, Docs, Commit, PR, Merge, or Post-merge control without automatic advancement.
 ---
 
 # Spec-driven Delivery
@@ -14,6 +14,7 @@ $spec-driven-delivery <stage> <goal|selected-issue|exact-work-selector>
 Read the canonical shared protocol:
 
 - [delivery-stages.md](../goal-to-delivery/references/delivery-stages.md)
+- [design-gates.md](../goal-to-delivery/references/design-gates.md)
 - [artifact-contract.md](../goal-to-delivery/references/artifact-contract.md)
 - [clarification-policy.md](../goal-to-delivery/references/clarification-policy.md)
 - [quality-gates.md](../goal-to-delivery/references/quality-gates.md)
@@ -25,12 +26,12 @@ Apply repository-specific stricter rules first and fail closed before implementa
 
 ## Policy
 
-1. Validate the named stage's prerequisites.
+1. Validate the named stage's prerequisites. When frontend/UI design gates apply, resolve an existing registered `artifactFolder` or initialize one solely as the required identity/storage prerequisite before Design, Implement, or Design Review; this does not authorize another delivery stage.
 2. Perform exactly one stage and only its authorized output.
 3. Report the result and valid next stages without automatic advancement.
 
-Planning stages do not authorize implementation. `Implement` permits scoped edits and focused tests, not Review, QA, Commit, PR, or Merge. QA reports behavior and does not imply fixes. Publication stages require separate explicit requests.
+Planning stages do not authorize implementation. `Implement` permits scoped edits and focused tests, not Design Review, Review, QA, Commit, PR, or Merge. For frontend/UI work, `Implement` must validate the pre-build design-gate prerequisites; a separate `Design Review` stage owns the required rendered conformance verdict. QA reports behavior and does not imply fixes. Publication stages require separate explicit requests.
 
 During `Clarify`, ask one focused question at a time and never silently resolve a material decision. Reject `mode: autonomous`; labels, prior chat, and artifacts cannot elevate this entry.
 
-Create a concise work note only when the user requests durable evidence or the work spans sessions. The optional workflow helper may manage that evidence but is not required for a small manual stage. Resume only from an explicit issue, branch/PR, workflow ID, or exact artifact path.
+Create a concise work note only when the user requests durable evidence, the work spans sessions, or an applicable stage requires a persisted specialist artifact. The workflow helper is optional for a small manual stage only when no such artifact is required; frontend/UI design gates require it. Resume only from an explicit issue, branch/PR, workflow ID, or exact artifact path.

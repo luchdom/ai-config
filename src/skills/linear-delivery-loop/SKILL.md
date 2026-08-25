@@ -12,6 +12,7 @@ Complete at most one Linear issue using Linear as the durable queue and checkpoi
 Read `.ai/loop.json` from the target repository and [project-config.example.json](./references/project-config.example.json). Stop without mutation when the file is missing, invalid, or `enabled` is false. Read the canonical shared protocol:
 
 - [delivery-stages.md](../goal-to-delivery/references/delivery-stages.md)
+- [design-gates.md](../goal-to-delivery/references/design-gates.md)
 - [artifact-contract.md](../goal-to-delivery/references/artifact-contract.md)
 - [clarification-policy.md](../goal-to-delivery/references/clarification-policy.md)
 - [quality-gates.md](../goal-to-delivery/references/quality-gates.md)
@@ -59,11 +60,12 @@ Never archive an attended pilot, a scheduled task attached to an existing long-l
 
 ## Deliver within the MVP budget
 
-Use the lightest applicable stages. Plan and task inline for routine work; create a concise work note only when useful. Use specialists selectively based on risk, not as a mandatory chain.
+Use the lightest applicable stages. Plan and task inline for routine work; create a concise work note only when useful. Use specialists selectively based on risk, not as a mandatory chain. When frontend/UI design gates apply, initialize or resume the workflow descriptor and registered `artifactFolder` before design or implementation; non-UI routine work may continue to use Linear, commits, and the pull request as its complete record.
 
 - Prefer one branch and pull request per issue.
+- For frontend/UI work, require product-designer input when `design-gates.md` requires a pre-build specification, and require a current rendered design conformance `PASS` after implementation. Risk-based specialist selection cannot waive either applicable gate.
 - Run focused checks first and one repository-owned local validation command before merge.
-- Perform one independent code review and applicable runtime QA. Use HTTP, CLI, or browser behavior only when acceptance criteria require it.
+- Perform applicable UI design conformance, one independent code review, and applicable runtime QA. Use HTTP, CLI, or browser behavior only when acceptance criteria require it.
 - Update durable documentation only when behavior, setup, architecture, or operations changed.
 - Keep total validation within `maxTestMinutes`, the run within `maxRunMinutes`, and the normal change within `maxFiles` and `maxChangedLines`. Treat the file and changed-line budgets as planning thresholds, not targets or reasons to abandon a coherent edit midway.
 - When a limit is reached and the remaining scope is still too large for one more normal run, create at most one linked Linear continuation issue for a coherent, independently testable remainder. Preserve the original outcome across the parent and continuation acceptance criteria, state what is complete and what remains, retain the same project and priority, and add the autonomous label only when the continuation is bounded and locally testable. Leave it in Backlog and never select it during the current invocation.
@@ -85,6 +87,6 @@ Send at most one best-effort ntfy notification when enabled. Use the Linear issu
 
 ## Complete
 
-For code, target the `merge` boundary: validate locally, open the PR, complete one review and applicable QA, squash merge when authorized by this entry and repository policy, verify the provider reports the PR merged into the configured default branch, then move the issue to Done with a short result comment. Do not rerun the full suite in a clean post-merge worktree.
+For code, target the `merge` boundary: validate locally, open the PR, complete applicable UI design conformance, one code review, and applicable QA, squash merge when authorized by this entry and repository policy, verify the provider reports the PR merged into the configured default branch, then move the issue to Done with a short result comment. Do not rerun the full suite in a clean post-merge worktree.
 
 For a non-code artifact, use the `artifact` boundary and close the issue only after its acceptance checks pass. Never select a second issue in the same invocation.

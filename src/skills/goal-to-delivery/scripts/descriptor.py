@@ -35,6 +35,7 @@ ARTIFACT_STAGES = {
     "task",
     "audit",
     "implement",
+    "design_review",
     "review",
     "qa",
     "docs",

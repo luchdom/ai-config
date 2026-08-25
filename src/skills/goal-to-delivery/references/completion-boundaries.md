@@ -8,7 +8,7 @@ Stop at the boundary authorized by the active entry.
 | `working-tree` | Scoped changes and required local checks are complete; no Git publication is implied. |
 | `commit` | Working-tree requirements pass and an authorized scoped commit exists. |
 | `pr` | The branch is pushed and one pull request exists. |
-| `merge` | Required local checks, one code review, and applicable QA pass; the authorized PR is merged into the configured default branch. |
+| `merge` | Required local checks, applicable UI design conformance, one code review, and applicable QA pass; the authorized PR is merged into the configured default branch. |
 
 `$goal-to-delivery` defaults to `working-tree`. `$spec-driven-delivery` requires a separate named stage for Commit, PR, and Merge. `$linear-delivery-loop` targets `merge` for code and `artifact` for non-code work.
 

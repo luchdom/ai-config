@@ -6,6 +6,12 @@
 - State the secondary tasks on the same screen.
 - Note any critical business or technical constraints already documented.
 
+## Binding Design Sources
+
+- Identify issue-tied design specs or frozen references.
+- Identify repository design-system docs, theme, tokens, component catalog, and closest feature patterns.
+- Record source precedence and stop when binding sources conflict.
+
 ## Information Hierarchy
 
 - Check whether the page title, primary action, and supporting context are obvious.
@@ -21,6 +27,8 @@
 
 ## Components And States
 
+- Map every changed element to an existing component and token when available.
+- Flag one-off styling, duplicated primitives, and unauthorized design-system exceptions.
 - Check default, hover, focus, active, disabled, loading, empty, error, and success states.
 - Check whether status feedback is timely and understandable.
 - Check whether forms show validation close to the affected field.
@@ -37,6 +45,13 @@
 - Check mobile and desktop layouts.
 - Check overflow, truncation, and long-text handling.
 - Check whether actions stay discoverable when space shrinks.
+
+## Conformance Evidence
+
+- Inspect the exact implementation identity when reviewing built work.
+- Compare the same route, state, theme, content, and viewport required by a frozen reference.
+- Treat source-only or screenshot-only evidence as a limitation when runnable UI is available.
+- Separate required corrections from optional improvements.
 
 ## Decision Rule
 

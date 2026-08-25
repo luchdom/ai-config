@@ -120,6 +120,31 @@ def test_sync_tool_instructions_reads_renamed_dist_root() -> None:
         assert read(project / "AGENTS.md") == BODY
 
 
+def test_cursor_project_receives_design_support_rules() -> None:
+    with tempfile.TemporaryDirectory() as directory:
+        root = Path(directory)
+        dist = root / "dist"
+        write(dist / "tool-instructions" / "cursor" / "AGENTS.md", BODY)
+        rule_names = (
+            "product-designer.mdc",
+            "ui-design-gates.mdc",
+            "ui-review-spec.mdc",
+            "ui-design-spec-template.mdc",
+            "ui-design-review-template.mdc",
+            "ui-audit-checklist.mdc",
+            "ui-component-selection.mdc",
+        )
+        for rule_name in rule_names:
+            write(dist / "cursor" / "rules" / rule_name, f"# {rule_name}\n")
+
+        project = root / "project"
+        with mock.patch.object(sync, "DIST", dist):
+            sync.sync_tool_instructions(project, {"cursor"}, False)
+
+        assert read(project / "AGENTS.md") == BODY
+        assert all((project / ".cursor" / "rules" / rule_name).is_file() for rule_name in rule_names)
+
+
 def test_bootstrap_writes_tool_instruction_source_tree() -> None:
     with tempfile.TemporaryDirectory() as directory:
         source_root = Path(directory) / "src" / "tool-instructions"
@@ -142,6 +167,7 @@ def main() -> int:
         test_docs_override_prefers_toolkit_and_supports_legacy,
         test_project_help_names_tool_instruction_destination,
         test_sync_tool_instructions_reads_renamed_dist_root,
+        test_cursor_project_receives_design_support_rules,
         test_bootstrap_writes_tool_instruction_source_tree,
     )
     for test in tests:
