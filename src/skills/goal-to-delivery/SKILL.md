@@ -18,6 +18,7 @@ Default to a local goal and the `working-tree` boundary. Accept a Linear issue o
 Read the canonical shared protocol:
 
 - [delivery-stages.md](./references/delivery-stages.md)
+- [design-gates.md](./references/design-gates.md)
 - [artifact-contract.md](./references/artifact-contract.md)
 - [clarification-policy.md](./references/clarification-policy.md)
 - [quality-gates.md](./references/quality-gates.md)
@@ -30,8 +31,8 @@ Repository-specific commands and stricter safety rules take precedence; unresolv
 ## Policy
 
 1. Discover the repository and define a bounded outcome and acceptance criteria.
-2. Plan and task inline for routine work. Use a formal plan, design, task breakdown, or independent audit only when risk or complexity justifies it.
-3. Advance automatically through applicable implementation, one code review, runtime QA, and documentation checks.
+2. Plan and task inline for routine work. Use a formal plan, task breakdown, or independent audit when risk or complexity justifies it. For frontend/UI work, apply `design-gates.md`; risk alone cannot waive a required design spec or post-build conformance review.
+3. Advance automatically through applicable implementation, UI design conformance, one code review, runtime QA, and documentation checks.
 4. Repair scoped findings within a small retry budget. Ask one focused question when a material decision cannot be safely derived.
 5. Stop exactly at the declared completion boundary.
 

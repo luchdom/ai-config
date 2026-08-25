@@ -20,8 +20,8 @@ Never infer a workflow from a label, branch, prior chat, or artifact folder.
 
 ## Lightweight delivery
 
-- Use the smallest applicable stages. Routine work may plan and task inline; add design, independent audit, runtime QA, or durable evidence when risk or acceptance criteria justify them.
-- Keep one independent code review and applicable behavior QA before autonomous merge.
+- Use the smallest applicable stages. Routine work may plan and task inline; add independent audit, runtime QA, or durable evidence when risk or acceptance criteria justify them. Frontend/UI work must follow `goal-to-delivery/references/design-gates.md`: unresolved UI decisions require product-designer before implementation, and changed rendered UI requires product-designer conformance afterward.
+- Keep applicable UI design conformance, one independent code review, and applicable behavior QA before autonomous merge.
 - Linear is the durable autonomous queue and decision record. An active attended issue blocks autonomous selection.
 - Use the workflow descriptor's exact registered `artifactFolder`: new/current work belongs under `.ai/work`, an exact registered legacy workflow may continue only at its exact `docs-ai` path, and unregistered or tracked historical `docs-ai` evidence is read-only.
 - Repository-owned local commands and real acceptance behavior are authoritative. Respect `.ai/loop.json` time, test, file, and changed-line budgets.

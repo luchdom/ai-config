@@ -387,6 +387,7 @@ def check_entry_policies(root: Path) -> list[str]:
                 "quiet standalone scheduled run",
                 "set_thread_archived",
                 "raw archive directive",
+                "applicable UI design conformance",
             ),
             "autonomous entry policy",
         )
@@ -401,15 +402,112 @@ def check_shared_specialists_and_routing(root: Path) -> list[str]:
         _require_fragments(
             root,
             stages,
-            ("planner", "product-designer", "tasker", "auditor", "matching implementer", "code-reviewer", "qa"),
+            (
+                "planner",
+                "product-designer",
+                "tasker",
+                "auditor",
+                "matching implementer",
+                "design_review",
+                "code-reviewer",
+                "qa",
+            ),
             "shared specialist contract",
         )
     )
     findings.extend(_require_fragments(root, stages, ("docs-as-code",), "shared documentation owner"))
+    findings.extend(
+        _require_fragments(
+            root,
+            root / "src" / "skills" / "goal-to-delivery" / "references" / "completion-boundaries.md",
+            ("applicable UI design conformance", "one code review", "applicable QA"),
+            "merge UI design gate",
+        )
+    )
     for agent in SPECIALIST_AGENTS:
         path = root / "src" / "agents" / f"{agent}.md"
         if not path.is_file():
             findings.append(f"Missing shared specialist agent: {_relative(root, path)}")
+
+    design_gates = root / "src" / "skills" / "goal-to-delivery" / "references" / "design-gates.md"
+    findings.extend(
+        _require_fragments(
+            root,
+            design_gates,
+            (
+                "binding design sources",
+                "design specification",
+                "mechanical change",
+                "design conformance review",
+                "every change to rendered UI or interaction",
+                "real browser",
+                "PASS",
+                "FAIL",
+            ),
+            "frontend/UI design gate contract",
+        )
+    )
+    findings.extend(
+        _require_fragments(
+            root,
+            root / "src" / "agents" / "product-designer.md",
+            (
+                "two product-design operations",
+                "binding design sources",
+                "design specification",
+                "design conformance review",
+                "real-browser",
+                "PASS",
+                "FAIL",
+                "stale",
+            ),
+            "product-designer design gate ownership",
+        )
+    )
+    findings.extend(
+        _require_fragments(
+            root,
+            root / "src" / "agents" / "planner.md",
+            ("design-gates.md", "binding design sources", "post-implementation design conformance review"),
+            "planner UI design routing",
+        )
+    )
+    findings.extend(
+        _require_fragments(
+            root,
+            root / "src" / "agents" / "tasker.md",
+            ("design-gates.md", "binding design-source paths", "product-designer conformance-review task"),
+            "tasker UI design routing",
+        )
+    )
+    for implementer in ("react", "nextjs-mui", "jekyll-site-builder"):
+        findings.extend(
+            _require_fragments(
+                root,
+                root / "src" / "agents" / f"{implementer}.md",
+                ("design-gates.md", "binding design sources", "required design spec", "design conformance review"),
+                f"{implementer} UI design gate",
+            )
+        )
+    for verifier in ("code-reviewer", "qa"):
+        findings.extend(
+            _require_fragments(
+                root,
+                root / "src" / "agents" / f"{verifier}.md",
+                ("product-designer", "design conformance", "missing", "stale", "failed"),
+                f"{verifier} design-review prerequisite",
+            )
+        )
+
+    ui_review = root / "src" / "skills" / "ui-review-spec" / "SKILL.md"
+    findings.extend(
+        _require_fragments(
+            root,
+            ui_review,
+            ("binding design sources", "exact implementation identity", "design-review-template.md", "real rendered evidence"),
+            "UI review design-conformance operation",
+        )
+    )
 
     findings.extend(
         _require_fragments(
@@ -463,7 +561,14 @@ def check_shared_specialists_and_routing(root: Path) -> list[str]:
         _require_fragments(
             root,
             multi_agent,
-            ("$goal-to-delivery", "$spec-driven-delivery", "$linear-delivery-loop", "do not choose", "do not select"),
+            (
+                "$goal-to-delivery",
+                "$spec-driven-delivery",
+                "$linear-delivery-loop",
+                "do not choose",
+                "do not select",
+                "design conformance review",
+            ),
             "policy-neutral specialist handoff primitive",
         )
     )

@@ -12,7 +12,7 @@ There are exactly three user-facing entries:
 
 For non-trivial work without an explicit entry, use manual `$spec-driven-delivery`. All entries share the canonical cross-tool protocol under [`src/skills/goal-to-delivery/references/`](src/skills/goal-to-delivery/references/), including the [linked-worktree policy](src/skills/goal-to-delivery/references/worktree-policy.md), while repositories own their commands, domain rules, and stricter safety requirements. Unresolved conflicts fail closed before implementation or external mutation.
 
-The workflows reuse the same specialist skills, but they do not require every specialist for every issue. Routine work plans inline; risky work can add design, tasking, audit, runtime QA, or documentation stages as needed.
+The workflows reuse the same specialist skills, but they do not require every specialist for every issue. Routine work plans inline; risky work can add tasking, audit, runtime QA, or documentation stages as needed. Frontend/UI work follows the canonical [design gates](src/skills/goal-to-delivery/references/design-gates.md): unresolved UI decisions require a pre-build product-designer spec, and every changed rendered UI or interaction requires a post-build real-browser design conformance review.
 
 ## MVP autonomous loop
 
@@ -25,7 +25,7 @@ The MVP deliberately uses existing systems instead of a separate orchestration s
 - Git branches and pull requests store implementation history and review.
 - Linear comments are the authoritative human-decision channel; listed choices and explicit custom suggestions are supported, while ntfy is optional best-effort attention that links directly to the issue.
 
-The loop handles one issue at a time. It resumes eligible autonomous work, does nothing while attended work is active, and selects a new labeled backlog issue only when no work is active. Quiet standalone scheduled runs archive their own chat when native task archiving is available; decision requests, checkpoints, errors, and runs with mutations remain visible. When configured size limits expose a larger remainder, the loop may create one linked, bounded continuation issue without selecting it in the same run. Code is Done only after required local checks, one review, applicable QA, and merge into the default branch.
+The loop handles one issue at a time. It resumes eligible autonomous work, does nothing while attended work is active, and selects a new labeled backlog issue only when no work is active. Quiet standalone scheduled runs archive their own chat when native task archiving is available; decision requests, checkpoints, errors, and runs with mutations remain visible. When configured size limits expose a larger remainder, the loop may create one linked, bounded continuation issue without selecting it in the same run. Code is Done only after required local checks, applicable UI design conformance, one code review, applicable QA, and merge into the default branch.
 
 Linear labels have separate responsibilities:
 
@@ -46,7 +46,7 @@ A useful engineering harness needs seven capabilities. The MVP covers all seven 
 | System prompt | Repository instructions plus the three explicit entry skills define behavior and authority. |
 | Tools | Codex local tools, Linear, Git/GitHub, and optional browser/HTTP checks provide only the needed capabilities. |
 | Context management | Skills load progressively; `.ai/loop.json`, the selected issue, repository instructions, and relevant code form the working set. |
-| Verification | Focused tests, one local project gate, one code review, and acceptance-driven runtime QA check the work. |
+| Verification | Focused tests, one local project gate, applicable UI design conformance, one code review, and acceptance-driven runtime QA check the work. |
 | Memory | Linear comments/issues, Git/PR history, curated docs, and optional concise notes in the exact registered `artifactFolder` persist useful knowledge. |
 | Sandboxes | Codex repository/worktree isolation and repository-owned disposable test data constrain execution. |
 | Human hooks | `needs-decision` marks pre-work owner choices; `needs-human`, a structured Linear choice or custom suggestion, the Codex task inbox, and an optional issue-linked ntfy notification pause active work safely. |

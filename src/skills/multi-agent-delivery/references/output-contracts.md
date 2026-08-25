@@ -4,7 +4,9 @@
 
 - Concrete plan with exact sources
 - Material decisions resolved or explicitly paused
-- Design spec for material UI/UX work, otherwise a not-required reason
+- Frontend/UI classification with exact binding design sources
+- Design spec when `design-gates.md` requires one, otherwise a mechanical-change reason tied to a binding source
+- Required post-implementation design-conformance path for changed rendered UI or interaction
 - Acceptance and local validation strategy
 
 ## Implementation prerequisite
@@ -18,10 +20,12 @@
 - Exact target/base identity or well-defined working-tree diff
 - Real-file change manifest and implemented tests
 - Approved requirement/plan/tasks/design
+- For changed rendered UI or interaction, a current product-designer design conformance `PASS` for the reviewed implementation identity
 
 ## QA prerequisite
 
 - Review-ready implementation identity
+- Current applicable design-review result for the same identity
 - Acceptance criteria and runtime paths
 - Repository-owned local validation commands and safe disposable test setup
 
