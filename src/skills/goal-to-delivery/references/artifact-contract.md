@@ -12,9 +12,11 @@ When local workflow evidence is useful, initialize it under the effectively igno
   <date>-<slug>-delivery.md     # concise plan, decisions, checks, and outcome
 ```
 
-Use additional plan, design, task, audit, review, or QA files only when their content is substantial and independently useful. Routine autonomous work may use the Linear issue, commits, and pull request as its complete record.
+Use additional plan, design, task, audit, review, or QA files only when their content is substantial and independently useful. Routine autonomous work may use the Linear issue, commits, and pull request as its complete record only when no applicable stage requires a persisted specialist artifact.
 
-`<work-token>` is the observed external key or `local-<numeric-workKey>`. Exact collisions append `--02`, `--03`, and later deterministic sequences. `.ai/work` must be effectively ignored and contain no tracked path before initialization, while `.ai/loop.json` must remain visible to Git.
+An applicable frontend/UI design gate requires the caller entry to initialize or resume the workflow helper and registered `artifactFolder` before design or implementation. The required design specification and design-conformance review must be written there; Linear comments and pull-request text do not replace them.
+
+`<work-token>` is the observed external key or `local-<numeric-workKey>`. Exact folder collisions append `--02`, `--03`, and later deterministic sequences. For repeated dated artifacts, preserve the base artifact-type suffix and insert the same sequence immediately before it—for example, `<date>-<slug>--02-design.md` or `<date>-<slug>--02-design-review.md`. Never overwrite prior evidence. `.ai/work` must be effectively ignored and contain no tracked path before initialization, while `.ai/loop.json` must remain visible to Git.
 
 If the optional workflow helper creates `workflow.json`, do not edit its identity fields manually. The descriptor and registry's exact absolute `artifactFolder` is the authority for every stage reader and writer. Resume from an explicit issue, branch/PR, workflow ID, or that exact registered path; never reconstruct a root, adopt an unregistered folder, or guess from similar text or the newest folder. Folder rendering does not change descriptor schema `2.0` or its existing `workKey` semantics.
 

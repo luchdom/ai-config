@@ -26,7 +26,7 @@ Apply repository-specific stricter rules first and fail closed before implementa
 
 ## Policy
 
-1. Validate the named stage's prerequisites.
+1. Validate the named stage's prerequisites. When frontend/UI design gates apply, resolve an existing registered `artifactFolder` or initialize one solely as the required identity/storage prerequisite before Design, Implement, or Design Review; this does not authorize another delivery stage.
 2. Perform exactly one stage and only its authorized output.
 3. Report the result and valid next stages without automatic advancement.
 
@@ -34,4 +34,4 @@ Planning stages do not authorize implementation. `Implement` permits scoped edit
 
 During `Clarify`, ask one focused question at a time and never silently resolve a material decision. Reject `mode: autonomous`; labels, prior chat, and artifacts cannot elevate this entry.
 
-Create a concise work note only when the user requests durable evidence or the work spans sessions. The optional workflow helper may manage that evidence but is not required for a small manual stage. Resume only from an explicit issue, branch/PR, workflow ID, or exact artifact path.
+Create a concise work note only when the user requests durable evidence, the work spans sessions, or an applicable stage requires a persisted specialist artifact. The workflow helper is optional for a small manual stage only when no such artifact is required; frontend/UI design gates require it. Resume only from an explicit issue, branch/PR, workflow ID, or exact artifact path.

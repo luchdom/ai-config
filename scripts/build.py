@@ -13,6 +13,15 @@ SRC = ROOT / "src"
 DIST = ROOT / "dist"
 SKILL_REF_PATTERN = re.compile(r"\$([a-z0-9][a-z0-9-]*)")
 MANIFEST_VERSION = 1
+CURSOR_RULE_PATH_REPLACEMENTS = (
+    ("`$ui-review-spec`", "the `.cursor/rules/ui-review-spec.mdc` rule"),
+    ("../goal-to-delivery/references/design-gates.md", "./ui-design-gates.mdc"),
+    ("./references/design-review-template.md", "./ui-design-review-template.mdc"),
+    ("./references/spec-template.md", "./ui-design-spec-template.mdc"),
+    ("./references/ui-audit-checklist.md", "./ui-audit-checklist.mdc"),
+    ("./references/component-selection.md", "./ui-component-selection.mdc"),
+    ("goal-to-delivery/references/design-gates.md", ".cursor/rules/ui-design-gates.mdc"),
+)
 
 
 def parse_frontmatter(text: str) -> tuple[dict[str, str], str]:
@@ -77,6 +86,8 @@ def render_copilot_agent(meta: dict[str, str], body: str) -> str:
 
 
 def render_cursor_rule(meta: dict[str, str], body: str) -> str:
+    for source, destination in CURSOR_RULE_PATH_REPLACEMENTS:
+        body = body.replace(source, destination)
     return (
         "---\n"
         f'description: {json.dumps(meta["description"])}\n'
@@ -205,6 +216,55 @@ def rebuild_dist() -> None:
             ):
                 relative = source.relative_to(skill_dir)
                 projections[source] = [destination / relative for destination in destinations]
+
+    cursor_support_rules = (
+        (
+            SRC / "skills" / "goal-to-delivery" / "references" / "design-gates.md",
+            "ui-design-gates.mdc",
+            "Binding frontend/UI design gates for planning, implementation, and rendered conformance review.",
+            False,
+        ),
+        (
+            SRC / "skills" / "ui-review-spec" / "SKILL.md",
+            "ui-review-spec.mdc",
+            "Produce a pre-build UI design specification or post-build rendered design-conformance review.",
+            True,
+        ),
+        (
+            SRC / "skills" / "ui-review-spec" / "references" / "spec-template.md",
+            "ui-design-spec-template.mdc",
+            "Output template for an implementer-ready UI design specification.",
+            False,
+        ),
+        (
+            SRC / "skills" / "ui-review-spec" / "references" / "design-review-template.md",
+            "ui-design-review-template.mdc",
+            "Output template for a rendered UI design-conformance verdict.",
+            False,
+        ),
+        (
+            SRC / "skills" / "ui-review-spec" / "references" / "ui-audit-checklist.md",
+            "ui-audit-checklist.mdc",
+            "Checklist for UI hierarchy, states, accessibility, responsiveness, and conformance evidence.",
+            False,
+        ),
+        (
+            SRC / "skills" / "ui-review-spec" / "references" / "component-selection.md",
+            "ui-component-selection.mdc",
+            "Repository-first component and design-system selection rules.",
+            False,
+        ),
+    )
+    for source, output_name, description, has_frontmatter in cursor_support_rules:
+        source_text = source.read_text(encoding="utf-8")
+        if has_frontmatter:
+            source_meta, body = parse_frontmatter(source_text)
+            description = source_meta["description"]
+        else:
+            body = source_text
+        output = DIST / "cursor" / "rules" / output_name
+        output.write_text(render_cursor_rule({"description": description}, body), encoding="utf-8")
+        projections.setdefault(source, []).append(output)
 
     codex_instruction = SRC / "tool-instructions" / "codex" / "AGENTS.md"
     claude_instruction = SRC / "tool-instructions" / "claude" / "CLAUDE.md"

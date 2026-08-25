@@ -19,6 +19,8 @@ A frozen reference is an acceptance oracle, not inspiration. Compare the impleme
 
 The planner records whether the work changes rendered UI and whether a design specification is required.
 
+When these gates apply, the caller entry must initialize or resume a workflow descriptor and its registered `artifactFolder` before invoking product-designer or beginning implementation. This registration is the required identity and storage destination for the later design-conformance result even when the workflow helper would otherwise be optional. The product-designer must never allocate or infer that destination.
+
 A product-designer design specification is required when any of these conditions apply:
 
 - a screen, flow, navigation path, layout, component composition, interaction, responsive rule, accessibility behavior, state presentation, visual style, or content hierarchy is added or changed;
@@ -43,8 +45,8 @@ Exercise the affected UI in a real browser during implementation when the enviro
 
 A product-designer design conformance review is required for every change to rendered UI or interaction, including mechanical changes that did not need a new design specification.
 
-The product-designer inspects the exact implementation identity in a real browser and compares the affected routes, states, themes, and representative mobile and desktop viewports against the binding design sources and approved specification. The result is a dated `*-design-review.md` with `PASS` or `FAIL`, exact evidence, deviations, and required corrections.
+The product-designer inspects the exact implementation identity in a real browser and compares the affected routes, states, themes, and representative mobile and desktop viewports against the binding design sources and approved specification. The result is a dated `*-design-review.md` with `PASS` or `FAIL`, exact evidence, deviations, and required corrections. Use the base dated name for the first result; if that name already exists, insert deterministic `--02`, `--03`, and later sequences before `-design-review.md`. Never overwrite historical evidence.
 
 The review cannot pass from source code, compilation, unit tests, or screenshots alone when the affected UI can be run. If real rendering is unavailable, record the limitation and leave visual or interaction conformance unverified. Any unresolved mismatch with a binding design source or approved acceptance criterion produces `FAIL`; optional improvements remain advisory and do not fail conforming work.
 
-An implementation change that affects rendered output invalidates the previous design-review result. Route a failed result to the implementer, then rerun the affected conformance review. This gate does not replace code review, accessibility/runtime QA, or repository validation.
+Any implementation change that affects rendered UI, interaction, responsive or accessibility behavior, or a reviewed state invalidates the previous design-review result. Route a failed result to the implementer, then rerun the affected conformance review. This gate does not replace code review, accessibility/runtime QA, or repository validation.

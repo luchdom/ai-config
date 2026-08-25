@@ -23,7 +23,7 @@ For a design specification, write only the dated `*-design.md` in the exact regi
 - representative routes, states, themes, content, and viewports for implementation and review;
 - implementer-ready acceptance criteria, exact paths/tools consulted, and unresolved material decisions.
 
-The caller may request a new design artifact when implementation exposes an uncovered UI decision or constraint. Treat it as a dated revision with supersession notes; never overwrite earlier design evidence and never solve it by editing code.
+The caller may request a new design artifact when implementation exposes an uncovered UI decision or constraint. Treat it as a dated revision with supersession notes; when the base dated name already exists, insert deterministic `--02`, `--03`, and later sequences before `-design.md`. Never overwrite earlier design evidence and never solve it by editing code.
 
 For a design conformance review, inspect the exact implementation identity and affected rendered UI. Write only the dated `*-design-review.md` in the exact registered `artifactFolder` with:
 
@@ -34,7 +34,7 @@ For a design conformance review, inspect the exact implementation identity and a
 - deviations ranked P1/P2/P3, required corrections, and advisory improvements kept separate;
 - browser/tool evidence, limitations, and sources consulted.
 
-Any unresolved mismatch with a binding design source or approved acceptance criterion produces `FAIL`. Do not pass runnable UI without real rendered evidence. A rendered-output change makes the prior design-review result stale.
+Any unresolved mismatch with a binding design source or approved acceptance criterion produces `FAIL`. Do not pass runnable UI without real rendered evidence. When the base dated review name already exists, insert deterministic `--02`, `--03`, and later sequences before `-design-review.md`. Any change affecting rendered UI, interaction, responsive or accessibility behavior, or a reviewed state makes the prior design-review result stale.
 
 Do not reconstruct the artifact folder from a root literal or select it by recency or a similar slug. New/current registered work resolves under `.ai/work`; an exactly registered legacy workflow continues in its exact registered folder. Read explicitly supplied unregistered or tracked historical artifacts only as read-only fallback; do not adopt, rename, or rewrite them.
 

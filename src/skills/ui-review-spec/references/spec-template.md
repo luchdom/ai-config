@@ -1,6 +1,6 @@
 # Design Spec Template
 
-Write `<date>-<slug>-design.md` in the exact `artifactFolder` recorded by the active work descriptor/registry. Do not infer the folder from recency or a similar slug.
+Write `<date>-<slug>-design.md` in the exact `artifactFolder` recorded by the active work descriptor/registry. If it exists, use `<date>-<slug>--02-design.md`, then `--03` and later deterministic sequences. Do not overwrite evidence or infer the folder from recency or a similar slug.
 
 ## Context and user goal
 

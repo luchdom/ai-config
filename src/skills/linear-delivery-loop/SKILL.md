@@ -60,7 +60,7 @@ Never archive an attended pilot, a scheduled task attached to an existing long-l
 
 ## Deliver within the MVP budget
 
-Use the lightest applicable stages. Plan and task inline for routine work; create a concise work note only when useful. Use specialists selectively based on risk, not as a mandatory chain.
+Use the lightest applicable stages. Plan and task inline for routine work; create a concise work note only when useful. Use specialists selectively based on risk, not as a mandatory chain. When frontend/UI design gates apply, initialize or resume the workflow descriptor and registered `artifactFolder` before design or implementation; non-UI routine work may continue to use Linear, commits, and the pull request as its complete record.
 
 - Prefer one branch and pull request per issue.
 - For frontend/UI work, require product-designer input when `design-gates.md` requires a pre-build specification, and require a current rendered design conformance `PASS` after implementation. Risk-based specialist selection cannot waive either applicable gate.

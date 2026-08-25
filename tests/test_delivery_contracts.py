@@ -244,8 +244,35 @@ class DeliveryContractTests(unittest.TestCase):
         self.assertFalse((ROOT / "src" / ("project" + "-templates")).exists())
         for relative in expected:
             instruction = (ROOT / relative).read_text(encoding="utf-8")
-            self.assertIn("goal-to-delivery/references/design-gates.md", instruction)
+            if relative.endswith("cursor/AGENTS.md"):
+                self.assertIn(".cursor/rules/ui-design-gates.mdc", instruction)
+                self.assertIn(".cursor/rules/ui-review-spec.mdc", instruction)
+            else:
+                self.assertIn("goal-to-delivery/references/design-gates.md", instruction)
             self.assertIn("applicable UI design conformance", instruction)
+
+        cursor_rules = ROOT / "dist" / "cursor" / "rules"
+        expected_cursor_support = (
+            "ui-design-gates.mdc",
+            "ui-review-spec.mdc",
+            "ui-design-spec-template.mdc",
+            "ui-design-review-template.mdc",
+            "ui-audit-checklist.mdc",
+            "ui-component-selection.mdc",
+        )
+        self.assertTrue(all((cursor_rules / name).is_file() for name in expected_cursor_support))
+        self.assertIn(
+            ".cursor/rules/ui-design-gates.mdc",
+            (cursor_rules / "product-designer.mdc").read_text(encoding="utf-8"),
+        )
+        self.assertIn(
+            "./ui-design-review-template.mdc",
+            (cursor_rules / "ui-review-spec.mdc").read_text(encoding="utf-8"),
+        )
+        self.assertNotIn(
+            "./references/",
+            (cursor_rules / "ui-review-spec.mdc").read_text(encoding="utf-8"),
+        )
 
         build = (ROOT / "scripts/build.py").read_text(encoding="utf-8")
         sync = (ROOT / "scripts/sync.py").read_text(encoding="utf-8")
@@ -349,12 +376,14 @@ class DeliveryContractTests(unittest.TestCase):
             write(
                 root,
                 "src/skills/goal-to-delivery/SKILL.md",
-                "semi-autonomous automatic working-tree queue selection never mode: autonomous",
+                "semi-autonomous automatic working-tree queue selection never mode: autonomous "
+                "registered `artifactFolder`",
             )
             write(
                 root,
                 "src/skills/spec-driven-delivery/SKILL.md",
-                "manual exactly one without automatic advancement one focused question reject mode: autonomous",
+                "manual exactly one without automatic advancement one focused question reject mode: autonomous "
+                "registered `artifactFolder`",
             )
             linear = write(
                 root,
@@ -363,7 +392,7 @@ class DeliveryContractTests(unittest.TestCase):
                 "In Progress Backlog Done continuation issue "
                 "DECIDE <ISSUE> CUSTOM <SUGGESTION> notification click target "
                 "quiet standalone scheduled run set_thread_archived raw archive directive "
-                "applicable UI design conformance",
+                "applicable UI design conformance registered `artifactFolder`",
             )
             self.assertEqual([], check_entry_policies(root))
             linear.write_text("autonomous helper", encoding="utf-8")
@@ -420,7 +449,7 @@ class DeliveryContractTests(unittest.TestCase):
                 root,
                 "src/skills/goal-to-delivery/references/delivery-stages.md",
                 "planner product-designer tasker auditor matching implementer design_review "
-                "code-reviewer qa docs-as-code",
+                "code-reviewer qa docs-as-code proven not to affect rendered UI or interaction",
             )
             write(
                 root,
@@ -431,7 +460,8 @@ class DeliveryContractTests(unittest.TestCase):
                 root,
                 "src/skills/goal-to-delivery/references/design-gates.md",
                 "binding design sources design specification mechanical change design conformance review "
-                "every change to rendered UI or interaction real browser PASS FAIL",
+                "every change to rendered UI or interaction real browser PASS FAIL registered `artifactFolder` "
+                "reviewed state `--02`",
             )
             for agent in specialists:
                 anchors = ""
@@ -440,7 +470,7 @@ class DeliveryContractTests(unittest.TestCase):
                 elif agent == "product-designer":
                     anchors = (
                         "two product-design operations binding design sources design specification "
-                        "design conformance review real-browser PASS FAIL stale"
+                        "design conformance review real-browser PASS FAIL stale reviewed state `--02`"
                     )
                 elif agent == "planner":
                     anchors = "design-gates.md binding design sources post-implementation design conformance review"
@@ -464,7 +494,8 @@ class DeliveryContractTests(unittest.TestCase):
             write(
                 root,
                 "src/skills/ui-review-spec/SKILL.md",
-                "binding design sources exact implementation identity design-review-template.md real rendered evidence",
+                "binding design sources exact implementation identity design-review-template.md "
+                "real rendered evidence `--02`",
             )
             feature = write(
                 root,

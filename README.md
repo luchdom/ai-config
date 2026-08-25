@@ -64,7 +64,7 @@ Memory curation and observability are intentionally modest: persist decisions an
 - `dist/tool-instructions/`: generated project-local projections for each supported tool
 - `dist/`: generated projections; never edit directly
 
-Per-work evidence uses the workflow descriptor's exact registered `artifactFolder`. New/current workflows use `.ai/work`; an exact registered legacy workflow may continue at its exact `docs-ai` path, while unregistered or tracked historical `docs-ai` evidence remains read-only. Durable reusable guidance belongs in the repository's curated docs. The optional workflow helper and descriptor remain available for multi-session work but are not required by the autonomous MVP.
+Per-work evidence uses the workflow descriptor's exact registered `artifactFolder`. New/current workflows use `.ai/work`; an exact registered legacy workflow may continue at its exact `docs-ai` path, while unregistered or tracked historical `docs-ai` evidence remains read-only. Durable reusable guidance belongs in the repository's curated docs. The workflow helper and descriptor remain optional for routine work with no required specialist artifact, but frontend/UI design gates require registration before design or implementation so the design specification and conformance review have an authoritative destination.
 
 ## Build, validate, and install
 
@@ -80,7 +80,7 @@ Install project-local tool instructions too:
 python .\scripts\sync.py --tool all --project C:\path\to\repo
 ```
 
-Use `--tool codex`, `claude`, `copilot`, or `cursor` to limit installation. `LUCHDOM_AI_TOOLKIT_DOCS` can override the shared curated-docs path rendered into tool instructions; the legacy `LUCHDOM_AI_CONFIG_DOCS` name remains supported.
+Use `--tool codex`, `claude`, `copilot`, or `cursor` to limit installation. Cursor project sync writes `AGENTS.md` plus `.cursor/rules/*.mdc`, including the projected UI design-gate, review procedure, and templates. `LUCHDOM_AI_TOOLKIT_DOCS` can override the shared curated-docs path rendered into tool instructions; the legacy `LUCHDOM_AI_CONFIG_DOCS` name remains supported.
 
 Normal sync updates only marker-managed blocks in existing instruction files and preserves content outside them. Existing unmarked instruction files and generated skills remain untouched unless `--force` explicitly adopts or refreshes them.
 

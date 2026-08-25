@@ -1,6 +1,6 @@
 # Design Conformance Review Template
 
-Write `<date>-<slug>-design-review.md` in the exact `artifactFolder` recorded by the active work descriptor/registry. Do not infer the folder from recency or a similar slug.
+Write `<date>-<slug>-design-review.md` in the exact `artifactFolder` recorded by the active work descriptor/registry. If it exists, use `<date>-<slug>--02-design-review.md`, then `--03` and later deterministic sequences. Do not overwrite evidence or infer the folder from recency or a similar slug.
 
 ## Verdict
 
